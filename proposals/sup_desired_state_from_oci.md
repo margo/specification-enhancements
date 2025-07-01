@@ -3,18 +3,20 @@
 ## Owner
 
 @Silvanoc
-@arne-broering
 
 ## Summary
 
-Instead of using Git to transport the desired state to the device, a REST API is used - namely, the established REST API of the OCI Distribution v1.1 specification. This results in the benefit that available OCI-registries and client libraries can be used.
+Instead of using Git to transport the desired state to the device, a REST API is used - namely, the established REST API of the [OCI Distribution v1.1 specification](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md). This results in the benefit that available OCI-registries and client libraries can be used.
 
 
 ## Reason for proposal
 
-> Explain why this SUP is needed and how it improves on what we have in the specifications
+This SUP relates to this [issue](https://github.com/orgs/margo/projects/22/views/2?pane=issue&itemId=111409860&issue=margo%7Cspecification%7C100), which addresses the need to define the desired state artifact(s) that are produced via the WFM, and retrieved via the edge client, to enable state seeking management of workloads at the edge.
 
-https://github.com/orgs/margo/projects/22/views/2?pane=issue&itemId=111409860&issue=margo%7Cspecification%7C100
+
+
+
+
 
 
 ## Requirements alignment acknowledgement
