@@ -27,12 +27,13 @@ This proposal address part of this [feature](https://github.com/orgs/margo/proje
 The following is in scope for this proposal:
 
 1. Packaging, and distributing, the desired state documents as an OCI artifact
-1. Using the APIs defined in the [OCI Distribution v1.1 specification](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md) for pulling the OCI artifact to the device.
+1. Using the APIs defined in the [OCI Distribution v1.1 specification](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md) for pulling the OCI artifact to the device
 
 The following is not in scope for this proposal:
 
 1. Defining how the device receives the location and authentication information for where the OCI artifacts are available
-2. Defining how a device is notified of a updated desired state OCI artifacts beyond using the "latest" tag.
+1. Defining how a device is notified when the desired state OCI artifact is updated beyond using the "latest" tag
+1. Securing/signing the OCI artifacts and desired state YAML files
 
 ## Technical proposal
 
