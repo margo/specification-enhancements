@@ -44,8 +44,11 @@ The following is not in scope for this proposal:
 
 ### REST-API Specification
 
-Instead of using Git to transport the desired state to the device, a REST API is used - namely, the established REST API of the [OCI Distribution v1.1 specification](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md).
+The well-established REST API of the [OCI Distribution v1.1 specification](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md) is the proposed REST-API.
+
 This results in the benefit that available OCI-registries and client libraries can be used.
+
+Additionally, [API-conformance tests](https://github.com/opencontainers/distribution-spec/tree/main/conformance) are available to validate any implementation.
 
 ### Protocol Support
 
