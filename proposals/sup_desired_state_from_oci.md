@@ -36,7 +36,7 @@ The following is in scope for this proposal:
 The following is not in scope for this proposal:
 
 1. Defining how the device receives the location and authentication information for where the desired state documents are available
-1. Defining how a device is notified when the desired state document is updated beyond using the "latest" tag
+1. Defining how a device is notified when the desired state documents are updated beyond using the "latest" tag
 1. Securing/signing the desired state documents
 
 ## Technical proposal
