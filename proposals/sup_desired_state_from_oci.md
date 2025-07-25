@@ -24,6 +24,9 @@ The [specification currently indicates Git](https://specification.margo.org/flee
 1. There were concerns over the overhead of requiring a git client on the device. With this proposal, requests are all HTTP(s) requests and can be made using standard HTTP(s) clients/libraries.
 1. There were concerns over the chattiness between the Git client and the server. By minimizing the number of layers in the artifacts we have some control over how chatty the API calls will be. We will need to keep this in mind as we work on the technical details for this proposal.
 
+Additionally there are multiple different implementations of the proposed REST-API, some of them for free.
+Therefore the required infrastructure is frequently available and being use for software distribution.
+
 ## Requirements alignment acknowledgement
 
 This proposal address part of this [feature](https://github.com/orgs/margo/projects/22/views/2?pane=issue&itemId=111409860&issue=margo%7Cspecification%7C100).
