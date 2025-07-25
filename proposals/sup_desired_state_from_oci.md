@@ -18,7 +18,6 @@ This SUP relates to this [feature](https://github.com/orgs/margo/projects/22/vie
 
 The [specification currently indicates Git](https://specification.margo.org/fleet-management/workload/workload-deployment/) is used for this process but the Margo TWG members voted against using Git because of the following:
 
-
 1. Git is an industry standard but not a specification so there is no way to implement compliance testing based on Git. It also means the Git implementation could change at any point. This proposal addresses this concern by using a well-defined specification with clear compliance requirements.
 1. Since Git was not based on a specification the members felt we were dictating an implementation. This proposal addresses this concern by referencing an established specification. Vendors have the freedom to choose whichever implementation approach they wish to comply with the Margo specification.
 1. There were concerns over the amount of additional storage space a git repository requires on the device. While this can be alleviated with shallow checkouts, using an artifact-based approach for the desired state doesn't include the complete history like a Git repository does.
