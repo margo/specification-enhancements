@@ -14,7 +14,7 @@ There are multiple open-source software implementations of both registries and c
 
 ## Reason for proposal
 
-This SUP relates to this [feature](https://github.com/orgs/margo/projects/22/views/2?pane=issue&itemId=111409860&issue=margo%7Cspecification%7C100), which addresses the need to define the desired state artifact(s) that are produced via the WFM, and retrieved via the edge client, to enable state seeking management of workloads at the edge.
+This SUP relates to parts of [feature 100](https://github.com/margo/specification/issues/100) and [feature 101](https://github.com/margo/specification/issues/101), which addresses the need to define the desired state artifact(s) that are produced via the WFM, and retrieved via the edge client, to enable state seeking management of workloads at the edge.
 
 The [specification currently indicates Git](https://specification.margo.org/fleet-management/workload/workload-deployment/) is used for this process but the Margo TWG members voted against using Git because of the following:
 
@@ -29,7 +29,7 @@ Therefore the required infrastructure is frequently available and being use for 
 
 ## Requirements alignment acknowledgement
 
-This proposal address part of this [feature](https://github.com/orgs/margo/projects/22/views/2?pane=issue&itemId=111409860&issue=margo%7Cspecification%7C100).
+This proposal addresses parts of [feature 100](https://github.com/margo/specification/issues/100) and [feature 101](https://github.com/margo/specification/issues/101).
 
 The following is in scope for this proposal:
 
