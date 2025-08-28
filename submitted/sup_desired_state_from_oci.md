@@ -8,15 +8,14 @@
 
 Instead of using Git to transport the desired state to the device, a REST API is used - namely, a well-established, well-defined, and widely-used API for digital artifact distribution and management.
 This API is particularly easy to implement thanks to its simplicity, making it accessible for devices with varying capabilities.
+The details on that API can be found in the section [Technical proposal](#technical-proposal).
 
 This approach offers the significant benefit of leveraging available registries and client libraries.
 There are multiple open-source software implementations of both registries and client libraries that are battle-tested and widely used across the industry, eliminating the need to develop and maintain custom solutions.
 
 ## Reason for proposal
 
-This SUP relates to parts of [feature 100](https://github.com/margo/specification/issues/100) and [feature 101](https://github.com/margo/specification/issues/101), which addresses the need to define the desired state artifact(s) that are produced via the WFM, and retrieved via the edge client, to enable state seeking management of workloads at the edge.
-
-The [specification currently indicates Git](https://specification.margo.org/fleet-management/workload/workload-deployment/) is used for this process, but the Margo TWG members voted against using Git because of the following:
+The [specification currently indicates Git](https://specification.margo.org/fleet-management/workload/workload-deployment/) is used for this process, but the **Margo TWG members voted against using Git** because of the following:
 
 1. Git is an industry standard, but not a specification, so there is no way to implement compliance testing based on Git.
    It also means the Git implementation could change at any point.
@@ -32,8 +31,12 @@ The [specification currently indicates Git](https://specification.margo.org/flee
    By controlling the contents of the blob, we have some control over how chatty the API calls will be.
    We will need to keep this in mind as we work on the technical details for this proposal.
 
-Additionally, there are multiple different implementations of the proposed REST-API, some of them for free.
-Therefore, the required infrastructure is frequently available and is being used for software distribution.
+It is therefore out of the scope of this proposal arguing why a REST API instead of Git.
+
+This Specification Update Proposal (SUP) relates to parts of [feature 100](https://github.com/margo/specification/issues/100) and [feature 101](https://github.com/margo/specification/issues/101), which addresses the need to define the desired state artifact(s) that are produced via the WFM, and retrieved via the edge client, to enable state seeking management of workloads at the edge.
+
+The REST API being proposed (detailed in the section [Technical proposal](#technical-proposal)) have multiple different implementations, many of them open source software (OSS).
+Additionally, the required infrastructure is frequently available and is being used for software distribution (e.g. for container images).
 
 ## Requirements alignment acknowledgement
 
@@ -43,29 +46,15 @@ The following is in scope for this proposal:
 
 1. Packaging and distributing the desired state documents
 1. Using the APIs defined in the [REST-API Specification](#rest-api-specification) section for pulling the desired state to the device
+1. Securing the authenticity and integrity of the individual desired state documents (via signatures)
 
 The following is not in scope for this proposal:
 
-1. Defining how the device receives the location and authentication information for where the desired state documents are available
+1. Defining how the device receives the location and authentication information on where the desired state documents are available
 1. Defining how a device is notified when the desired state documents are updated beyond using the "latest" tag
-1. Securing/signing the desired state documents
+1. Ensuring that only specific versions of valid (authenticity and integrity) desired state documents can be installed to avoid downgrade attacks (this is a consequence of the previous point)
 
 ## Technical proposal
-
-### REST-API Specification
-
-The well-established REST API of the [OCI Distribution v1.1 specification](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md) is the proposed REST API.
-This results in the benefit of allowing available OCI registries and client libraries to be used, as well as allowing Workload Fleet Manager suppliers to option to implement their backend solution without requiring the use of an OCI registry.
-
-Additionally, [API-conformance tests](https://github.com/opencontainers/distribution-spec/tree/main/conformance) are available to validate any implementation.
-
-### Protocol Support
-
-The REST API implementation supports HTTP 1.1, ensuring compatibility with a wide range of client libraries and network infrastructures.
-This support is particularly important as many target networks, especially in industrial and legacy environments, only support HTTP up to version 1.1.
-By maintaining compatibility with HTTP 1.1, the solution ensures deployability across restricted network environments where newer HTTP protocol versions may not be available or allowed through firewalls and proxies.
-
-### Architectural considerations
 
 Getting an edge device to execute one or more workloads implies:
 
@@ -74,59 +63,120 @@ Getting an edge device to execute one or more workloads implies:
 3. Executing the workload.
 
 This proposal only deals with the first step for obtaining the desired state.
-Although an OCI registry can also be used to distribute resources required by the workloads, that part is out of the scope of this proposal.
+It is important to notice, though, that hereby proposed REST API can also be used to distribute resources required by the workloads, which is one of the motivations for this proposal.
 
-Although it is possible to push the desired state to an edge device, this proposal relies on a pull approach.
-Based on triggers (signal from the backend, schedule for polling,...), the edge device checks if a new desired state is available in the backend.
+It is important to remember that the decision to use a REST API instead of Git to distribute the desired state was **voted by the Margo TWG members**.
 
-The following components and concepts are relevant to achieving the desired state of an edge device:
+This proposal is a pull-approach to distribute the desired state documents to the edge devices.
+It is based on signaling (notification from the backend, schedule for polling,...) the edge device to check if a new desired state is available in the backend.
 
-1. A signal for the edge device to check the availability of a new desired state.
-2. Making the desired state available for the edge device to pull. According to current decisions, this MUST be a REST API.
-3. The format of the payload provided by the aforementioned REST API to package the desired state.
+The following components and concepts are relevant to achieving the desired state of one or more applications on an edge device:
 
-#### Signal: Check Desired State
+1. A signal for the edge device to check the availability of new desired state document(s).
+   Check the section [Signal: New desired state](#signal-new-desired-state) for more details on this.
+2. The format an protocol to distribute the desired state documents.
+   This includes the REST API and the "packaging" of those documents, which is the scope of this SUP.
+   Check the section [Fetch desired state: REST API](#fetch-desired-state-rest-api) for more details on this.
 
-There are two possibilities:
+All this proposal assumes that desired state documents are signed to ensure the authenticity and integrity of those documents as mentioned above.
+There are a couple of mechanisms to sign OCI artifacts (like Cosign and Notary v2) which are open source software (OSS) and battle-proofed.
+But any alternative signing mechanism is also acceptable.
 
-1. Internal triggering: the edge device regularly checks the availability of a new desired state (AKA polling).
-2. External triggering: the edge device gets notified somehow from the backend that a new desired state is available.
+### REST-API specification
 
-This proposal is not focused on any of them and assumes, for now, that a polling approach is used since this is what the specification currently indicates.
+The hereby proposed "well-established REST API" is that of the [OCI Distribution v1.1 specification](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md).
 
-#### Fetch Desired State: REST API
+As mentioned before, there are multiple implementations of this API (both servers and clients), many of them open source software (OSS).
+It has as a consequence the benefit of allowing available OCI registries and client libraries to be used, as well as allowing Workload Fleet Manager suppliers to option to implement their backend solution without requiring the use of an OCI registry.
 
-This is the main scope of this proposal.
+Additionally, [API-conformance tests](https://github.com/opencontainers/distribution-spec/tree/main/conformance) are available to validate any implementation.
 
-As mentioned above, the core of the proposal is a REST API compatible with the OCI distribution API, with the ultimate goal of enabling the use of available OCI registries and clients(e.g., ORAS, FluxCD, ArgoCD), if desired.
+### Protocol support
+
+The REST API implementation supports HTTP 1.1, ensuring compatibility with a wide range of client libraries and network infrastructures.
+This support is particularly important as many target networks, especially in industrial and legacy environments, only support HTTP up to version 1.1.
+By maintaining compatibility with HTTP 1.1, the solution ensures deployability across restricted network environments where newer HTTP protocol versions may not be available or allowed through firewalls and proxies.
+
+### Signal: New desired state
+
+As mentioned before, signaling devices that new desired state documents are available and which they are is out of the scope of this proposal.
+
+Therefore any mechanisms providing protection against following attacks (among others) is part of the signaling and therefore out the scope of this SUP:
+
+1. Indefinite freeze attacks (freshness guarantee)
+2. Fast-forward attacks
+3. Endless data attacks
+
+Protection against another very common attack like the rollback/replay attack can be accomplished with the mechanisms within the scope of this SUP.
+The metadata of the desired state documents should provide either only increasing version numbers or timestamps.
+That way the device can simply reject any desired state document with older or lower versioned metadata.
+
+But since those solutions should cover some aspects relevant for different security-related aspects, we are going to sketch some of them in this section.
+Protecting against the above mentioned attacks is security-relevant and therefore the sketched approaches try to rely on battle-proofed mechanisms and software.
+
+Basically there are two different approaches:
+
+1. Polling (pull approach): the edge device regularly checks the availability of a new desired state.
+2. Notifications (push approach): the edge device gets notified somehow from the backend that a new desired state is available.
+
+#### Polling
+
+In the case of polling, no information about the latest desired state version is available on the device.
+This information must be obtained by the device externally in a trustworthy way.
+Please notice that in the case of [Notifications](#notifications) this information is provided with the object signaling the availability of a new desired state.
+
+Ideally the information of the latest desired state version is obtained from a server providing an OCI-compatible REST-API so that no additional services or protocols are needed.
+Potentially even the same one providing the desired state documents.
+
+These are possible ways to make the currently (latest) desired state version know to the device:
+
+1. "Latest" tag provided by the REST-API returns the digest which unambiguously identifies the desired state document to be pulled.
+   No defense against the above mentioned attacks is provided.
+2. An implementation of the [TUF (The Update Framework)](https://theupdateframework.io) is used to provide the digest which unambiguously identifies the desired state document to be pulled.
+   The different guarantees provided by TUF against the above mentioned attacks combined with the use of digests and increasing version numbers or timestamps with the desired state documents provide a best of the class security, but increases the complexity a bit.
+
+#### Notifications
+
+In the case of notifications, there are mechanisms are capable of providing information about the latest desired state version in a trustworthy way.
+
+Notifications must be secure so that the information on which desired state documents are requested to be fetch can be trusted.
+That way any properly signed desired state document is trustworthy.
+
+Different potential notification mechanisms are thinkable:
+
+1. [Server-Sent Events (SSE)](https://en.wikipedia.org/wiki/Server-sent_events) is the simplest approach, since it only requires HTTP 1.1, what is required anyway for the REST API.
+2. Message bus (like MQTT), which requires specialized brokers, clients,...
+
+### Fetch desired state: REST API
+
+As mentioned above, the core of the proposal is a REST API compatible with the OCI distribution API.
+It is a secondary goal of this SUP enabling the use of available OCI registries and clients(e.g., ORAS, FluxCD, ArgoCD), if desired.
 
 However, the option remains open for implementing a custom solution using a simple and well-defined API, so using an OCI registry is not mandatory.
 
 The following aspects are to be considered when fetching the desired state concerning security:
 
-#### Authentication and Authorization
+#### Authentication and authorization
 
-Authentication and authorization are not in scope for this proposal.
+Authentication and authorization of the devices fetching the desired state documents are not in scope for this proposal.
 
 The [Open Container Initiative Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md) does not address authentication and authorization.
 
 OCI registries implement the [Docker Registry v2 protocol](https://docker-docs.uclv.cu/registry/spec/api/), which uses [RFC 7235](https://www.rfc-editor.org/rfc/rfc7235) to define the WWW-Authenticate header to indicate which authentication schemes are supported.
 Most OCI registries support at a minimum [Basic](https://www.rfc-editor.org/rfc/rfc7617) and [Bearer Token](https://www.rfc-editor.org/rfc/rfc6750) schemes for authentication.
 
-#### Tampering Attacks
+#### Tampering attacks
 
-Signing and security are outside the scope of this proposal.
-The expectation is that future proposals will address how these are handled to ensure the integrity and authenticity of the desired state artifacts.
+The mechanism to use for desired state document signing is outside of the scope of this proposal.
+But this proposal enables the integration of existing mechanisms and tools (like Cosign or Notary v2) that provide it out of the box.
 
-#### Rollback Attacks
+The expectation is that other future proposals will address how these are handled to ensure the integrity and authenticity of the desired state artifacts.
 
-If whatever desired state being provided is considered valid, there is a chance for a rollback (AKA [Downgrade](https://en.wikipedia.org/wiki/Downgrade_attack)) attack in which an old desired state with vulnerabilities is "rolled back" (by a malicious attacker or mistakenly).
+#### Rollback attacks
 
-To avoid these kinds of attacks, the following aspects are to be considered:
+If whatever valid desired state being provided is considered the current, latest or desired one, there is a chance for a rollback (AKA [Downgrade](https://en.wikipedia.org/wiki/Downgrade_attack)) attack in which an old desired state with vulnerabilities is "rolled back" (by a malicious attacker or mistakenly).
 
-- The reliability of the desired state freshness will depend on how trustworthy the desired state hosting can be considered.
-  It is expected that the services hosting the desired state artifact follow best practices to ensure the security and integrity of the hosted artifacts.
-  This is outside Margo's scope
+As mentioned above, the use of only increasing version numbers or timestamps in the metadata associated to the desired state documents with the OCI manifests protects against it.
 
 > **MORE DISCUSSION NEEDED**: Need some more details here.
 > I proposed adding an attribute to the manifest to indicate the minimum acceptable version of the desired state.
@@ -134,6 +184,8 @@ To avoid these kinds of attacks, the following aspects are to be considered:
 > This would require the Workload Fleet Manager and device to keep track of the version of the last created and applied desired state blob.
 
 ### Top-level view
+
+#### Deployment
 
 ```mermaid
 block-beta
@@ -159,7 +211,11 @@ block-beta
     F --> G
 ```
 
-### 2-step workflow
+#### Workflow
+
+Each time that a new desired state is needed following workflow is followed to fetch it.
+
+The knowledge about the availability of such a new document has been already addressed in the section [Signal: New desired state](#signal-new-desired-state)
 
 ```mermaid
 sequenceDiagram
@@ -167,14 +223,10 @@ sequenceDiagram
     participant wmc as Margo Device Workload Management Client
     participant oci as Webserver or OCI registry
 
-    loop infinite
-        wmc->>+oci: GET request for desired state manifest
-        oci->>wmc: manifest with reference to desired state
-        alt new desired state
-            wmc->>+oci: GET request desired state (identified by digest)
-            oci->>wmc: desired state
-        end
-    end
+    wmc->>+oci: GET request for desired state manifest
+    oci->>wmc: manifest with reference to desired state
+    wmc->>+oci: GET request desired state (identified by digest)
+    oci->>wmc: desired state
 ```
 
 ### Management client requests
