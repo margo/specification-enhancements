@@ -18,11 +18,19 @@ This SUP relates to parts of [feature 100](https://github.com/margo/specificatio
 
 The [specification currently indicates Git](https://specification.margo.org/fleet-management/workload/workload-deployment/) is used for this process, but the Margo TWG members voted against using Git because of the following:
 
-1. Git is an industry standard, but not a specification, so there is no way to implement compliance testing based on Git. It also means the Git implementation could change at any point. This proposal addresses this concern by using a well-defined specification with clear compliance requirements.
-1. Since Git was not based on a specification, the members felt we were dictating an implementation. This proposal addresses this concern by referencing an established specification. Vendors have the freedom to choose whichever implementation approach they wish to comply with the Margo specification.
-1. There were concerns over the amount of additional storage space a git repository requires on the device. While this can be alleviated with shallow checkouts, using an artifact-based approach for the desired state doesn't include the complete history like a Git repository does.
-1. There were concerns over the overhead of requiring a git client on the device. With this proposal, requests are all HTTP(s) requests and can be made using standard HTTP(s) clients/libraries.
-1. There were concerns over the chattiness between the Git client and the server. By controlling the contents of the blob, we have some control over how chatty the API calls will be. We will need to keep this in mind as we work on the technical details for this proposal.
+1. Git is an industry standard, but not a specification, so there is no way to implement compliance testing based on Git.
+   It also means the Git implementation could change at any point.
+   This proposal addresses this concern by using a well-defined specification with clear compliance requirements.
+1. Since Git was not based on a specification, the members felt we were dictating an implementation.
+   This proposal addresses this concern by referencing an established specification.
+   Vendors have the freedom to choose whichever implementation approach they wish to comply with the Margo specification.
+1. There were concerns over the amount of additional storage space a git repository requires on the device.
+   While this can be alleviated with shallow checkouts, using an artifact-based approach for the desired state doesn't include the complete history like a Git repository does.
+1. There were concerns over the overhead of requiring a git client on the device.
+   With this proposal, requests are all HTTP(s) requests and can be made using standard HTTP(s) clients/libraries.
+1. There were concerns over the chattiness between the Git client and the server.
+   By controlling the contents of the blob, we have some control over how chatty the API calls will be.
+   We will need to keep this in mind as we work on the technical details for this proposal.
 
 Additionally, there are multiple different implementations of the proposed REST-API, some of them for free.
 Therefore, the required infrastructure is frequently available and is being used for software distribution.
@@ -46,7 +54,8 @@ The following is not in scope for this proposal:
 
 ### REST-API Specification
 
-The well-established REST API of the [OCI Distribution v1.1 specification](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md) is the proposed REST API. This results in the benefit of allowing available OCI registries and client libraries to be used, as well as allowing Workload Fleet Manager suppliers to option to implement their backend solution without requiring the use of an OCI registry.
+The well-established REST API of the [OCI Distribution v1.1 specification](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md) is the proposed REST API.
+This results in the benefit of allowing available OCI registries and client libraries to be used, as well as allowing Workload Fleet Manager suppliers to option to implement their backend solution without requiring the use of an OCI registry.
 
 Additionally, [API-conformance tests](https://github.com/opencontainers/distribution-spec/tree/main/conformance) are available to validate any implementation.
 
@@ -101,11 +110,13 @@ Authentication and authorization are not in scope for this proposal.
 
 The [Open Container Initiative Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md) does not address authentication and authorization.
 
-OCI registries implement the [Docker Registry v2 protocol](https://docker-docs.uclv.cu/registry/spec/api/), which uses [RFC 7235](https://www.rfc-editor.org/rfc/rfc7235) to define the WWW-Authenticate header to indicate which authentication schemes are supported. Most OCI registries support at a minimum [Basic](https://www.rfc-editor.org/rfc/rfc7617) and [Bearer Token](https://www.rfc-editor.org/rfc/rfc6750) schemes for authentication.
+OCI registries implement the [Docker Registry v2 protocol](https://docker-docs.uclv.cu/registry/spec/api/), which uses [RFC 7235](https://www.rfc-editor.org/rfc/rfc7235) to define the WWW-Authenticate header to indicate which authentication schemes are supported.
+Most OCI registries support at a minimum [Basic](https://www.rfc-editor.org/rfc/rfc7617) and [Bearer Token](https://www.rfc-editor.org/rfc/rfc6750) schemes for authentication.
 
 #### Tampering Attacks
 
-Signing and security are outside the scope of this proposal. The expectation is that future proposals will address how these are handled to ensure the integrity and authenticity of the desired state artifacts.
+Signing and security are outside the scope of this proposal.
+The expectation is that future proposals will address how these are handled to ensure the integrity and authenticity of the desired state artifacts.
 
 #### Rollback Attacks
 
@@ -113,9 +124,14 @@ If whatever desired state being provided is considered valid, there is a chance 
 
 To avoid these kinds of attacks, the following aspects are to be considered:
 
-- The reliability of the desired state freshness will depend on how trustworthy the desired state hosting can be considered. It is expected that the services hosting the desired state artifact follow best practices to ensure the security and integrity of the hosted artifacts. This is outside Margo's scope
+- The reliability of the desired state freshness will depend on how trustworthy the desired state hosting can be considered.
+  It is expected that the services hosting the desired state artifact follow best practices to ensure the security and integrity of the hosted artifacts.
+  This is outside Margo's scope
 
-> **MORE DISCUSSION NEEDED**: Need some more details here. I proposed adding an attribute to the manifest to indicate the minimum acceptable version of the desired state. This would allow the Device to reject any desired state blob with a version older than what is already applied on the device. This would require the Workload Fleet Manager and device to keep track of the version of the last created and applied desired state blob.
+> **MORE DISCUSSION NEEDED**: Need some more details here.
+> I proposed adding an attribute to the manifest to indicate the minimum acceptable version of the desired state.
+> This would allow the Device to reject any desired state blob with a version older than what is already applied on the device.
+> This would require the Workload Fleet Manager and device to keep track of the version of the last created and applied desired state blob.
 
 ### Top-level view
 
@@ -172,17 +188,23 @@ It MUST be possible for the device to pull the manifest and blob using the behav
 
 The routes provided to the device by the Workload Fleet Manager do not have to match the routes defined in the Open Container Initiative Distribution Specification (e.g., workload fleet manager is using an API-Gateway to expose the registry) but the behavior of the endpoint MUST match with regard to the request headers, parameters, and payload,d and response headers and payloads
 
-> **MORE DISCUSSION NEEDED:** The original proposal had endpoints defined with the expectation that an API-Gateway would be used. I feel it's more flexible if we expect the WFM to provide the URLs they want, so they have the option of using API Gateway, pointing directly to an existing OCI registry, or pointing to their custom web service implementation.
+> **MORE DISCUSSION NEEDED:** The original proposal had endpoints defined with the expectation that an API-Gateway would be used.
+> I feel it's more flexible if we expect the WFM to provide the URLs they want, so they have the option of using API Gateway, pointing directly to an existing OCI registry, or pointing to their custom web service implementation.
 
 How this information is provided is outside the scope of this proposal, but the expectation is that the Workload Fleet Manager provides it during onboarding.
 
 #### Manifest request
 
-The Workload Fleet Manager MUST provide the manifest URL that the device must call to obtain the manifest. The API is expected to behave as defined in the [Open Container Initiative Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md) for the `GET /v2/\<name\>/manifests/\<reference\>` endpoint. When the Workload Fleet Manager provides the manifest URL, it also provides the `reference` (aka tag) to use for the request.
+The Workload Fleet Manager MUST provide the manifest URL that the device must call to obtain the manifest.
+The API is expected to behave as defined in the [Open Container Initiative Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md) for the `GET /v2/\<name\>/manifests/\<reference\>` endpoint.
+When the Workload Fleet Manager provides the manifest URL, it also provides the `reference` (aka tag) to use for the request.
 
 ##### Response
 
-> **MORE DISCUSSION NEEDED**: The original proposal suggested sending a single ApplicationDeployment.yaml in the desired state blob so each workload would have its own desired state manifest. This approach doesn't address the concerns around having a chatty API that were raised around using Git. Also, this makes it more difficult to get a picture of the whole desired state the device should have. As an alternative, we suggested following the declarative approach, and instead of sending a single ApplicationDeployment.yaml, it would instead send the entire desired state for all workloads in the blob so the device can ensure everything matches.
+> **MORE DISCUSSION NEEDED**: The original proposal suggested sending a single ApplicationDeployment.yaml in the desired state blob so each workload would have its own desired state manifest.
+> This approach doesn't address the concerns around having a chatty API that were raised around using Git.
+> Also, this makes it more difficult to get a picture of the whole desired state the device should have.
+> As an alternative, we suggested following the declarative approach, and instead of sending a single ApplicationDeployment.yaml, it would instead send the entire desired state for all workloads in the blob so the device can ensure everything matches.
 
 The response from the endpoint provides the desired state manifest JSON document defined by the [OCI Image Manifest Specification](https://github.com/opencontainers/image-spec/blob/v1.0.1/manifest.md) containing the information about the configuration, layers, and annotations for the desired state blob.
 
@@ -234,7 +256,9 @@ The manifest file MUST be created as defined by the OIC Image Manifest Specifica
 
 #### Blob request
 
-The Workload Fleet Manager MUST provide the blob URL that the device MUST call to obtain the desired state blob. The API is expected to behave as defined in the [Open Container Initiative Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md) for the `GET /v2/\<name\>/blobs/\<digests\>` endpoint. The digest to use for the call is retrieved from the manifest response payload.
+The Workload Fleet Manager MUST provide the blob URL that the device MUST call to obtain the desired state blob.
+The API is expected to behave as defined in the [Open Container Initiative Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md) for the `GET /v2/\<name\>/blobs/\<digests\>` endpoint.
+The digest to use for the call is retrieved from the manifest response payload.
 
 ##### Request payload
 
@@ -244,7 +268,8 @@ None
 
 The response from the endpoint provides a TAR GZIP file containing the [Margo Desired State specification](https://specification.margo.org/margo-api-reference/workload-api/desired-state-api/desired-state/) YAML files for all workloads that should be deployed on the device.
 
-The TAR file MUST only contain the individual desired state YAML files, in plain text, for each workload expected to be deployed on the device. There are no requirements for how the individual YAML files are organized within the TAR file.
+The TAR file MUST only contain the individual desired state YAML files, in plain text, for each workload expected to be deployed on the device.
+There are no requirements for how the individual YAML files are organized within the TAR file.
 
 The following rules MUST be followed by the device when applying the latest desired state:
 
@@ -255,7 +280,8 @@ The following rules MUST be followed by the device when applying the latest desi
 
 ## Alternatives considered (optional)
 
-> List any alternative solutions considered while working on the SUP and the reason for not choosing them. If the SUP owner knows that there is a risk of a competing SUP, this section can be used to make their case ahead of any potential votes on why their solution is better.
+> List any alternative solutions considered while working on the SUP and the reason for not choosing them.
+> If the SUP owner knows that there is a risk of a competing SUP, this section can be used to make their case ahead of any potential votes on why their solution is better.
 
 ## Rejection reason
 
