@@ -10,6 +10,8 @@ We propose to enhance the Workload Fleet Manager to device interface to allow a 
 
 The idea is to augment the Workload Fleet Manager interface to enable the connection of this "single client", while the communication between the "single client" and the target devices stays out of the scope of Margo (it could be a proprietary communication).
 
+Additional services required by Margo to be provided by the device, e.g. OTEL collector, are not in the scope of this SUP.
+
 ## Reason for proposal
 
 These enhancements will allow devices that can host Margo applications but do not implement the Margo interface to be managed by a Margo compliant WFM, and thus decrease the barrier to entry for the device vendors. 
