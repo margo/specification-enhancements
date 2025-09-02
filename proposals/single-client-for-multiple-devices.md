@@ -8,6 +8,8 @@ Merrill Harriman, Julien Duquesnay
 
 We propose to enhance the Workload Fleet Manager to device interface to allow a single client - a gateway service for example - to provide device capabilities, retrieve desired states, etc. on behalf of one or multiple target devices. 
 
+The idea is to augment the Workload Fleet Manager interface to enable the connection of this "single client", while the communication between the "single client" and the target devices stays out of the scope of Margo (it could be a proprietary communication).
+
 ## Reason for proposal
 
 These enhancements will allow devices that can host Margo applications but do not implement the Margo interface to be managed by a Margo compliant WFM, and thus decrease the barrier to entry for the device vendors. 
@@ -18,10 +20,12 @@ These enhancements may also prepare the way for supporting constrained devices.
 
 ## Requirements alignment acknowledgement
 
-This SUP is aligned with the following technical features:
+This SUP is related to the following technical features:
 
 - https://github.com/margo/specification/issues/99
 - https://github.com/margo/specification/issues/101
+
+It is not intended to be part of PR1 as it introduce new functionalities. We expect that the changes it will introduce will be localized and will not challenge what has already been defined.
 
 ## Technical proposal
 
