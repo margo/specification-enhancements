@@ -59,8 +59,8 @@ The following is not in scope for this proposal:
 Getting an edge device to execute one or more workloads implies:
 
 1. Obtaining the desired state, which describes the workload(s) that should be executed.
-2. Getting any resources required by the workloads (e.g,. a container image).
-3. Executing the workload.
+1. Getting any resources required by the workloads (e.g,. a container image).
+1. Executing the workload.
 
 This proposal only deals with the first step for obtaining the desired state.
 It is important to notice, though, that hereby proposed REST API can also be used to distribute resources required by the workloads, which is one of the motivations for this proposal.
