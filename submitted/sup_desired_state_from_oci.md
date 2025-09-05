@@ -174,14 +174,18 @@ The expectation is that other future proposals will address how these are handle
 
 #### Rollback attacks
 
-If whatever valid desired state being provided is considered the current, latest or desired one, there is a chance for a rollback (AKA [Downgrade](https://en.wikipedia.org/wiki/Downgrade_attack)) attack in which an old desired state with vulnerabilities is "rolled back" (by a malicious attacker or mistakenly).
+If any trusted (from a trusted source, correctly signed,...) desired state being provided is considered the current, latest or desired one, there is a chance for a rollback (AKA [Downgrade](https://en.wikipedia.org/wiki/Downgrade_attack)) attack in which an old desired state with vulnerabilities gets installed (by a malicious attacker or mistakenly).
 
-As mentioned above, the use of only increasing version numbers or timestamps in the metadata associated to the desired state documents with the OCI manifests protects against it.
+The scope of this SUP provides the mechanisms to implement protection against this attack.
+For this purpose, this section adds a requirement to the specification.
 
-> **MORE DISCUSSION NEEDED**: Need some more details here.
-> I proposed adding an attribute to the manifest to indicate the minimum acceptable version of the desired state.
-> This would allow the Device to reject any desired state blob with a version older than what is already applied on the device.
-> This would require the Workload Fleet Manager and device to keep track of the version of the last created and applied desired state blob.
+The metadata of the desired state documents must provide a monotonically increasing version number.
+This information is to be provided in an [annotation of the corresponding OCI manifest](https://github.com/opencontainers/image-spec/blob/v1.1.0/annotations.md) with key `org.margo.ApplicationDeployment.version`.
+It requires that the Workload Fleet Manager at the very minimum keeps track of the last provided desired state version to create each new one.
+
+That way the device only needs to keep track of the last known desired state version and compare it with that of any provided trusted desired state.
+If the version is lower or equal, nothing happens.
+If the version is higher, then the desired state document(s) must be fetched and applied.
 
 ### Top-level view
 
