@@ -67,21 +67,21 @@ This proposal only deals with the first step for obtaining the desired state.
 It is important to notice, though, that hereby proposed REST API can also be used to distribute resources required by the workloads, which is one of the motivations for this proposal.
 
 It is important to remember that the decision to use a REST API instead of Git to distribute the desired state was **voted by the Margo TWG members**.
+It is therefore considered out of discussion in this proposal.
 
-This proposal is a pull-approach to distribute the desired state documents to the edge devices.
-It is based on signaling (notification from the backend, schedule for polling,...) the edge device to check if a new desired state is available in the backend.
+The following two steps are needed to achieve the desired state of one or more applications on an edge device:
 
-The following components and concepts are relevant to achieving the desired state of one or more applications on an edge device:
-
-1. A signal for the edge device to check the availability of new desired state document(s).
-   Check the section [Signal: New desired state](#signal-new-desired-state) for more details on this.
-2. The format an protocol to distribute the desired state documents.
-   This includes the REST API and the "packaging" of those documents, which is the scope of this SUP.
+1. The edge device is signaled (notification from the backend, internal schedule for polling,...) to check the availability of new desired state document(s).
+   Check the section [Signal: Update desired state](#signal-update-desired-state) for more details on this.
+1. The edge device fetches (pulls) the new desired state documents.
+   This requires a specification of the format and protocol to distribute those documents, what includes the REST API and the "packaging".
    Check the section [Fetch desired state: REST API](#fetch-desired-state-rest-api) for more details on this.
 
-All this proposal assumes that desired state documents are signed to ensure the authenticity and integrity of those documents as mentioned above.
+All this proposal does not require, but expects that desired state documents are signed to ensure the authenticity and integrity of those documents as mentioned above.
 There are a couple of mechanisms to sign OCI artifacts (like Cosign and Notary v2) which are open source software (OSS) and battle-proofed.
 But any alternative signing mechanism is also acceptable.
+
+In that sense it is very similar to the previous Git approach and represent almost a full-blown GitOps approach without Git.
 
 ### REST-API specification
 
@@ -98,27 +98,26 @@ The REST API implementation supports HTTP 1.1, ensuring compatibility with a wid
 This support is particularly important as many target networks, especially in industrial and legacy environments, only support HTTP up to version 1.1.
 By maintaining compatibility with HTTP 1.1, the solution ensures deployability across restricted network environments where newer HTTP protocol versions may not be available or allowed through firewalls and proxies.
 
-### Signal: New desired state
+### Signal: Update desired state
 
-As mentioned before, signaling devices that new desired state documents are available and which they are is out of the scope of this proposal.
+Basically there are two different approaches (which can be simultaneously active) to let the edge devices update their desire state documents:
 
-Therefore any mechanisms providing protection against following attacks (among others) is part of the signaling and therefore out the scope of this SUP:
+1. Polling (pull approach): the edge device regularly checks the availability of a new desired state based on an internal schedule.
+2. Notifications (push approach): the edge device gets notified somehow from the backend that a new desired state might be available.
+
+This SUP is only making the easiest approach (polling) a requirement, leaving any advanced approach optional and out of the scope of the specification (at least for the time being).
+
+Providing protection against following attacks (among others) is part of advanced signaling approaches and therefore out the scope of this SUP:
 
 1. Indefinite freeze attacks (freshness guarantee)
 2. Fast-forward attacks
 3. Endless data attacks
 
 Protection against another very common attack like the rollback/replay attack can be accomplished with the mechanisms within the scope of this SUP.
-The metadata of the desired state documents should provide either only increasing version numbers or timestamps.
-That way the device can simply reject any desired state document with older or lower versioned metadata.
+See the section [Rollback attacks](#rollback-attacks) for more details on how the specification helps to implement this protection.
 
 But since those solutions should cover some aspects relevant for different security-related aspects, we are going to sketch some of them in this section.
 Protecting against the above mentioned attacks is security-relevant and therefore the sketched approaches try to rely on battle-proofed mechanisms and software.
-
-Basically there are two different approaches:
-
-1. Polling (pull approach): the edge device regularly checks the availability of a new desired state.
-2. Notifications (push approach): the edge device gets notified somehow from the backend that a new desired state is available.
 
 #### Polling
 
