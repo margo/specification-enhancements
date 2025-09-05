@@ -6,7 +6,7 @@
 
 ## Summary
 
-Instead of using Git to transport the desired state to the device, a REST API is used - namely, a well-established, well-defined, and widely-used API for digital artifact distribution and management.
+Instead of using Git to transport the **desired state** to the device, a **REST API** is used - namely, a well-established, well-defined, and widely-used API for digital artifact distribution and management.
 This API is particularly easy to implement thanks to its simplicity, making it accessible for devices with varying capabilities.
 The details on that API can be found in the section [Technical proposal](#technical-proposal).
 
@@ -31,7 +31,7 @@ The [specification currently indicates Git](https://specification.margo.org/flee
    By controlling the contents of the blob, we have some control over how chatty the API calls will be.
    We will need to keep this in mind as we work on the technical details for this proposal.
 
-It is therefore out of the scope of this proposal arguing why a REST API instead of Git.
+It is therefore out of the scope of this proposal arguing why this proposal uses a REST API instead of Git.
 
 This Specification Update Proposal (SUP) relates to parts of [feature 100](https://github.com/margo/specification/issues/100) and [feature 101](https://github.com/margo/specification/issues/101), which addresses the need to define the desired state artifact(s) that are produced via the WFM, and retrieved via the edge client, to enable state seeking management of workloads at the edge.
 
@@ -50,8 +50,7 @@ The following is in scope for this proposal:
 
 The following is not in scope for this proposal:
 
-1. Defining how the device receives the location and authentication information on where the desired state documents are available
-1. Defining how a device is notified when the desired state documents are updated beyond using the "latest" tag
+1. Defining mechanisms for edge device authentication and authorization to fetch the desired state documents.
 1. Ensuring that only specific versions of valid (authenticity and integrity) desired state documents can be installed to avoid installation of vulnerable versions
 1. Securing the authenticity and integrity of the individual desired state documents (via signatures)
 
