@@ -46,13 +46,14 @@ The following is in scope for this proposal:
 
 1. Packaging and distributing the desired state documents
 1. Using the APIs defined in the [REST-API Specification](#rest-api-specification) section for pulling the desired state to the device
-1. Securing the authenticity and integrity of the individual desired state documents (via signatures)
+1. Provide as much security as possible with the current scope and provide extension points for advanced security.
 
 The following is not in scope for this proposal:
 
 1. Defining how the device receives the location and authentication information on where the desired state documents are available
 1. Defining how a device is notified when the desired state documents are updated beyond using the "latest" tag
-1. Ensuring that only specific versions of valid (authenticity and integrity) desired state documents can be installed to avoid downgrade attacks (this is a consequence of the previous point)
+1. Ensuring that only specific versions of valid (authenticity and integrity) desired state documents can be installed to avoid installation of vulnerable versions
+1. Securing the authenticity and integrity of the individual desired state documents (via signatures)
 
 ## Technical proposal
 
