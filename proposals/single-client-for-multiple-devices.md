@@ -12,6 +12,16 @@ The idea is to augment the Workload Fleet Manager interface to enable the connec
 
 Additional services required by Margo to be provided by the device, e.g. OTEL collector, are not in the scope of this SUP.
 
+We envision three types of gateway service:
+
+* **Transparent gateway** - The WFM sees the devices behind the gateway as directly connected to it, the Margo client is moved from the device to the gateway. This is out of scope of the SUP as it does not require changes to the Margo API or the Margo artifacts as currently defined.
+* **Opaque gateway** - the WFM sees the gateway as a single device with the combined capabilities of the devices behind the gateway. It is not aware of the devices behind the gateway. This is in the scope of this SUP.
+* **See-thru gateway** - the WFM is aware of the devices and the gateway, it communicates with the devices via the gateway. This is in the scope of the gateway.
+
+![Types of gateway (svg)](res/single-client-for-multiple-devices/types-of-gateway.drawio.svg)
+
+While the opaque gateway and see-thru gateway are quiet different we believe the changes to the API and artifacts needed to enable them will be similar and propose the manage them in this SUP. If we find a strong divergence we can split the work into two SUP.
+
 ## Reason for proposal
 
 These enhancements will allow devices that can host Margo applications but do not implement the Margo interface to be managed by a Margo compliant WFM, and thus decrease the barrier to entry for the device vendors. 
