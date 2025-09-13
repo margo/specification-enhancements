@@ -113,7 +113,7 @@ Providing protection against following attacks (among others) is part of advance
 Protection against another very common attack like the rollback/replay attack can be accomplished with the mechanisms within the scope of this SUP.
 See the section [Rollback attacks](#rollback-attacks) for more details on how the specification helps to implement this protection.
 
-Even though many of these security approaches are out of scope for this SUP, we are going to sketch some of them in below to show there are options available for making the approach more secure. Protecting against the above mentioned attacks is security-relevant and therefore the sketched approaches try to rely on battle-proofed mechanisms and software.
+Even though many of these security approaches are out of scope for this SUP, we are going to sketch some of them below to show there are options available for making the approach more secure. Protecting against the above mentioned attacks is security-relevant and therefore the sketched approaches try to rely on battle-proofed mechanisms and software.
 
 #### Polling
 
@@ -238,7 +238,7 @@ It MUST be possible for the device to pull the manifest and blob using the behav
 | GET/HEAD | /v2/\<name\>/manifests/\<reference\>| Used to pull the manifest describing the device's desired state|
 | GET/HEAD | /v2/\<name\>/blobs/\<digests\>| Used to pull the blob containing the device's desired state|
 
-The routes provided to the device by the Workload Fleet Manager do not have to match the routes defined in the Open Container Initiative Distribution Specification (e.g., workload fleet manager is using an API-Gateway to expose the registry) but the behavior of the endpoint MUST match with regard to the request headers, parameters, and payload, and response headers and payloads
+The routes provided to the device by the Workload Fleet Manager do not have to match the routes defined in the Open Container Initiative Distribution Specification (e.g., workload fleet manager is using an API-Gateway to expose the registry) but the behavior of the endpoint MUST match with regard to the request headers, parameters, payload, and response headers.
 
 > **MORE DISCUSSION NEEDED:** The original proposal had endpoints defined with the expectation that an API-Gateway would be used.
 > I feel it's more flexible if we expect the WFM to provide the URLs they want, so they have the option of using API Gateway, pointing directly to an existing OCI registry, or pointing to their custom web service implementation.
