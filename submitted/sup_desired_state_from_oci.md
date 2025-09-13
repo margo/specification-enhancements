@@ -76,18 +76,16 @@ The following two steps are needed to achieve the desired state of one or more a
    This requires a specification of the format and protocol to distribute those documents, what includes the REST API and the "packaging".
    Check the section [Fetch desired state: REST API](#fetch-desired-state-rest-api) for more details on this.
 
-All this proposal does not require, but expects that desired state documents are signed to ensure the authenticity and integrity of those documents as mentioned above.
-There are a couple of mechanisms to sign OCI artifacts (like Cosign and Notary v2) which are open source software (OSS) and battle-proofed.
-But any alternative signing mechanism is also acceptable.
+While not in scope of this proposal, we expect a future SUP will propose how the desired state documents should be signed to ensure the authenticity and integrity of those documents as mentioned above. There are a couple of mechanisms to sign OCI artifacts (like Cosign and Notary v2) which are open source software (OSS) and battle-proofed. But any alternative signing mechanism might also be acceptable.
 
-In that sense it is very similar to the previous Git approach and represent almost a full-blown GitOps approach without Git.
+This proposal is very similar to the previous Git approach and represents almost a full-blown GitOps approach without Git.
 
 ### REST-API specification
 
 The hereby proposed "well-established REST API" is that of the [OCI Distribution v1.1 specification](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md).
 
 As mentioned before, there are multiple implementations of this API (both servers and clients), many of them open source software (OSS).
-It has as a consequence the benefit of allowing available OCI registries and client libraries to be used, as well as allowing Workload Fleet Manager suppliers to option to implement their backend solution without requiring the use of an OCI registry.
+It has as a consequence the benefit of allowing available OCI registries and client libraries to be used, as well as allowing Workload Fleet Manager suppliers the option to implement their backend solution without requiring the use of an OCI registry.
 
 Additionally, [API-conformance tests](https://github.com/opencontainers/distribution-spec/tree/main/conformance) are available to validate any implementation.
 
@@ -99,12 +97,12 @@ By maintaining compatibility with HTTP 1.1, the solution ensures deployability a
 
 ### Signal: Update desired state
 
-Basically there are two different approaches (which can be simultaneously active) to let the edge devices update their desire state documents:
+There are two different approaches (which can be simultaneously active) to let the edge devices update their desire state documents:
 
 1. Polling (pull approach): the edge device regularly checks the availability of a new desired state based on an internal schedule.
 2. Notifications (push approach): the edge device gets notified somehow from the backend that a new desired state might be available.
 
-This SUP is only making the easiest approach (polling) a requirement, leaving any advanced approach optional and out of the scope of the specification (at least for the time being).
+This SUP is only making the easiest approach (polling) a requirement, leaving any advanced approach out of the scope of the specification for the time being.
 
 Providing protection against following attacks (among others) is part of advanced signaling approaches and therefore out the scope of this SUP:
 
@@ -115,8 +113,7 @@ Providing protection against following attacks (among others) is part of advance
 Protection against another very common attack like the rollback/replay attack can be accomplished with the mechanisms within the scope of this SUP.
 See the section [Rollback attacks](#rollback-attacks) for more details on how the specification helps to implement this protection.
 
-But since those solutions should cover some aspects relevant for different security-related aspects, we are going to sketch some of them in this section.
-Protecting against the above mentioned attacks is security-relevant and therefore the sketched approaches try to rely on battle-proofed mechanisms and software.
+Even though many of these security approaches are out of scope for this SUP, we are going to sketch some of them in below to show there are options available for making the approach more secure. Protecting against the above mentioned attacks is security-relevant and therefore the sketched approaches try to rely on battle-proofed mechanisms and software.
 
 #### Polling
 
@@ -127,7 +124,7 @@ Please notice that in the case of [Notifications](#notifications) this informati
 Ideally the information of the latest desired state version is obtained from a server providing an OCI-compatible REST-API so that no additional services or protocols are needed.
 Potentially even the same one providing the desired state documents.
 
-These are possible ways to make the currently (latest) desired state version know to the device:
+These are possible ways to make the current (latest) desired state version know to the device:
 
 1. "Latest" tag provided by the REST-API returns the digest which unambiguously identifies the desired state document to be pulled.
    No defense against the above mentioned attacks is provided.
@@ -136,9 +133,9 @@ These are possible ways to make the currently (latest) desired state version kno
 
 #### Notifications
 
-In the case of notifications, there are mechanisms are capable of providing information about the latest desired state version in a trustworthy way.
+In the case of notifications, there are mechanisms capable of providing information about the latest desired state version in a trustworthy way.
 
-Notifications must be secure so that the information on which desired state documents are requested to be fetch can be trusted.
+Notifications must be secure so that the information on which desired state documents are requested to be fetched can be trusted.
 That way any properly signed desired state document is trustworthy.
 
 Different potential notification mechanisms are thinkable:
@@ -216,7 +213,7 @@ block-beta
 
 #### Workflow
 
-Each time that a new desired state is needed following workflow is followed to fetch it.
+Each time a new desired state is needed the following workflow is followed to fetch it.
 
 The knowledge about the availability of such a new document has been already addressed in the section [Signal: New desired state](#signal-new-desired-state)
 
@@ -241,7 +238,7 @@ It MUST be possible for the device to pull the manifest and blob using the behav
 | GET/HEAD | /v2/\<name\>/manifests/\<reference\>| Used to pull the manifest describing the device's desired state|
 | GET/HEAD | /v2/\<name\>/blobs/\<digests\>| Used to pull the blob containing the device's desired state|
 
-The routes provided to the device by the Workload Fleet Manager do not have to match the routes defined in the Open Container Initiative Distribution Specification (e.g., workload fleet manager is using an API-Gateway to expose the registry) but the behavior of the endpoint MUST match with regard to the request headers, parameters, and payload,d and response headers and payloads
+The routes provided to the device by the Workload Fleet Manager do not have to match the routes defined in the Open Container Initiative Distribution Specification (e.g., workload fleet manager is using an API-Gateway to expose the registry) but the behavior of the endpoint MUST match with regard to the request headers, parameters, and payload, and response headers and payloads
 
 > **MORE DISCUSSION NEEDED:** The original proposal had endpoints defined with the expectation that an API-Gateway would be used.
 > I feel it's more flexible if we expect the WFM to provide the URLs they want, so they have the option of using API Gateway, pointing directly to an existing OCI registry, or pointing to their custom web service implementation.
