@@ -238,7 +238,7 @@ It MUST be possible for the device to pull the manifest and blob using the behav
 | GET/HEAD | /v2/\<name\>/manifests/\<reference\>| Used to pull the manifest describing the device's desired state|
 | GET/HEAD | /v2/\<name\>/blobs/\<digests\>| Used to pull the blob containing the device's desired state|
 
-The routes provided to the device by the Workload Fleet Manager do not have to match the routes defined in the Open Container Initiative Distribution Specification (e.g., workload fleet manager is using an API-Gateway to expose the registry) but the behavior of the endpoint MUST match with regard to the request headers, parameters, payload, and response headers.
+The routes provided to the device by the Workload Fleet Manager do not have to match the routes defined in the Open Container Initiative Distribution Specification (e.g., workload fleet manager is using an API-Gateway to expose the registry) but the behavior of the endpoint MUST match with regard to the request headers, parameters, and payload.
 
 > **MORE DISCUSSION NEEDED:** The original proposal had endpoints defined with the expectation that an API-Gateway would be used.
 > I feel it's more flexible if we expect the WFM to provide the URLs they want, so they have the option of using API Gateway, pointing directly to an existing OCI registry, or pointing to their custom web service implementation.
