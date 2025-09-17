@@ -6,11 +6,9 @@
 
 ## Summary
 
-Instead of using Git to provide an application to WFM, a REST API is used - namely, a well-established, well-defined, and widely-used API for digital artifact distribution and management.
-This API is particularly easy to implement thanks to its simplicity, making it accessible for devices with varying capabilities.
+Instead of using Git to provide an application to WFM, a REST API is used - the well-established [OCI Registry API](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md) for digital artifact distribution is used. Re-utilizing OCI Registries offers the benefit of leveraging available libraries and tools for registries and clients. Example open source components are: [oras](https://oras.land/) (OCI Registry as Storage) as a client, and [Docker Registry](https://github.com/distribution/distribution), [Nexus](https://www.sonatype.com/products/nexus-repository) or [Harbor](https://github.com/goharbor/harbor) as registries.
 
-This approach offers the significant benefit of leveraging available registries and client libraries.
-There are multiple open-source software implementations of both registries and client libraries that are battle-tested and widely used across the industry, eliminating the need to develop and maintain custom solutions.
+Please find [here](https://github.com/margo/app-package-definition-wg/blob/main/application-registry-example/app_registry_as_oci_registry.md) a document that describes how to use an OCI Registry as a margo Application Registry.
 
 ## Reason for proposal
 
