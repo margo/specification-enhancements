@@ -6,9 +6,9 @@ Merrill Harriman, Julien Duquesnay
 
 ## Summary
 
-We propose to enhance the Workload Fleet Manager to device interface to allow a single client - a gateway service for example - to provide device capabilities, retrieve desired states, etc. on behalf of one or multiple target devices. 
+We propose to enhance the Workload Fleet Manager to device interface to allow a client - a gateway service for example - to provide device capabilities, retrieve desired states, etc. on behalf of one or multiple target devices. 
 
-The idea is to augment the Workload Fleet Manager interface to enable the connection of this "single client", while the communication between the "single client" and the target devices stays out of the scope of Margo (it could be a proprietary communication).
+The idea is to augment the Workload Fleet Manager interface to enable the connection of a "gateway service", while the communication between the "gateway service" and the target devices stays out of the scope of Margo (it could be a proprietary communication).
 
 Additional services required by Margo to be provided by the device, e.g. OTEL collector, are not in the scope of this SUP.
 
