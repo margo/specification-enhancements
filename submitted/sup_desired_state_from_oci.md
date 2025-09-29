@@ -225,9 +225,14 @@ sequenceDiagram
 
     wmc->>+oci: GET request for desired state manifest
     oci->>wmc: manifest with reference to desired state
-    wmc->>+oci: GET request desired state (identified by digest)
-    oci->>wmc: desired state
+    opt Embedded Content not supported
+      wmc->>+oci: GET request desired state (identified by digest)
+      oci->>wmc: desired state
+    end
 ```
+
+Messages 3 and 4 are optional and only required if "Embedded Content" is either not provided or not supported.
+See below for more information
 
 ### Management client requests
 
@@ -235,41 +240,51 @@ It MUST be possible for the device to pull the manifest and blob using the behav
 
 |  |  |  |
 |---|---|---|
-| GET/HEAD | /v2/\<name\>/manifests/\<reference\>| Used to pull the manifest describing the device's desired state|
-| GET/HEAD | /v2/\<name\>/blobs/\<digests\>| Used to pull the blob containing the device's desired state|
+| GET/HEAD | \<prefix\>/manifests/\<digest\>| Used to pull the manifest describing the device's desired state|
+| GET/HEAD | \<prefix\>/blobs/\<digests\>| Used to pull the blob containing the device's desired state|
 
-The routes provided to the device by the Workload Fleet Manager do not have to match the routes defined in the Open Container Initiative Distribution Specification (e.g., workload fleet manager is using an API-Gateway to expose the registry) but the behavior of the endpoint MUST match with regard to the request headers, parameters, and payload.
+If an OCI registry is used without an API gateway, then `\<prefix>\` must be `/v2/\<name\>`. Where `\<name\>` is the name assigned to the repository in the OCI registry.
 
-> **MORE DISCUSSION NEEDED:** The original proposal had endpoints defined with the expectation that an API-Gateway would be used.
-> I feel it's more flexible if we expect the WFM to provide the URLs they want, so they have the option of using API Gateway, pointing directly to an existing OCI registry, or pointing to their custom web service implementation.
-
-How this information is provided is outside the scope of this proposal, but the expectation is that the Workload Fleet Manager provides it during onboarding.
+How `\<prefix\>` is provided to the device is outside the scope of this proposal, but the expectation is that the Workload Fleet Manager provides it during onboarding.
 
 #### Manifest request
 
-The Workload Fleet Manager MUST provide the manifest URL that the device must call to obtain the manifest.
+The Workload Fleet Manager MUST provide the URL that the device must call to obtain the manifest.
 The API is expected to behave as defined in the [Open Container Initiative Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md) for the `GET /v2/\<name\>/manifests/\<reference\>` endpoint.
-When the Workload Fleet Manager provides the manifest URL, it also provides the `reference` (aka tag) to use for the request.
+This URL includes the digest that can be used to validate the integrity of the obtained manifest.
+Additional security mechanisms like artifact signing are not required, but recommendable.
 
 ##### Response
 
-> **MORE DISCUSSION NEEDED**: The original proposal suggested sending a single ApplicationDeployment.yaml in the desired state blob so each workload would have its own desired state manifest.
-> This approach doesn't address the concerns around having a chatty API that were raised around using Git.
-> Also, this makes it more difficult to get a picture of the whole desired state the device should have.
-> As an alternative, we suggested following the declarative approach, and instead of sending a single ApplicationDeployment.yaml, it would instead send the entire desired state for all workloads in the blob so the device can ensure everything matches.
+The response from the endpoint provides the desired state manifest JSON document defined by the [OCI Image Manifest Specification](https://github.com/opencontainers/image-spec/blob/v1.0.1/manifest.md) containing the information about the configuration, blobs (AKA layers due to historical reasons), and annotations for the desired state blob.
 
-The response from the endpoint provides the desired state manifest JSON document defined by the [OCI Image Manifest Specification](https://github.com/opencontainers/image-spec/blob/v1.0.1/manifest.md) containing the information about the configuration, layers, and annotations for the desired state blob.
-
-The manifest file MUST be created as defined by the OIC Image Manifest Specification with the following additional requirements:
+The manifest file MUST be created as defined by the OCI Image Manifest Specification with the following additional requirements:
 
 - The Media Type for the manifest MUST be `application/vnd.oci.image.manifest.v1+json`
 - The Artifact Type MUST be `application/vnd.org.margo.config.v1+json`
 - The manifest MUST contain a single layer containing configuration for the desired state TAR GZIP file
 - The Media Type for the desired state TAR GZIP file layer MUST be `application/vnd.org.margo.manifests.layer.v1+tar+gzip`
 
+It is possible to provide the desired state for multiple applications as separate blobs.
+
+Under certain circumstances, it is possible to embed the content of the blobs in the manifest.
+Saving that way the 2nd HTTP GET request.
+
+This is an option if:
+1. The manifest has been pushed with [embedded content][1].
+1. The size of the resulting manifest is acceptable for the OCI registry (typically 4MB).
+
+Manifests with [embedded content][1] provide the blobs both embedded in the [blob `data` property](https://github.com/opencontainers/image-spec/blob/main/descriptor.md#properties) and the referenced blob.
+Therefore any client not capable to deal with [embedded content][1] can work with the standard workflow.
+
+If the manifests provide [embedded content][1] and the client supports it, then the [blob request](#blob-request) is not needed.
+Resulting in a single HTTP GET request.
+
 ##### Response payload
 
-> **DISCUSSION NEEDED**: This probably isn't the proper manifest, so we'll need to work through the details.
+This is the structure of the manifest returned by the manifest request.
+The structure of this manifest is required by the OCI specification.
+Application-specific metadata can be added as annotations.
 
 ```JSON
 {
@@ -277,16 +292,17 @@ The manifest file MUST be created as defined by the OIC Image Manifest Specifica
     "mediaType": "application/vnd.oci.image.manifest.v1+json",
     "artifactType": "application/vnd.margo.config.v1+json",
     "config": {
-        "data": "<string>",
         "digest": "<string>",
         "mediaType": "applicationvnd.oci.empty.v1+json",
         "size": "<integer>",
+        "data": "<string>"
     },
     "layers": [
         {
-            "mediaType": "application/vnd.margo.manifests.layer.v1+tar+gzip",
             "digest": "<string>",
-            "size": "<integer>
+            "mediaType": "application/vnd.margo.manifests.layer.v1+tar+gzip",
+            "size": "<integer>",
+            "data": "<string>"
         }
     ]
 }
@@ -297,20 +313,23 @@ The manifest file MUST be created as defined by the OIC Image Manifest Specifica
 | schemaVersion | Y | string | MUST be `2` to comply with the [OCI Image v1.1 specification](https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md#image-manifest-property-descriptions). |
 | mediaType | Y | string | MUST be `application/vnd.oci.image.manifest.v1+json` for clients to be able to confirm the expected data type. |
 | artifactType | Y | string | MUST be `application/vnd.org.margo.config.v1+json` for clients to be able to confirm the expected data type. |
-| config.data | N | string | MUST be `e30=` which is the base64 encoded content representing an empty config file. |
 | config.digest | Y | string | This is the hash representing the empty config file. The value MUST comply with the [OCI Image v1.1 digest specification](https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests) |
 | config.mediaType | Y | string | MUST be `application/vnd.oci.empty.v1+json` for clients to be able to confirm the expected data format. |
 | config.size | Y | integer | The size of the data before Base64 encoding. It can be used as a loose way to verify data integrity; the digest is a much better option for integrity verification. |
+| config.data | N | string | MUST be `e30=` which is the base64 encoded content representing an empty config file. |
 | layers | N | []map[string] | Single item array containing the information about the desired state TAR GZIP file layer. |
-| layers[].mediaType | Y | string | MUST be `application/vnd.margo.manifests.layer.v1+tar+gzip` for clients to be able to confirm the expected data type. |
 | layers[].digest | Y | string | This is the hash the WOS associates with the desired state TAR GZIP file at that point in time. The value MUST comply with the [OCI Image v1.1 digest specification](https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests). It is a hash of the bytes of the desired state TAR GZIP file, which can be used to verify the integrity of the data. |
+| layers[].mediaType | Y | string | MUST be `application/vnd.margo.manifests.layer.v1+tar+gzip` for clients to be able to confirm the expected data type. |
 | layers[].size | Y | integer | The size of the desired state TAR GZIP file. It can be used as a loose way to verify data integrity; the digest is a much better option for integrity verification. |
+| layers[].data | Y | string | The base64-encoded content of the blob/layer, if blob [embedded content][1] is available. |
 
 #### Blob request
 
 The Workload Fleet Manager MUST provide the blob URL that the device MUST call to obtain the desired state blob.
 The API is expected to behave as defined in the [Open Container Initiative Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md) for the `GET /v2/\<name\>/blobs/\<digests\>` endpoint.
 The digest to use for the call is retrieved from the manifest response payload.
+
+As mentioned above, if using [embedded content][1], then this second request is not needed.
 
 ##### Request payload
 
@@ -338,3 +357,5 @@ The following rules MUST be followed by the device when applying the latest desi
 ## Rejection reason
 
 > If a SUP is rejected, indicate the reason why it was rejected.
+
+[1]: https://github.com/opencontainers/image-spec/blob/main/descriptor.md#embedded-content
