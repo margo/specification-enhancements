@@ -58,4 +58,4 @@ Phase 4 is a PR to merge the full proposal to the `/submitted` folder. During th
 |@arne-broering | Application package as OCI | P3 |  |
 |@julienduquesnay-se | Device gateway | P3 |  |
 |@ajcraig | Standardizing REST API  | P3 | [SUP Markdown](https://github.com/margo/specification-enhancements/blob/api-details-finalization-wip/submitted/api-details-finalization-SUP-folder/api-details-finalization-SUP-WIP.md) |
-|@matlec | Desired state as Manifest API | P2 | [PR](https://github.com/margo/specification-enhancements/pull/9) |  
+|@matlec | Desired state as Manifest API | P3 | |  
