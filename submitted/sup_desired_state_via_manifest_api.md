@@ -137,8 +137,6 @@ The manifest is a JSON object that serves as the source of truth for the device'
   "deployments": [
     {
       "deploymentId": "a3e2f5dc-912e-494f-8395-52cf3769bc06",
-      "applicationId": "com-northstartida-digitron-orchestrator",
-      "version": "2.1.1",
       "digest": "sha256:a4e01b2c3d...",
       "url": "/api/v1/devices/northstarida.xtapro.k8s.edge/deployments/a3e2f5dc-912e-494f-8395-52cf3769bc06"
     }
@@ -155,8 +153,6 @@ The manifest is a JSON object that serves as the source of truth for the device'
 | `bundle.url` | string | Y | The endpoint to retrieve the bundle |
 | `deployments` | array | Y | A list of all deployment objects for the device |
 | `deployments[].deploymentId`| string | Y | The unique UUID from the `ApplicationDeployment`'s [`metadata.annotations.id`](https://specification.margo.org/margo-api-reference/workload-api/desired-state-api/desired-state/#annotations-attributes) |
-| `deployments[].applicationId`| string | Y | An identifier from the associated [`ApplicationDescription`](https://specification.margo.org/margo-api-reference/workload-api/application-package-api/application-description/) for context |
-| `deployments[].version`| string | Y | An identifier from the associated [`ApplicationDescription`](https://specification.margo.org/margo-api-reference/workload-api/application-package-api/application-description/) for context |
 | `deployments[].digest` | string | Y | The [digest](#digest-specification) of the individual `ApplicationDeployment` YAML file |
 
 ### Typical Workflow and Client Behavior
