@@ -77,6 +77,7 @@ flowchart
     B -->|validates token| D[Authentication Service] 
     B -->|hosts 0..*| E(margo Applications) 
     C -->|requests token| D
+    style D stroke-dasharray: 3 6
 ```
 
 #### API Endpoints
@@ -88,15 +89,19 @@ The Application Catalog / WFM will interact with the Application Registry using 
 
 `<name>` is the namespace of the repository, which needs to be directly communicted by the App Developer to the WFM vendor. It could be for example a combination of the organization's and application's name.
 
-#### Authentication & Authorization
-This proposal recommends using OAuth 2.0 for authentication with the following workflow:
+#### Authentication & Authorization & Security
+This proposal recommends the central definition of a authentication & authorization (& ssecurity) mechanism, e.g., the definition of using OAuth 2.0 with the following workflow:
 
 * WFM obtains credentials during onboarding
-* WFM requests a token from the authentication service
-* WFM uses the token for subsequent API calls to the registry
+* WFM requests a token from an Authentication Service
+* WFM uses the token for subsequent API calls to the Application Registry
 * Application Registry validates the token and enforces access control
 
+> However, this Authentication & Authorization & Security mechanism should be defined centrally and homogeneously across margo. Hence, it is out of scope of this proposal.
+
 Thereby, all communications should use TLS 1.2+ to ensure transport security.
+
+Further, tools such as [cosign](https://github.com/sigstore/cosign) can be employed for signing artifacts uploaded to the Application Registry and storing the signatures alongside the artifacts they verify.
 
 #### Reference Implementation Plan
 The reference implementation will utilize:
@@ -111,24 +116,25 @@ The reference implementation will utilize:
 ```mermaid
 sequenceDiagram
 
-    Note right of AppDeveloper: Uploads margo artifacts as blobs and manifest:
+    Note over AppDeveloper: uploads margo artifacts as blobs and manifest:
     AppDeveloper->>AppRegistry: POST /v2/<name>/blobs/uploads/
 
 
-    Note right of AppDeveloper: Communicate (e.g. via email) where to find the app:
-    AppDeveloper->>+WFM: "My App can be found in AppRegistry's repo <name>"
+    Note over AppDeveloper: uses vendor-specific upload mechanism (e.g., UI) to enable WFM to find the application:
+    AppDeveloper->>+WFM: Application location is: repository <name> in Application Registry
     
-    Note left of WFM: Discover available versions of the application:
+    Note over WFM: discovers available versions of the application:
     WFM->>+AppRegistry: GET /v2/<name>/tags/list
     
-    Note left of WFM: Retrieve the manifest of the selected application version. <reference> is tag or digest.:
+    Note over WFM: retrieves the manifest of the selected application version. <reference> is tag or digest.:
     WFM->>+AppRegistry: GET /v2/<name>/manifests/<reference>
     
     AppRegistry-->>+WFM: manifest
 
-    Note left of WFM: Downloads application artifacts:
+    Note over WFM: downloads application artifacts:
     WFM->>AppRegistry: GET /v2/<name>/blobs/<digest>
 ```
+
 
 
 ### margo 'Application Registry' API Endpoint Definitions towards App Developer (aligned with OCI_spec)
@@ -154,6 +160,7 @@ Use `tags` to discover available versions of a Margo application.
 ##### Headers:
 
 ```Authorization: Bearer <token>```
+> However, security mechanism needs to be margo-centrally defined.
 
 ##### Query Parameters:
 
@@ -187,18 +194,13 @@ Pull a manifest of a specified version of a margo application. The `<reference>`
 ##### Headers:
 
 * `Authorization: Bearer <token>`
-* `Accept: application/vnd.oci.image.manifest.v1+json`
+> However, security mechanism needs to be margo-centrally defined.
 
-> the `Accept` header may need to be something margo specific. 
+* `Accept: application/vnd.oci.image.manifest.v1+json`
 
 ##### Success Response:
 
 200 OK with manifest content
-
-Response Headers:
-
-* `Content-Type: application/vnd.oci.image.manifest.v1+json`
-* `Docker-Content-Digest: sha256:...`
 
 ##### Fail Response:
 
@@ -256,7 +258,9 @@ The following response example is a Margo-specific application manifest followin
 |Media Type|Description|
 |----------|----------|
 |application/vnd.margo.app.description.v1+json	|Margo application description file|
-|application/vnd.margo.app.icon.v1+json	|Icon file|
+|application/vnd.margo.app.icon.v1+json	|Icon file of the application|
+|application/vnd.margo.app.license.v1+json	|License file of the application|
+|application/vnd.margo.app.releasenotes.v1+json	|Release notes of the application|
 |...|...|
 
 #### Get margo Application Artifact
@@ -270,15 +274,16 @@ Retrieves a margo application artifact by pulling a blob.
 
 ##### Headers:
 
-Authorization: Bearer <token>
+`Authorization: Bearer <token>`
+> However, security mechanism needs to be margo-centrally defined.
 
 ##### Success Response:
 
-200 OK with blob content
+`200 OK with blob content`
 
 ##### Fail Response:
 
-404 Not Found if blob doesn't exist
+`404 Not Found if blob doesn't exist`
 
 
 
