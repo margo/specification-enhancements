@@ -193,10 +193,10 @@ Pull a manifest of a specified version of a margo application. The `<reference>`
 
 ##### Headers:
 
-* `Authorization: Bearer <token>`
+`Authorization: Bearer <token>`
 > However, security mechanism needs to be margo-centrally defined.
 
-* `Accept: application/vnd.oci.image.manifest.v1+json`
+`Accept: application/vnd.oci.image.manifest.v1+json`
 
 ##### Success Response:
 
