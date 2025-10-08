@@ -8,7 +8,7 @@
 
 Instead of using Git to provide an application to WFM, a REST API is used - the well-established [OCI Registry API (v1.1.0)](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md) for digital artifact distribution is used. Re-utilizing OCI Registries offers the benefit of leveraging available libraries and tools for registries and clients (e.g., [oras](https://oras.land/) (OCI Registry as Storage) as a client, and [Docker Registry](https://github.com/distribution/distribution), [Nexus](https://www.sonatype.com/products/nexus-repository) or [Harbor](https://github.com/goharbor/harbor) as registries).
 
-Please find [here](https://github.com/margo/app-package-definition-wg/blob/main/application-registry-example/app_registry_as_oci_registry.md) a tutorial that describes how to use an OCI Registry as a margo Application Registry.
+Please find [here](https://github.com/margo/app-package-definition-wg/blob/main/application-registry-example/app_registry_as_oci_registry.md) a reference implementation that demonstrates how to use an OCI Registry as a margo Application Registry.
 
 ## Reason for proposal
 
@@ -37,15 +37,15 @@ This proposal recommends the [OCI Registry API specification version 1.1.0](http
 
 (as already defined in the [margo specification](https://specification.margo.org/margo-overview/software-composition))
 
-An `Application Package` is a folder with a Margo-defined structure comprising the software application. This Application Package contains: A margo-specific `Application Description` defining the composition of one or more `Components`. Application packages may contain additional resources such as files of icons, license(s), or release notes.
+An `Application Package` is a folder with a Margo-defined structure comprising the software application. This Application Package contains: A margo-specific `Application Description` defining the composition of one or more `Components`. Application packages may contain additional `resources` such as files of icons, license(s), or release notes.
 
 `Application Package` consists of:
-* Application Description: YAML file following the [margo-defined](https://specification.margo.org/app-interoperability/application-package-definition/) structure and format.
-* Application resources: icons, licenses, configuration files
+* `Application Description`: YAML file following the [margo-defined](https://specification.margo.org/app-interoperability/application-package-definition/) structure and format.
+* Application `resources`: icons, licenses, configuration files
 
 `Components`, linked in the Application Description document, are deployable as `workloads`, and are provided in a Margo-supported way, e.g. as `Helm Charts` or `Compose Archives`. 
 
-While `Application Registries` store Application Descriptions and their associated resources, `Component Registries` store Components.
+`Components` are stored in `Component Registries`, which are out of scope of this SUP. However, a `Component Registry` may also (typically) by an OCI registry.
 
 ```mermaid
 flowchart
@@ -108,7 +108,6 @@ A reference implementation can be found [here](https://github.com/margo/app-pack
 
 * Application Registry: Docker Registry (open source OCI Registry)
 * Client Library: ORAS (OCI Registry as Storage) tool
-* Authentication: Keycloak for identity and access management
 * Examples: Sample applications and configuration for demonstration
 
 #### Overview of Interactions
