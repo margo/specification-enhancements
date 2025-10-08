@@ -35,15 +35,15 @@ This proposal recommends the [OCI Registry API specification version 1.1.0](http
 
 ### Re-cap
 
-(as already efined in the [margo specification](https://specification.margo.org/margo-overview/software-composition))
+(as already defined in the [margo specification](https://specification.margo.org/margo-overview/software-composition))
 
-An `Application Package` is a folder with a Margo-defined structure comprising the software application. This Application Package contains: A margo-specific Application Description defining the composition of one or more Components. Application packages may contain additional resources such as files of icons, license(s), or release notes.
+An `Application Package` is a folder with a Margo-defined structure comprising the software application. This Application Package contains: A margo-specific `Application Description` defining the composition of one or more `Components`. Application packages may contain additional resources such as files of icons, license(s), or release notes.
 
 `Application Package` consists of:
 * Application Description: YAML file following the [margo-defined](https://specification.margo.org/app-interoperability/application-package-definition/) structure and format.
 * Application resources: icons, licenses, configuration files
 
-`Components` are linked in the Application Description document, are deployable as `workloads`, and are provided in a Margo-supported way, e.g. as `Helm Charts` or `Compose Archives`. 
+`Components`, linked in the Application Description document, are deployable as `workloads`, and are provided in a Margo-supported way, e.g. as `Helm Charts` or `Compose Archives`. 
 
 While `Application Registries` store Application Descriptions and their associated resources, `Component Registries` store Components.
 
@@ -65,10 +65,10 @@ flowchart
 
 The proposed architecture consists of:
 
-* Application Registry - Implemented as an `OCI Registry`, it serves [application packages](https://specification.margo.org/app-interoperability/application-package-definition/) defined through `Application Description` files.
-* Workload Fleet Manager, or internal Application Catalog, acting as client to pull applications from the registry.
-* Authentication Service - Manages access control for the registry.
-* App Developer - The actor who uploads the application to the Application Registry.
+* `Application Registry` - Implemented as an `OCI Registry`, it serves [application packages](https://specification.margo.org/app-interoperability/application-package-definition/) defined through `Application Description` files.
+* `Workload Fleet Manager`, or internal `Application Catalog`, acting as client to pull applications from the registry.
+* `Authentication Service` - Manages access control for the registry.
+* `App Developer` - The actor who uploads the application to the Application Registry.
 
 ```mermaid
 flowchart
@@ -83,31 +83,31 @@ flowchart
 #### API Endpoints
 The Application Catalog / WFM will interact with the Application Registry using standard OCI Registry API endpoints:
 
-* Tags: `/v2/{name}/tags/list` for listing available versions
-* Manifest: `/v2/{name}/manifests/{reference}` for retrieving application manifests
-* Blob: `/v2/{name}/blobs/{digest}` for downloading artifacts of the application
+* Tags: `/v2/{name}/tags/list` for listing available versions of the Application Package
+* Manifest: `/v2/{name}/manifests/{reference}` for retrieving manifests pointing to the parts of the Application Package
+* Blob: `/v2/{name}/blobs/{digest}` for downloading parts of the Application Package
 
 `<name>` is the namespace of the repository, which needs to be directly communicted by the App Developer to the WFM vendor. It could be for example a combination of the organization's and application's name.
 
 #### Authentication & Authorization & Security
-This proposal recommends the central definition of a authentication & authorization (& ssecurity) mechanism, e.g., the definition of using OAuth 2.0 with the following workflow:
+This proposal recommends that margo centrally defines authentication & authorization (& ssecurity) mechanism, e.g., recommending the use of OAuth 2.0 with the following workflow:
 
 * WFM obtains credentials during onboarding
 * WFM requests a token from an Authentication Service
 * WFM uses the token for subsequent API calls to the Application Registry
 * Application Registry validates the token and enforces access control
 
-> However, this Authentication & Authorization & Security mechanism should be defined centrally and homogeneously across margo. Hence, it is out of scope of this proposal.
+All communications should use TLS 1.3+ to ensure transport security.
 
-Thereby, all communications should use TLS 1.2+ to ensure transport security.
+> However, Authentication & Authorization & Security mechanisms should be defined centrally and homogeneously across margo. Hence, it is out of scope of this proposal.
 
 Further, tools such as [cosign](https://github.com/sigstore/cosign) can be employed for signing artifacts uploaded to the Application Registry and storing the signatures alongside the artifacts they verify.
 
-#### Reference Implementation Plan
-The reference implementation will utilize:
+#### Reference Implementation
+A reference implementation can be found [here](https://github.com/margo/app-package-definition-wg/blob/main/application-registry-example/app_registry_as_oci_registry.md). It utilizes:
 
 * Application Registry: Docker Registry (open source OCI Registry)
-* Client Library: ORAS (OCI Registry as Storage) client libraries
+* Client Library: ORAS (OCI Registry as Storage) tool
 * Authentication: Keycloak for identity and access management
 * Examples: Sample applications and configuration for demonstration
 
@@ -147,11 +147,14 @@ The upload of blobs and manifests is done via the [end-4a / end-4b](https://gith
 
 As there are no margo-specific aspects in this, please refer to the OCI_spec regarding the App Developer's interface to the Application Registry. 
 
+
+
+
 ### margo 'Application Registry' API Endpoint Definitions towards WFM (aligned with OCI_spec)
 
-#### List margo Application Versions
+#### List margo Application Package Versions
 
-According to OCI_spec endpoint [end-8a / end-8b](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#endpoints).
+This must be implemented according to OCI_spec endpoint [end-8a / end-8b](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#endpoints).
 Use `tags` to discover available versions of a Margo application.
 `<name>` is the namespace of the repository, which needs to be directly communicted by the App Developer to the WFM vendor.
 
@@ -185,9 +188,10 @@ last=<string> (optional, pagination cursor)
 ```
 
 #### Pull margo Application Manifest
-According to OCI_spec endpoint [end-3](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#endpoints).
-Pull a manifest of a specified version of a margo application. The `<reference>` is either a `tag` or a `digest` of a margo application manifest. The `tag` has been discovered via the [listing of app versions](#list-margo-application-versions).
-`<name>` is the namespace of the repository, which needs to be directly communicted by the App Developer to the WFM vendor.
+This must be implemented according to OCI_spec endpoint [end-3](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#endpoints).
+Pulls a manifest of a specified version of a margo Application Package.
+The `<reference>` is the `tag` of a margo application manifest. The `tag` has been discovered via the [listing of app versions](#list-margo-application-versions).
+`<name>` is the namespace of the repository.
 
 ``` GET /v2/<name>/manifests/<reference> ```
 
@@ -206,50 +210,69 @@ Pull a manifest of a specified version of a margo application. The `<reference>`
 
 404 Not Found if manifest doesn't exist
 
-##### Example Response:
+##### Response:
 
-In the Margo context, manifests serve as a catalog entry description of an application package within an AppRegistry. It contains references (digests) to all blobs that make up the application. Each application version has its own manifest.
+In the margo context, manifests contain pointers to all parts of an Application Package within an Application Registry. 
 
-The following response example is a Margo-specific application manifest following the [OCI Image Manifest Specification](https://github.com/opencontainers/image-spec/blob/v1.0.1/manifest.md):
+Each ``version`` of an Application Pacakage has its own manifest.
+
+The ``schemaVersion`` of the manifest needs to be ``2``.
+
+The ``artifactType`` of the manifest must be ``application/vnd.org.margo.app.v1+json``.
+
+The ``config`` object must be declared as empty by defining its ``mediaType`` as ``application/vnd.oci.empty.v1+json``. 
+
+Each element of the ``layers`` array contains a reference (so called `digests`) to an artifact (so called `blobs`) that is part of the Application Package.
+Each artifact of an Application Package must be listed as an element of the ``layers`` array.
+
+The [Application Description](https://specification.margo.org/margo-api-reference/workload-api/application-package-api/application-description/) of the Application Package must be referred to in one of the element of the ``layers`` array. The ``mediaType`` of this layer/blob must be ``application/vnd.margo.app.description.v1+yaml``.
+
+Each [application resource](https://specification.margo.org/app-interoperability/application-package-definition/), which are additional files associated with the application (e.g., manual, icon, release notes, license file, etc.), must be referred to in an element of the ``layers`` array and an ``annotation`` must be added to this element, which has the annotation key ``org.margo.app.resource``.
+
+The following response example is a margo-specific manifest following the [OCI Image Manifest Specification](https://github.com/opencontainers/image-spec/blob/v1.0.1/manifest.md) and the above defined specifics:
 
 ```json
 {
   "schemaVersion": 2,
   "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "artifactType": "application/vnd.org.margo.app.v1+json", # this MUST be the artifactType of a margo Application Package
   "config": {
-    "mediaType": "application/vnd.margo.app.config.v1+json",
-    "digest": "sha256:4ba57159935adba4ee78a602d222b9f67f3904316524337d11497bb7844af44e",
-    "size": 7682
+    "mediaType": "application/vnd.oci.empty.v1+json", # the 'config' object MUST be empty
+    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "size":2,
+	  "data":"e30="
   },
   "layers": [
     {
-      "mediaType": "application/vnd.margo.app.description.v1+json",
+      "mediaType": "application/vnd.margo.app.description.v1+yaml", # this MUST be the artifactType of a margo Application Package
       "digest": "sha256:83b25df93eee26731d3e3714578a0f9a46331e95d5fd89dbe88898b857dd41f0",
-      "size": 1582,
-      "annotations": {
-        "org.margo.description": "Application description file"
-      }
+      "size": 1582
     },
     {
-      "mediaType": "application/vnd.margo.app.icon.v1+json",
+      "mediaType": "image/jpeg",
       "digest": "sha256:a1a18d95084acdfb9abce3b5e882ef7c675a5210fd8e5b71f7385a346c0387c0",
       "size": 4096,
       "annotations": {
-        "org.margo.component": "icon",
-        "org.margo.component.name": "app-icon"
+        "org.margo.app.resource": "icon" # each margo application resource MUST be annotated like this
+      }
+    },
+    {
+      "mediaType": "text/markdown",
+      "digest": "sha256:b2b29d95084acdfb9abce3b5e882ef7c675a5210fd8e5b71f7385a347d1398d2",
+      "size": 3024,
+      "annotations": {
+        "org.margo.app.resource": "license" # each margo application resource MUST be annotated like this
       }
     }
-  ],
-  "annotations": {
-    "org.margo.app.version": "1.0.0",
-    "org.margo.app.vendor": "Example Organization",
-    "org.margo.app.created": "2025-10-01T10:00:00Z",
-    "org.margo.app.title": "Example Margo Application",
-    "org.margo.app.description": "This is an example Margo application package",
-    "org.opencontainers.image.authors": "author@example.com",
-    "org.opencontainers.image.vendor": "Example Organization",
-    "org.opencontainers.image.version": "1.0.0"
-  }
+    {
+	    "mediaType":"text/markdown",
+	    "digest":"sha256:e373b123782a2b52483a9124cc9c578e0ed0300cb4131b73b0c79612122b8361",
+	    "size":1596,
+	    "annotations":{
+		    "org.margo.app.resource":"description" # each margo application resource MUST be annotated like this
+      }
+		},
+  ]
 }
 ```
 
@@ -257,17 +280,21 @@ The following response example is a Margo-specific application manifest followin
 
 |Media Type|Description|
 |----------|----------|
-|application/vnd.margo.app.description.v1+json	|Margo application description file|
-|application/vnd.margo.app.icon.v1+json	|Icon file of the application|
-|application/vnd.margo.app.license.v1+json	|License file of the application|
-|application/vnd.margo.app.releasenotes.v1+json	|Release notes of the application|
-|...|...|
+|``application/vnd.margo.app.description.v1+yaml``	|Margo application description file|
+
+##### Margo-Specific Annotation Keys
+
+|Annotation Key | Description|
+|----------|----------|
+|``org.margo.app.resource``	| This MUST be used to annotate a layer/blob that references a margo application resource |
+
+
 
 #### Get margo Application Artifact
-According to OCI_spec endpoint [end-2](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#endpoints).
+This must be implemented according to OCI_spec endpoint [end-2](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#endpoints).
 Retrieves a margo application artifact by pulling a blob. 
 `<digest>` is the blobs digest as listed in the application's manifest that has been [retrieved earlier](#pull-margo-application-manifest).
-`<name>` is the namespace of the repository, which needs to be directly communicted by the App Developer to the WFM vendor.
+`<name>` is the namespace of the repository.
 
 
 `GET /v2/<name>/blobs/<digest>`
