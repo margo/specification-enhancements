@@ -1,0 +1,224 @@
+# Copy of root OpenAPI spec for embedding in server; keep in sync with ../../../../../openapi.yaml
+openapi: 3.0.3
+info:
+  title: Margo Desired State Manifest API
+  version: 0.1.0-draft
+  description: |
+    OpenAPI specification for the Desired State Manifest pull protocol.
+    This document reflects the SUP draft; normative text resides in the SUP.
+  contact:
+    name: Margo TWG
+servers:
+  - url: http://192.168.64.2:8088/
+    description: Local development
+security: []
+tags:
+  - name: Manifest
+  - name: Deployment
+  - name: Bundle
+components:
+  parameters:
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Unique identifier of the Edge Compute Device.
+    DeploymentId:
+      name: deploymentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: UUID of the ApplicationDeployment (metadata.annotations.id).
+    Digest:
+      name: digest
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^[a-z0-9_\-]+:[0-9a-f]+$'
+      description: >-
+        Content-addressable digest (algorithm:hex). Algorithm and hex MUST be lowercase.
+  headers:
+    ETag:
+      description: Strong validator formatted as "<algorithm>:<hex>" (quoted).
+      schema:
+        type: string
+    CacheControlImmutable:
+      description: Cache control for immutable content-addressable resources.
+      schema:
+        type: string
+        example: public, max-age=31536000, immutable
+  schemas:
+    Manifest:
+      type: object
+      required: [manifestVersion, deployments, bundle]
+      properties:
+        manifestVersion:
+          type: integer
+          format: uint64
+          minimum: 1
+          description: Monotonically increasing per device.
+        bundle:
+          $ref: '#/components/schemas/BundleRef'
+          nullable: true
+          description: Nullable bundle reference. Null when there are zero deployments.
+        deployments:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeploymentEntry'
+          description: Complete list of deployments for the device.
+    BundleRef:
+      type: object
+      required: [mediaType, digest, url]
+      properties:
+        mediaType:
+          type: string
+          enum: [application/vnd.margo.bundle.v1+tar+gzip]
+        digest:
+          type: string
+          pattern: '^[a-z0-9_\-]+:[0-9a-f]{64}$'
+        url:
+          type: string
+          description: Absolute or absolute-path reference to bundle retrieval endpoint.
+    DeploymentEntry:
+      type: object
+      required: [deploymentId, digest, url]
+      properties:
+        deploymentId:
+          type: string
+          format: uuid
+        digest:
+          type: string
+          pattern: '^[a-z0-9_\-]+:[0-9a-f]{64}$'
+        url:
+          type: string
+          description: Absolute or absolute-path reference to deployment retrieval endpoint.
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+  responses:
+    NotFound:
+      description: Resource not found (device, deployment, bundle, or digest mismatch).
+    BadRequest:
+      description: Malformed input (invalid digest, invalid descriptor, or schema violation).
+    NotModified:
+      description: Representation not modified (ETag matched If-None-Match).
+    ErrorResponse:
+      description: Generic error envelope
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+paths:
+  /api/v1/devices/{deviceId}/deployments:
+    get:
+      tags: [Manifest]
+      summary: Retrieve the State Manifest for a device
+      operationId: getDeviceManifest
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+        - in: header
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
+          description: Quoted ETag previously returned for this manifest.
+      responses:
+        '200':
+          description: Current manifest
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Manifest'
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+  /api/v1/devices/{deviceId}/deployments/{deploymentId}/{digest}:
+    get:
+      tags: [Deployment]
+      summary: Retrieve an individual ApplicationDeployment YAML by content digest
+      operationId: getDeployment
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+        - $ref: '#/components/parameters/DeploymentId'
+        - $ref: '#/components/parameters/Digest'
+        - in: header
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
+          description: Quoted ETag (same as digest) previously returned for this deployment.
+      responses:
+        '200':
+          description: Deployment YAML (immutable)
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlImmutable'
+          content:
+            application/yaml:
+              schema:
+                type: string
+                description: Raw ApplicationDeployment YAML.
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'
+  /api/v1/devices/{deviceId}/bundles/{digest}:
+    get:
+      tags: [Bundle]
+      summary: Retrieve a bundle archive of all ApplicationDeployment YAML files
+      operationId: getBundle
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+        - $ref: '#/components/parameters/Digest'
+        - in: header
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
+          description: Quoted ETag (same as digest) previously returned for this bundle.
+      responses:
+        '200':
+          description: Bundle archive (immutable)
+          headers:
+            ETag:
+              $ref: '#/components/headers/ETag'
+            Cache-Control:
+              $ref: '#/components/headers/CacheControlImmutable'
+          content:
+            application/vnd.margo.bundle.v1+tar+gzip:
+              schema:
+                type: string
+                format: binary
+                description: Gzip-compressed tar containing one YAML file per deployment.
+        '304':
+          $ref: '#/components/responses/NotModified'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/ErrorResponse'

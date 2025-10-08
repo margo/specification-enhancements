@@ -35,7 +35,7 @@ This SUP is needed to introduce a formal, lightweight, and secure protocol that:
 
 This proposal aligns with the core Margo vision of providing a standardized framework for application interoperability at the edge. It directly addresses the need for a scalable and efficient mechanism to distribute and manage workload configurations across a fleet of devices.
 
-* **Applicable Features**: This SUP provides a concrete implementation path for the requirements outlined in issues [margo/specification\#100](https://github.com/margo/specification/issues/100) and [margo/specification\#101](https://github.com/margo/specification/issues/101).
+* **Applicable Features**: This SUP provides a concrete implementation path for the requirements outlined in issues [margo/specification#100](https://github.com/margo/specification/issues/100) and [margo/specification#101](https://github.com/margo/specification/issues/101).
 
 **Authentication and authorization are considered out of scope for this proposal.** It is expected that these APIs will be protected by a common security mechanism defined elsewhere in the Margo specification.
 
@@ -47,7 +47,7 @@ The following sections describe the API endpoints and a typical workflow.
 
 ### API Endpoint Definitions
 
-#### 1\. Retrieve the State Manifest
+#### 1. Retrieve the State Manifest
 
 The client polls this endpoint to retrieve the complete desired state for all workloads assigned to its identity.
 
@@ -63,33 +63,45 @@ The client polls this endpoint to retrieve the complete desired state for all wo
   * **`200 OK`**: The body contains the new manifest as a JSON object (`Content-Type: application/json`) and the response includes a new `ETag` header.
   * **`304 Not Modified`**: Returned if the `If-None-Match` ETag matches. The body is empty.
 
-#### 2\. Retrieve an Individual Workload Configuration
+#### 2. Retrieve an Individual Workload Configuration
 
 The client fetches the YAML for a single `ApplicationDeployment`.
 
-* **Endpoint**: `GET /api/v1/devices/{deviceId}/deployments/{deploymentId}`
+To make individual workload retrievals race-free and cache-friendly, this endpoint is **content-addressable**: the digest of the expected YAML is part of the URL. This guarantees immutability of the fetched resource and prevents a time-of-check / time-of-use race where a deployment changes between manifest retrieval and content fetch.
+
+* **Endpoint**: `GET /api/v1/devices/{deviceId}/deployments/{deploymentId}/{digest}`
 
   | Parameter      | Type   | Required? | Description |
   | :------------- | :----- | :-------- | :---------- |
   | `{deviceId}` | string | Y | The unique identifier of the **Edge Compute Device** making the request |
   | `{deploymentId}` | string | Y | The unique UUID of the `ApplicationDeployment`, corresponding to the [`metadata.annotations.id`](https://specification.margo.org/margo-api-reference/workload-api/desired-state-api/desired-state/#annotations-attributes) field |
+  | `{digest}` | string | Y | Content-addressable digest of the `ApplicationDeployment` YAML file. MUST conform to the [Digest Specification](#digest-specification) and MUST equal the digest computed over the exact sequence of bytes in the HTTP `200 OK` response body (no transformations). If the server cannot produce content whose digest matches this value it MUST return `404 Not Found`. |
 
 * **Success Response**:
-  * **`200 OK`**: The response body is the raw `ApplicationDeployment` YAML file (`Content-Type: application/yaml`).
+  * **`200 OK`**: The response body is the raw `ApplicationDeployment` YAML file (`Content-Type: application/yaml`). The content **MUST** match the `{digest}` path segment; the server **MUST** return `404` if it does not have the exact digest referenced.
 
-#### 3\. Retrieve a Bundled Workload Configuration
+> [!NOTE] Representation
+> Only `application/yaml` is supported for individual `ApplicationDeployment` retrieval. A single canonical wire format ensures the digest uniquely identifies the exact bytes served without introducing canonicalization rules across formats (e.g. JSON vs YAML). Future extensions MAY introduce alternative media types, but each additional representation would require its own stable digest scope.
+
+> [!IMPORTANT] Immutability & Caching
+> This endpoint is content-addressable; the YAML is immutable. Servers set `ETag` to the quoted `digest` and SHOULD return `Cache-Control: public, max-age=31536000, immutable`. `If-None-Match` is optional for clients. SRefer to the [ETag section](#etag-header) for details.
+
+#### 3. Retrieve a Bundled Workload Configuration
 
 The client fetches a bundle of all `ApplicationDeployment` YAMLs for efficient initial sync.
 
-* **Endpoint**: `GET /api/v1/devices/{deviceId}/bundles/{bundleDigest}`
+* **Endpoint**: `GET /api/v1/devices/{deviceId}/bundles/{digest}`
 
   | Parameter      | Type   | Required? | Description |
   | :------------- | :----- | :-------- | :---------- |
   | `{deviceId}` | string | Y | The unique identifier of the **Edge Compute Device** making the request |
-  | `{bundleDigest}` | string | Y | The full digest string of the bundle, which **MUST** conform to the [Digest Specification](#digest-specification) |
+  | `{digest}` | string | Y | Content-addressable digest of the bundle archive. MUST conform to the [Digest Specification](#digest-specification) and MUST equal the digest computed over the exact sequence of bytes in the HTTP `200 OK` response body (no transformations). If the server cannot produce content whose digest matches this value it MUST return `404 Not Found`. |
 
 * **Success Response**:
   * **`200 OK`**: The response body is the compressed archive with the `Content-Type` specified in the manifest's `bundle.mediaType`.
+
+> [!IMPORTANT] Immutability & Caching
+> This endpoint is content-addressable; the archive is immutable. Servers set `ETag` to the quoted `digest` and SHOULD return `Cache-Control: public, max-age=31536000, immutable`. `If-None-Match` is optional for clients. Refer to the [ETag section](#etag-header) for details.
 
 ### Key Concepts and Specifications
 
@@ -100,6 +112,11 @@ The `ETag` is a formal mechanism for cache validation.
 * **Format**: The `ETag` value **MUST** be a string formatted as `"<algorithm>:<hex-encoded-hash>"`. The quotes are required per [RFC 7232](https://datatracker.ietf.org/doc/html/rfc7232#section-2.3).
   * Example: `ETag: "sha256:a1b2c3d4e5f6..."`
 * **Rationale**: Using a **secure hash of the manifest content** guarantees that the ETag changes *if and only if* the desired state changes. This provides a stateless and perfectly reliable caching mechanism.
+* **Computation Rule**: The manifest `ETag` **MUST** be the digest of the exact JSON response body of the manifest (after serialization). It is independent of any `bundle.digest` or individual deployment digests; it is a hash of the whole manifest document, not a field copy. Servers **SHOULD** serialize deterministically (stable field order, consistent key casing, no insignificant whitespace changes) to ensure consistent ETag generation. Clients MUST compare `If-None-Match` against this manifest ETag only.
+* **Canonicalization Guidance**: A server MAY choose a canonical JSON serialization (e.g., UTF-8, sorted keys, no trailing spaces, `\n` line endings) to guarantee stable digests across restarts or horizontally scaled instances. The exact method is an implementation detail but **MUST** yield identical bytes for semantically identical manifests.
+* **Caching Rule (Mutable Manifest)**: The manifest endpoint MUST **NOT** be marked immutable. Servers SHOULD omit long-lived `Cache-Control: immutable` directives for the manifest and MAY use short `max-age` values (or none) because freshness is driven by `ETag` polling.
+
+> Content-addressable resources: Any endpoint whose path embeds a digest (e.g. `/api/v1/devices/{deviceId}/bundles/{digest}` or `/api/v1/devices/{deviceId}/deployments/{deploymentId}/{digest}`) serves immutable content. The server **MUST** set `ETag` to the quoted digest and **SHOULD** include `Cache-Control: public, max-age=31536000, immutable`. Servers **MUST NOT** apply HTTP `Content-Encoding` other than `identity` to these responses unless a future extension explicitly redefines the digest scope. This immutability guidance does **NOT** apply to the manifest endpoint, which is intentionally mutable. These ETags are strong validators (no `W/` prefix permitted).
 
 #### Digest Specification
 
@@ -107,20 +124,21 @@ Digests are used to verify the integrity of all fetched content. The formal spec
 
 * **Description**: The value of the digest is a string consisting of an algorithm portion and an encoded portion. The algorithm specifies the cryptographic hash function; the encoded portion contains the resulting hash.
 
-* **Grammar**: A digest string **MUST** match the following grammar:
+* **Grammar**: A digest string **MUST** match the following grammar (ABNF subset):
 
   ```ebnf
-  digest      ::= algorithm ":" encoded
-  algorithm   ::= algorithm-component (":" algorithm-component)*
-  algorithm-component ::= [A-Za-z0-9]+
-  encoded     ::= [A-Fa-f0-9]+
+  digest    = algorithm ":" encoded
+  algorithm = 1*( ALPHA / DIGIT / "_" / "-" )   ; no colon allowed; MUST be lowercase
+  encoded   = 1*HEXDIG                             ; MUST be lowercase hexadecimal
   ```
-  
-  * Example: In the digest string `sha256:a1b2c3d4e5f6...`, the `algorithm` is `sha256` and the `encoded` portion is the hex string `a1b2c3d4e5f6...`.
 
-* **Required Algorithm**: All conformant implementations **MUST** support `sha256`. When the algorithm is `sha256`, the `encoded` portion **MUST** be a hex-encoded string of 64 characters.
+  * Example: In the digest string `sha256:a1b2c3d4e5f6...`, `sha256` is the (lowercase) algorithm and the `encoded` portion is a lowercase hex string. For `sha256` the encoded portion is exactly 64 lowercase hex characters (`[0-9a-f]{64}`).
+
+* **Required Algorithm**: All conformant implementations **MUST** support `sha256`. For `sha256`, the `encoded` portion **MUST** be a lowercase hex string of length 64.
+* **Unsupported Algorithm**: If a manifest references a digest with an unsupported algorithm, clients **MUST** treat the manifest as invalid and abort processing.
 
 * **Validation**: Before using any fetched content, the client **MUST** calculate its digest and verify that it matches the one provided in the manifest. This step provides a defense-in-depth guarantee against data corruption during transit.
+* **Exact Bytes Rule**: A digest always refers to the cryptographic hash of the exact sequence of bytes served in a successful `200 OK` response body for that resource (no reformatting, whitespace normalization, line-ending conversion, character set transcoding, compression differences, or YAML re-serialization). If `Content-Encoding` (e.g., gzip) is applied, the digest is computed over the decoded representation delivered to the application layer (after HTTP content-coding decompression). Servers and clients **MUST** adhere to this rule to ensure interoperability.
 
 #### Manifest Body Structure
 
@@ -138,7 +156,7 @@ The manifest is a JSON object that serves as the source of truth for the device'
     {
       "deploymentId": "a3e2f5dc-912e-494f-8395-52cf3769bc06",
       "digest": "sha256:a4e01b2c3d...",
-      "url": "/api/v1/devices/northstarida.xtapro.k8s.edge/deployments/a3e2f5dc-912e-494f-8395-52cf3769bc06"
+      "url": "/api/v1/devices/northstarida.xtapro.k8s.edge/deployments/a3e2f5dc-912e-494f-8395-52cf3769bc06/sha256:a4e01b2c3d..."
     }
   ]
 }
@@ -146,14 +164,17 @@ The manifest is a JSON object that serves as the source of truth for the device'
 
 | Field | Type | Required? | Description |
 | :--- | :--- | :--- | :--- |
-| `manifestVersion` | number | Y | A mandatory, monotonically increasing version number (Unsigned 64-bit Integer). The WFM **MUST** ensure this is strictly greater than the previous version. Used to prevent rollback attacks. |
-| `bundle` | object | N | Describes a single archive containing all `ApplicationDeployment` documents |
-| `bundle.mediaType`| string | Y | The format of the bundle. For `application/vnd.margo.bundle.v1+tar+gzip`, the archive **MUST** contain the individual `ApplicationDeployment` YAML files in its root folder |
-| `bundle.digest` | string | Y | The [digest](#digest-specification) of the bundle archive for integrity verification |
-| `bundle.url` | string | Y | The endpoint to retrieve the bundle |
+| `manifestVersion` | number | Y | Monotonically increasing unsigned 64-bit integer in the inclusive range `[1, 2^64-1]`. The WFM **MUST** ensure each new manifest for the same device has a strictly greater value than the previous. The first manifest **MUST** use `1`. Prevents rollback attacks. |
+| `bundle` | object | N | Describes a single archive containing all `ApplicationDeployment` documents. If there are zero deployments (`deployments` array is empty) the property **MUST** be present with the value `null` (it MUST NOT be omitted). |
+| `bundle.mediaType`| string | Y | MUST be `application/vnd.margo.bundle.v1+tar+gzip`; a gzip-compressed tar whose root contains **one or more** `ApplicationDeployment` YAML files. If there are zero deployments then `bundle` **MUST** be `null` (an empty archive MUST NOT be served). The archive MUST contain exactly the set of YAML files referenced by `deployments`. |
+| `bundle.digest` | string | Y | The [digest](#digest-specification) of the bundle archive. MUST equal the digest computed over the exact sequence of bytes in the bundle endpoint's HTTP `200 OK` response body (no transformations). |
+| `bundle.url` | string | Y | Content-addressable retrieval endpoint of the form `/api/v1/devices/{deviceId}/bundles/{digest}` where `{digest}` equals `bundle.digest`. |
 | `deployments` | array | Y | A list of all deployment objects for the device |
 | `deployments[].deploymentId`| string | Y | The unique UUID from the `ApplicationDeployment`'s [`metadata.annotations.id`](https://specification.margo.org/margo-api-reference/workload-api/desired-state-api/desired-state/#annotations-attributes) |
-| `deployments[].digest` | string | Y | The [digest](#digest-specification) of the individual `ApplicationDeployment` YAML file |
+| `deployments[].digest` | string | Y | The [digest](#digest-specification) of the individual `ApplicationDeployment` YAML file. MUST equal the digest computed over the exact sequence of bytes in that deployment endpoint's HTTP `200 OK` response body (no transformations). |
+| `deployments[].url` | string | Y | Content-addressable endpoint of the form `/api/v1/devices/{deviceId}/deployments/{deploymentId}/{digest}`. The `{digest}` **MUST** equal `deployments[].digest`; the referenced resource is immutable. |
+
+> Note: Individual workload configurations are *implicitly versioned* by their digest. Any semantic change produces a new digest (and thus a new URL). Because the URL embeds the digest, these resources are immutable; no additional per-deployment version field is required. The `manifestVersion` counter is scoped per device and orders successive manifests for that device.
 
 ### Typical Workflow and Client Behavior
 
@@ -168,6 +189,7 @@ The manifest is a JSON object that serves as the source of truth for the device'
     c.  **Integrity Check**: The client **MUST** validate the digest of all downloaded content *before* proceeding. If any digest is invalid, the client **MUST** abort the update and retain its previous state.
     d.  **State Reconciliation**: Once all content is successfully fetched and validated, the client reconciles its current state with the desired state.
     e.  **Cache Update**: Upon successful reconciliation, the client **MUST** persist the `new_manifest` as its new local source of truth. This action replaces the previous manifest, thereby updating the `current_manifest_version` and the cached `ETag` that will be used in the next poll cycle.
+    *The client **MUST** durably persist (e.g., non-volatile storage) the last accepted `manifestVersion` and associated `ETag` so that rollback protection remains effective across restarts.*
 
 #### State Reconciliation
 
@@ -175,8 +197,6 @@ The client is responsible for comparing the `new_manifest` to its **previously c
 
 * **Adding/Updating:** If a `deploymentId` in the manifest does not exist on the client, or if its `digest` differs from the client's current version, the client **MUST** apply the new `ApplicationDeployment`.
 * **Deletion:** If a workload is running on the client but its `deploymentId` is not present in the new manifest's `deployments` array, the client **MUST** remove that workload.
-
-<!-- end list -->
 
 ```mermaid
 sequenceDiagram
@@ -224,7 +244,7 @@ sequenceDiagram
 
 This protocol incorporates several mechanisms to ensure a secure state distribution process.
 
-* **Rollback Attack Prevention**: The protocol defends against rollback attacks by using two complementary mechanisms. The `ETag` header provides an efficient method to detect any change, while the mandatory, monotonically increasing `manifestVersion` in the manifest body ensures that any change is a *newer* version of the state. A client **MUST** validate both, rejecting any update that is not strictly newer than its current state.
+* **Rollback Attack Prevention**: The protocol defends against rollback attacks by combining integrity with ordering. The `ETag` header (a content digest) lets the client detect that the state differs; the per-device, monotonically increasing `manifestVersion` lets it distinguish *newer* from merely *different*. A client **MUST** validate both and reject any manifest whose `manifestVersion` is not strictly greater than the last accepted value.
 * **Data Integrity**: The integrity of all distributed content is verifiable. The manifest provides digests for both the optional bundle and each individual `ApplicationDeployment` file. Clients **MUST** validate these digests after download and before application to protect against data corruption during transit.
 * **Authentication and Authorization**: This specification intentionally omits authentication and authorization. It is expected that all API endpoints are protected by a robust security framework defined elsewhere in the Margo specification, such as mutual TLS (mTLS) for device identity and OAuth2 for access control.
 
