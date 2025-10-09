@@ -203,8 +203,8 @@ The manifest file MUST be created as defined by the OCI Image Manifest Specifica
 
 * The Media Type for the manifest MUST be `application/vnd.oci.image.manifest.v1+json`
 * The Artifact Type MUST be `application/vnd.org.margo.config.v1+json`
-* The manifest MUST contain a single layer containing configuration for the desired state TAR GZIP file
-* The Media Type for the desired state TAR GZIP file layer MUST be `application/vnd.org.margo.manifests.layer.v1+tar+gzip`
+* The manifest MUST contain one or more blobs (AKA layers) containing each one the configuration for the desired state of an application in a GZIP file
+* The Media Type for the desired state GZIP file layer MUST be `application/vnd.org.margo.manifests.layer.v1+gzip`
 
 It is possible to provide the desired state for multiple applications as separate blobs.
 
