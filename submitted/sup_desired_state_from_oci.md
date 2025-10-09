@@ -18,6 +18,7 @@ There are multiple open-source software implementations of both registries and c
 * OCI blobs are being using increasingly for distributing content. It has been used for a long time for distributing container images and helm charts, and is starting to be used more and more to distribute other types of content. Margo is already planning on using OCI blobs to distribute helm charts and docker images.
 * There are many OCI compatible servers, clients, tools, and SDKs that can be used instead of needing to implement anything Margo specific.
 * There are existing patterns for signing OCI blobs that can be be applied
+* We are making use of existing standards and implementations instead of inventing something new.
 * Placing desired state content in an OCI blobs is more flexible/future-proof. If we have more that needs to be provided in the future than the desired state yaml files, the same approach will work without needing to change APIs.
 
 ## Reason for proposal
@@ -70,9 +71,9 @@ Getting an edge device to execute one or more workloads implies:
 1. Executing the workload.
 
 This proposal only deals with the first step for obtaining the desired state.
-It is important to notice, though, that hereby proposed Rest API can also be used to distribute resources required by the workloads, which is one of the motivations for this proposal.
+It is important to notice, though, that hereby proposed REST API can also be used to distribute resources required by the workloads, which is one of the motivations for this proposal.
 
-It is important to remember that the decision to use an Rest API instead of Git (which the specification currently describes) to distribute the desired state was **voted by the Margo TWG members**.
+It is important to remember that the decision to use a REST API instead of Git (which the specification currently describes) to distribute the desired state was **voted by the Margo TWG members**.
 It is therefore considered out of discussion in this proposal.
 
 The following two approaches can be used to achieve the desired state of one or more applications on an edge device:
