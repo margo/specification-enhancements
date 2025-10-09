@@ -138,14 +138,14 @@ sequenceDiagram
 
 ### margo 'Application Registry' API Endpoint Definitions towards App Developer (aligned with OCI_spec)
 
-#### Upload a margo Application
+#### Upload a margo Application Package
 
-First, the application artifacts, as OCI blobs, are uploaded, then the manifest is uploaded.
+The Application Developer uploads the margo-compliant `Application Package` to the Application Reistry. I.e., the parts of the Application Package are uploaded as blobs and a manifest is created via the [end-4a / end-4b](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#endpoints) endpoints.
 
-The upload of blobs and manifests is done via the [end-4a / end-4b](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md#endpoints) endpoints.
+Thereby, the Application Developer needs to make sure the manifest will be adhering to the margo-specific constraints detailed [here](#manifest-as-response-from-application-registry).
+Other than these constraints on the manifest format, there are no further margo-specific constraints regarding the upload of the Application Package and the OCI_spec applies to this interface of the Application Registry. 
 
-As there are no margo-specific aspects in this, please refer to the OCI_spec regarding the App Developer's interface to the Application Registry. 
-
+This process of uploading a margo Application Package is described in the [reference implementation](https://github.com/margo/app-package-definition-wg/blob/main/application-registry-example/app_registry_as_oci_registry.md).
 
 
 
@@ -209,7 +209,7 @@ The `<reference>` is the `tag` of a margo application manifest. The `tag` has be
 
 404 Not Found if manifest doesn't exist
 
-##### Response:
+##### Manifest as Response from Application Registry:
 
 In the margo context, manifests contain pointers to all parts of an Application Package within an Application Registry. 
 
