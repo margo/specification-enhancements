@@ -32,7 +32,7 @@
 
 ## Alternatives considered (optional)
 
-> List any alternative solutions considered while working on the SUP and the reason for not choosing them. If the SUP owner knows that there is a risk of a competing SUP, this section can be used to make their case ahead of any potential votes on why their solution is better.
+> List any alternative solutions considered while working on the SUP and the reason for not choosing them. If the SUP owner knows are alternative SUPs are being worked on, this section can be used to highlight potential advantages this SUP has over the alternatives.
 > 
 > Complete as part of Phase 3: SUP Technical Development
 
