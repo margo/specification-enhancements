@@ -1,0 +1,251 @@
+{
+  "info": {
+    "name": "Margo Desired State PoC",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Manifest API (covered by SUP)",
+      "item": [
+        {
+          "name": "Get manifest",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "If-None-Match",
+                "value": "\"sha256:990364120716a35959e26956a839df304f64064ae1751fa067686b3fc6300feaxxx\"",
+                "disabled": false,
+                "type": "default"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "",
+            "url": {
+              "raw": "{{wfmUrl}}/api/v1/devices/c92cb339-c99c-4eca-9dd4-f8484dd16cfb/deployments",
+              "protocol": "",
+              "host": [
+                "{{wfmUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "c92cb339-c99c-4eca-9dd4-f8484dd16cfb",
+                "deployments"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "Get deployment",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "If-None-Match",
+                "value": "\"sha256:bf3d99f96b9f7407d3fe8b17b634839588a48a7bd2594b6b09d0e0533d885d20\"",
+                "disabled": false,
+                "type": "default"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "",
+            "url": {
+              "raw": "{{wfmUrl}}/api/v1/devices/c92cb339-c99c-4eca-9dd4-f8484dd16cfb/deployments/17fc7619-32f5-4517-992a-1a67b8e0aecc/sha256:1716ed050b402c0924be2f863d54fc23e74783586a041fe2858e961649ebf57d",
+              "protocol": "",
+              "host": [
+                "{{wfmUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "c92cb339-c99c-4eca-9dd4-f8484dd16cfb",
+                "deployments",
+                "17fc7619-32f5-4517-992a-1a67b8e0aecc",
+                "sha256:1716ed050b402c0924be2f863d54fc23e74783586a041fe2858e961649ebf57d"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        },
+        {
+          "name": "Get bundle",
+          "event": [],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "If-None-Match",
+                "value": "\"sha256:6c038b26e7bb8a6e5f213741830e35a74709b8e03f101110adc86f0632d12b20\"",
+                "disabled": false,
+                "type": "default"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "",
+            "url": {
+              "raw": "{{wfmUrl}}/api/v1/devices/c92cb339-c99c-4eca-9dd4-f8484dd16cfb/bundles/sha256:968beb464a45ed28dd5b4c7c85801fe68925dd98330c6bc035bbcd3fb29f5689",
+              "protocol": "",
+              "host": [
+                "{{wfmUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "c92cb339-c99c-4eca-9dd4-f8484dd16cfb",
+                "bundles",
+                "sha256:968beb464a45ed28dd5b4c7c85801fe68925dd98330c6bc035bbcd3fb29f5689"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Demo mutations (PoC only)",
+      "item": [
+        {
+          "name": "Create deployment",
+          "event": [],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/yaml",
+                "disabled": false,
+                "type": "default"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "",
+            "url": {
+              "raw": "{{wfmUrl}}/api/v1/devices/c92cb339-c99c-4eca-9dd4-f8484dd16cfb/deployments",
+              "protocol": "",
+              "host": [
+                "{{wfmUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "c92cb339-c99c-4eca-9dd4-f8484dd16cfb",
+                "deployments"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "apiVersion: application.margo.org/v1alpha1\nkind: ApplicationDeployment\nmetadata:\n    annotations:\n        applicationId: com-northstartida-digitron-orchestrator\n    name: com-northstartida-digitron-orchestrator-deployment\n    namespace: margo-poc\nspec:\n    deploymentProfile:\n        type: helm.v3\n        components:\n            - name: database-services\n              properties:\n                repository: oci://quay.io/charts/realtime-database-services\n                revision: 2.3.7\n                timeout: 8m30s\n                wait: \"true\"\n            - name: digitron-orchestrator\n              properties:\n                repository: oci://northstarida.azurecr.io/charts/northstarida-digitron-orchestrator\n                revision: 1.0.9\n                wait: \"true\"\n    parameters:\n        adminName:\n            value: Some One\n            targets:\n                - pointer: administrator.name\n                  components:\n                    - digitron-orchestrator\n        adminPrincipalName:\n            value: someone@somewhere.com\n            targets:\n                - pointer: administrator.userPrincipalName\n                  components:\n                    - digitron-orchestrator\n        cpuLimit:\n            value: \"4\"\n            targets:\n                - pointer: settings.limits.cpu\n                  components:\n                    - digitron-orchestrator\n        idpClientId:\n            value: 123-ABC\n            targets:\n                - pointer: idp.clientId\n                  components:\n                    - digitron-orchestrator\n        idpName:\n            value: Azure AD\n            targets:\n                - pointer: idp.name\n                  components:\n                    - digitron-orchestrator\n        idpProvider:\n            value: aad\n            targets:\n                - pointer: idp.provider\n                  components:\n                    - digitron-orchestrator\n        idpUrl:\n            value: https://123-abc.com\n            targets:\n                - pointer: idp.providerUrl\n                  components:\n                    - digitron-orchestrator\n                - pointer: idp.providerMetadata\n                  components:\n                    - digitron-orchestrator\n        memoryLimit:\n            value: \"16384\"\n            targets:\n                - pointer: settings.limits.memory\n                  components:\n                    - digitron-orchestrator\n        pollFrequency:\n            value: \"120\"\n            targets:\n                - pointer: settings.pollFrequency\n                  components:\n                    - digitron-orchestrator\n                    - database-services\n        siteId:\n            value: SID-123-ABC\n            targets:\n                - pointer: settings.siteId\n                  components:\n                    - digitron-orchestrator\n                    - database-services\n",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update deployment",
+          "event": [],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/yaml",
+                "disabled": false,
+                "type": "default"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "",
+            "url": {
+              "raw": "{{wfmUrl}}/api/v1/devices/c92cb339-c99c-4eca-9dd4-f8484dd16cfb/deployments/76ab7f64-2ada-4439-bc11-b38b351616b1",
+              "protocol": "",
+              "host": [
+                "{{wfmUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "c92cb339-c99c-4eca-9dd4-f8484dd16cfb",
+                "deployments",
+                "76ab7f64-2ada-4439-bc11-b38b351616b1"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "apiVersion: application.margo.org/v1alpha1\nkind: ApplicationDeployment\nmetadata:\n    annotations:\n        applicationId: com-northstartida-digitron-orchestrator\n    name: com-northstartida-digitron-orchestrator-deployment\n    namespace: margo-poc\nspec:\n    deploymentProfile:\n        type: helm.v3\n        components:\n            - name: database-services\n              properties:\n                repository: oci://quay.io/charts/realtime-database-services\n                revision: 2.3.7\n                timeout: 8m30s\n                wait: \"true\"\n            - name: digitron-orchestrator\n              properties:\n                repository: oci://northstarida.azurecr.io/charts/northstarida-digitron-orchestrator\n                revision: 1.0.9\n                wait: \"true\"\n    parameters:\n        adminName:\n            value: Some One\n            targets:\n                - pointer: administrator.name\n                  components:\n                    - digitron-orchestrator\n        adminPrincipalName:\n            value: someone@somewhere.com\n            targets:\n                - pointer: administrator.userPrincipalName\n                  components:\n                    - digitron-orchestrator\n        cpuLimit:\n            value: \"4\"\n            targets:\n                - pointer: settings.limits.cpu\n                  components:\n                    - digitron-orchestrator\n        idpClientId:\n            value: 123-ABC\n            targets:\n                - pointer: idp.clientId\n                  components:\n                    - digitron-orchestrator\n        idpName:\n            value: Azure AD\n            targets:\n                - pointer: idp.name\n                  components:\n                    - digitron-orchestrator\n        idpProvider:\n            value: aad\n            targets:\n                - pointer: idp.provider\n                  components:\n                    - digitron-orchestrator\n        idpUrl:\n            value: https://123-abc.com\n            targets:\n                - pointer: idp.providerUrl\n                  components:\n                    - digitron-orchestrator\n                - pointer: idp.providerMetadata\n                  components:\n                    - digitron-orchestrator\n        memoryLimit:\n            value: \"16384\"\n            targets:\n                - pointer: settings.limits.memory\n                  components:\n                    - digitron-orchestrator\n        pollFrequency:\n            value: \"120\"\n            targets:\n                - pointer: settings.pollFrequency\n                  components:\n                    - digitron-orchestrator\n                    - database-services\n        siteId:\n            value: SID-123-ABC\n            targets:\n                - pointer: settings.siteId\n                  components:\n                    - digitron-orchestrator\n                    - database-services\n",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete deployment",
+          "event": [],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "",
+            "url": {
+              "raw": "{{wfmUrl}}/api/v1/devices/c92cb339-c99c-4eca-9dd4-f8484dd16cfb/deployments/828a6270-b10d-4f53-bfaa-2e379f7daa65",
+              "protocol": "",
+              "host": [
+                "{{wfmUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "devices",
+                "c92cb339-c99c-4eca-9dd4-f8484dd16cfb",
+                "deployments",
+                "828a6270-b10d-4f53-bfaa-2e379f7daa65"
+              ],
+              "query": [],
+              "variable": []
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "wfmUrl",
+      "value": "",
+      "type": "default"
+    }
+  ]
+}
