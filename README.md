@@ -57,5 +57,5 @@ Phase 4 is a PR to merge the full proposal to the `/submitted` folder. During th
 |@silvanoc | Desired state as OCI | P4 | [PR](https://github.com/margo/specification-enhancements/pull/16) |
 |@arne-broering | Application package as OCI | P3 | [DRAFT PR](https://github.com/margo/specification-enhancements/pull/22)  |
 |@julienduquesnay-se | Device gateway | P3 |  |
-|@ajcraig | Standardizing REST API  | P3 | [DRAFT PR](https://github.com/margo/specification-enhancements/pull/18) |
+|@ajcraig | Standardizing REST API  | P4 | [PR](https://github.com/margo/specification-enhancements/pull/18) |
 |@matlec | Desired state as Manifest API | P4 | [PR](https://github.com/margo/specification-enhancements/pull/20) |  
