@@ -80,6 +80,9 @@ To make individual workload retrievals race-free and cache-friendly, this endpoi
 * **Success Response**:
   * **`200 OK`**: The response body is the raw `ApplicationDeployment` YAML file (`Content-Type: application/yaml`). The content **MUST** match the `{digest}` path segment; the server **MUST** return `404` if it does not have the exact digest referenced.
 
+> [!IMPORTANT]
+> A 404 Not Found response from this endpoint only indicates that the server does not have this specific, content-addressed version of the deployment. It MUST NOT be interpreted by the client as a signal to delete the workload. The sole source of truth for determining if a workload should be deleted is its absence from the [State Manifest](#manifest-body-structure). Please refer to the [State Reconciliation](#state-reconciliation) section for further details.
+
 > [!NOTE] Representation
 > Only `application/yaml` is supported for individual `ApplicationDeployment` retrieval. A single canonical wire format ensures the digest uniquely identifies the exact bytes served without introducing canonicalization rules across formats (e.g. JSON vs YAML). Future extensions MAY introduce alternative media types, but each additional representation would require its own stable digest scope.
 
