@@ -18,7 +18,7 @@ There are multiple open-source software implementations of both registries and c
 * OCI blobs are being using increasingly for distributing content. It has been used for a long time for distributing container images and helm charts, and is starting to be used more and more to distribute other types of content. Margo is already planning on using OCI blobs to distribute helm charts and docker images.
 * There are many OCI compatible servers, clients, tools, and SDKs that can be used instead of needing to implement anything Margo specific.
 * There are existing patterns for signing OCI blobs that can be be applied
-* We are making use of existing standards and implementations instead of inventing something new.
+* We are enabling the use of existing standards and implementations instead of inventing something Margo-specific that would require a custom implementation.
 * Placing desired state content in an OCI blobs is more flexible/future-proof. If we have more that needs to be provided in the future than the desired state yaml files, the same approach will work without needing to change APIs.
 
 ## Reason for proposal
