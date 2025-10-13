@@ -37,11 +37,11 @@ This proposal recommends the [OCI Registry API specification version 1.1.0](http
 
 (as already defined in the [margo specification](https://specification.margo.org/margo-overview/software-composition))
 
-An `Application Package` is a folder with a Margo-defined structure comprising the software application. This Application Package contains: A margo-specific `Application Description` defining the composition of one or more `Components`. Application packages may contain additional `resources` such as files of icons, license(s), or release notes.
+An `Application Package` is a *folder* with a Margo-defined structure that contains:
+* `Application Description`: YAML file following the [margo-specific](https://specification.margo.org/app-interoperability/application-package-definition/) structure and format, defining the composition of one or more `Components` that form the application.
+* Application `resources`: files of icons, license(s), or release notes that provide further information about the application.
 
-`Application Package` consists of:
-* `Application Description`: YAML file following the [margo-defined](https://specification.margo.org/app-interoperability/application-package-definition/) structure and format.
-* Application `resources`: icons, licenses, configuration files
+The Application Package is hosted by an Application Registry.
 
 `Components`, linked in the Application Description document, are deployable as `workloads`, and are provided in a Margo-supported way, e.g. as `Helm Charts` or `Compose Archives`. 
 
@@ -65,7 +65,7 @@ flowchart
 
 The proposed architecture consists of:
 
-* `Application Registry` - Implemented as an `OCI Registry`, it serves [application packages](https://specification.margo.org/app-interoperability/application-package-definition/) defined through `Application Description` files.
+* `Application Registry` - Implemented as an `OCI Registry`, it serves [Application Packages](https://specification.margo.org/app-interoperability/application-package-definition/) defined through `Application Description` files.
 * `Workload Fleet Manager`, or internal `Application Catalog`, acting as client to pull applications from the registry.
 * `Authentication Service` - Manages access control for the registry.
 * `App Developer` - The actor who uploads the application to the Application Registry.
@@ -75,7 +75,7 @@ flowchart
     A[App Developer] -->|Upload margo Application Package| B[Application Registry = OCI Registry]
     C[WFM, or internal Application Catalog] -->|Discover & pull in margo Application Package| B
     B -->|validates token| D[Authentication Service] 
-    B -->|hosts 0..*| E(margo Applications) 
+    B -->|hosts 0..*| E(Application Package) 
     C -->|requests token| D
     style D stroke-dasharray: 3 6
 ```
@@ -122,7 +122,8 @@ sequenceDiagram
     Note over AppDeveloper: uses vendor-specific upload mechanism (e.g., UI) to enable WFM to find the application:
     AppDeveloper->>+WFM: Application location is: repository <name> in Application Registry
     
-    Note over WFM: discovers available versions of the application:
+    Note over WFM: ... later in time:
+    Note over WFM: discovers available versions of an application:
     WFM->>+AppRegistry: GET /v2/<name>/tags/list
     
     Note over WFM: retrieves the manifest of the selected application version. <reference> is tag or digest.:
@@ -166,8 +167,8 @@ Use `tags` to discover available versions of a Margo application.
 
 ##### Query Parameters:
 
-n=<integer> (optional, limits results)
-last=<string> (optional, pagination cursor)
+* n=<integer> (optional, limits results)
+* last=<string> (optional, pagination cursor)
 
 #####  Success Response:
 
