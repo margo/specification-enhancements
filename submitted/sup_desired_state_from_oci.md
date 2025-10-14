@@ -293,8 +293,9 @@ The following rules MUST be followed by the device when applying the latest desi
 
 ### Examples
 
-* [This recording](https://lfmargo.sharepoint.com/:v:/s/TechnicalWorkingGroup/Ea6vyQD-VpxMoX5Uoh9MkRMB0xAhtsQHwdV5HpCOAmHR1Q?e=cUaozM) give a demo of this process working with a [Margo prototype](https://lfmargo.sharepoint.com/:v:/s/TechnicalWorkingGroup/Eb3UvDMyHwlImBc3jieKQWEB_jQDn4q49YxN6GEeEqrflg?e=1IE47r).
-    > Note: Videos are hosted in our MS teams so if you have access issues let us know
+* [This recording](https://lfmargo.sharepoint.com/:v:/s/TechnicalWorkingGroup/Ea6vyQD-VpxMoX5Uoh9MkRMB0xAhtsQHwdV5HpCOAmHR1Q?e=cUaozM) gives a demo of this process working with a [Margo prototype](https://lfmargo.sharepoint.com/:v:/s/TechnicalWorkingGroup/Eb3UvDMyHwlImBc3jieKQWEB_jQDn4q49YxN6GEeEqrflg?e=1IE47r).
+    > Note: Videos are hosted in our MS Teams, so if you have access issues, let us know
+* [PoC code example](https://github.com/margo/woa-interfaces-wg/tree/main/git-alternatives/prototypes/src/oci-rest)
 
 ### Security Considerations (Out of scope)
 
