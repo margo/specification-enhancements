@@ -15,11 +15,11 @@ There are multiple open-source software implementations of both registries and c
 
 ### Benefits of using OCI for desired state
 
-* OCI blobs are being using increasingly for distributing content. It has been used for a long time for distributing container images and helm charts, and is starting to be used more and more to distribute other types of content. Margo is already planning on using OCI blobs to distribute helm charts and docker images.
+* OCI blobs are being used increasingly for distributing content. It has been used for a long time for distributing container images and Helm charts, and is starting to be used more and more to distribute other types of content. Margo is already planning on using OCI blobs to distribute Helm charts and Docker images.
 * There are many OCI compatible servers, clients, tools, and SDKs that can be used instead of needing to implement anything Margo specific.
-* There are existing patterns for signing OCI blobs that can be be applied
+* There are existing patterns for signing OCI blobs that can be applied
 * We are enabling the use of existing standards and implementations instead of inventing something Margo-specific that would require a custom implementation.
-* Placing desired state content in an OCI blobs is more flexible/future-proof. If we have more that needs to be provided in the future than the desired state yaml files, the same approach will work without needing to change APIs.
+* Placing desired state content in an OCI blob is more flexible/future-proof. If we have more that needs to be provided in the future than the desired state yaml files, the same approach will work without needing to change APIs.
 
 ## Reason for proposal
 
@@ -39,12 +39,12 @@ The [specification currently indicates Git](https://specification.margo.org/flee
    By controlling the contents of the blob, we have some control over how chatty the API calls will be.
    We will need to keep this in mind as we work on the technical details for this proposal.
 
-It is therefore out of the scope of this proposal arguing why this proposal uses a REST API instead of Git.
+It is therefore out of the scope of this proposal to argue why this proposal uses a REST API instead of Git.
 
-This Specification Update Proposal (SUP) relates to parts of [feature 100](https://github.com/margo/specification/issues/100) and [feature 101](https://github.com/margo/specification/issues/101), which addresses the need to define the desired state artifact(s) that are produced via the WFM, and retrieved via the edge client, to enable state seeking management of workloads at the edge.
+This Specification Update Proposal (SUP) relates to parts of [feature 100](https://github.com/margo/specification/issues/100) and [feature 101](https://github.com/margo/specification/issues/101), which address the need to define the desired state artifact(s) that are produced via the WFM and retrieved via the edge client, to enable state seeking management of workloads at the edge.
 
-The REST API being proposed (detailed in the section [Technical proposal](#technical-proposal)) have multiple different implementations, many of them open source software (OSS).
-Additionally, the required infrastructure is frequently available and is being used for software distribution (e.g. for container images).
+The REST API being proposed (detailed in the section [Technical proposal](#technical-proposal)) has multiple different implementations, many of them open source software (OSS).
+Additionally, the required infrastructure is frequently available and is being used for software distribution (e.g., for container images).
 
 ## Requirements alignment acknowledgement
 
@@ -67,24 +67,24 @@ The following is not in scope for this proposal:
 Getting an edge device to execute one or more workloads implies:
 
 1. Obtaining the desired state, which describes the workload(s) that should be executed.
-1. Getting any resources required by the workloads (e.g,. a container image).
+1. Getting any resources required by the workloads (e.g, a container image).
 1. Executing the workload.
 
 This proposal only deals with the first step for obtaining the desired state.
 It is important to notice, though, that hereby proposed REST API can also be used to distribute resources required by the workloads, which is one of the motivations for this proposal.
 
-It is important to remember that the decision to use a REST API instead of Git (which the specification currently describes) to distribute the desired state was **voted by the Margo TWG members**.
+It is important to remember that the decision to use a REST API instead of Git (which the specification currently describes) to distribute the desired state was **voted on by the Margo TWG members**.
 It is therefore considered out of discussion in this proposal.
 
 The following two approaches can be used to achieve the desired state of one or more applications on an edge device:
 
 1. The edge device fetches (pulls) the new desired state documents.
-   This requires a specification of the format and protocol to distribute those documents, what includes the REST API and the "packaging".
+   This requires a specification of the format and protocol to distribute those documents, which includes the REST API and the "packaging".
    Check the section [Fetch desired state: REST API](#fetch-desired-state-rest-api) for more details on this.
 1. The edge device is signaled (notification from the backend, internal schedule for polling,...) to check the availability of new desired state document(s).
    Check the section [Signal: Update desired state](#signal-update-desired-state) for more details on this.
 
-This specification only proposes implementing the pull approach, but does not prevent a notification approach being proposed in the future as an enhancement.
+This specification only proposes implementing the pull approach, but does not prevent a notification approach from being proposed in the future as an enhancement.
 
 This proposal is very similar to the previous Git approach and represents almost a full-blown GitOps approach using OCI blobs instead of Git.
 
@@ -105,23 +105,23 @@ By maintaining compatibility with HTTP 1.1, the solution ensures deployability a
 
 ### Fetch desired state: REST API
 
-In the case of polling, no information about the latest desired state version is available on the device. As a first step, the "Latest" tag will be used to identity the desired state blob needing to be pulled down by the device.
+In the case of polling, no information about the latest desired state version is available on the device. As a first step, the "latest" tag will be used to identify the desired state blob needing to be pulled down by the device.
 
-> Note: See the [Security Considerations (Out of scope)](#security-considerations-out-of-scope) section below for more information about how this process can be made more security in future enhancements. For PR1 it [has been agreed](https://github.com/margo/specification/issues/44) by the PM Group that we do not need to address all security concerns up front, which isn't to say we should ignore them. The Security Considerations sections highlights how this process can be made more secure with future enhancements so we can focus on first getting a replacement for the Git approach the specification currently defines that has been rejected by the TWG within the short deadline of the end of 2025 for PR1.
+> Note: See the [Security Considerations (Out of scope)](#security-considerations-out-of-scope) section below for more information about how this process can be made more secure in future enhancements. For PR1 it [has been agreed](https://github.com/margo/specification/issues/44) by the PM Group that we do not need to address all security concerns up front, which isn't to say we should ignore them. The Security Considerations section highlights how this process can be made more secure with future enhancements, so we can focus on first getting a replacement for the Git approach that the specification currently defines, which has been rejected by the TWG, within the short deadline of the end of 2025 for PR1.
 
 #### Rollback attacks
 
-When dealing with labels, instead of specific hashes, for pulling the OCI blob there is a chance for a rollback (AKA [Downgrade](https://en.wikipedia.org/wiki/Downgrade_attack)) attack in which an old desired state with vulnerabilities gets installed (by a malicious attacker or mistakenly).
+When dealing with labels, instead of specific hashes, for pulling the OCI blob, there is a chance for a rollback (AKA [Downgrade](https://en.wikipedia.org/wiki/Downgrade_attack)) attack in which an old desired state with vulnerabilities gets installed (by a malicious attacker or mistakenly).
 
 As an initial step to protect against this, the desired state's metadata documents must provide a monotonically increasing version number.
 
 This information is to be provided in an [annotation of the corresponding OCI manifest](https://github.com/opencontainers/image-spec/blob/v1.1.0/annotations.md) with key `org.margo.ApplicationDeployment.version`.
 
-It requires that the Workload Fleet Manager at the very minimum keeps track of the last provided desired state version to create each new one.
+It requires that the Workload Fleet Manager, at the very minimum, keep track of the last provided desired state version to create each new one.
 
-That way the device only needs to keep track of the last known desired state version and compare it with that of any provided trusted desired state.
+That way, the device only needs to keep track of the last known desired state version and compare it with that of any provided trusted desired state.
 
-* If the version is lower or equal, nothing happens.
+* If the version is lower than or equal to, nothing happens.
 * If the version is higher, then the desired state document(s) must be fetched and applied.
 
 ### Top-level view
@@ -156,7 +156,7 @@ block-beta
 
 Each time a new desired state is needed the following workflow is followed to fetch it.
 
-The knowledge about the availability of such a new document has been already addressed in the section [### Fetch desired state: REST API](#fetch-desired-state-rest-api)
+The knowledge about the availability of such a new document has already been addressed in the section [### Fetch desired state: REST API](#fetch-desired-state-rest-api)
 
 ```mermaid
 sequenceDiagram
@@ -203,7 +203,7 @@ The manifest file MUST be created as defined by the OCI Image Manifest Specifica
 
 * The Media Type for the manifest MUST be `application/vnd.oci.image.manifest.v1+json`
 * The Artifact Type MUST be `application/vnd.org.margo.config.v1+json`
-* The manifest MUST contain one or more blobs (AKA layers) containing each one the configuration for the desired state of an application in a GZIP file
+* The manifest MUST contain one or more blobs (AKA layers) containing each one of the configurations for the desired state of an application in a GZIP file
 * The Media Type for the desired state GZIP file layer MUST be `application/vnd.org.margo.manifests.layer.v1+gzip`
 
 It is possible to provide the desired state for multiple applications as separate blobs.
@@ -217,7 +217,7 @@ This is an option if:
 1. The size of the resulting manifest is acceptable for the OCI registry (typically 4MB).
 
 Manifests with [embedded content][1] provide the blobs both embedded in the [blob `data` property](https://github.com/opencontainers/image-spec/blob/main/descriptor.md#properties) and the referenced blob.
-Therefore any client not capable to deal with [embedded content][1] can work with the standard workflow.
+Therefore, any client not capable of dealing with [embedded content][1] can work with the standard workflow.
 
 If the manifests provide [embedded content][1] and the client supports it, then the [blob request](#blob-request) is not needed.
 Resulting in a single HTTP GET request.
@@ -299,7 +299,7 @@ The following rules MUST be followed by the device when applying the latest desi
 
 ### Security Considerations (Out of scope)
 
-> Note: For PR1 it [has been agreed](https://github.com/margo/specification/issues/44) by the PM Group that we do not need to address all security concerns up front, which isn't to say we should ignore them. This sections highlights how this process can be made more secure with future enhancements so we can focus on first getting a replacement for the Git approach the specification currently defines within the short deadline of the end of 2025 for PR1.
+> Note: For PR1 it [has been agreed](https://github.com/margo/specification/issues/44) by the PM Group that we do not need to address all security concerns up front, which isn't to say we should ignore them. This section highlights how this process can be made more secure with future enhancements so we can focus on first getting a replacement for the Git approach the specification currently defines within the short deadline of the end of 2025 for PR1.
 
 #### Authentication and authorization
 
@@ -311,28 +311,28 @@ OCI registries implement the [Docker Registry v2 protocol](https://docker-docs.u
 
 Most OCI registries support at a minimum [Basic](https://www.rfc-editor.org/rfc/rfc7617) and [Bearer Token](https://www.rfc-editor.org/rfc/rfc6750) schemes for authentication.
 
-The expectation is the The Workload Fleet Manager would provide the required information about where an how to connect during the onboarding processes and not defined in this proposal.
+The expectation is that the Workload Fleet Manager would provide the required information about where and how to connect during the onboarding processes, and not defined in this proposal.
 
 #### Tampering attacks
 
-While not in scope of this proposal, we expect a future SUPs will propose how the desired state documents should be signed to ensure the authenticity and integrity of those documents to protect against tampering attacks.
+While not in the scope of this proposal, we expect future SUPs will propose how the desired state documents should be signed to ensure the authenticity and integrity of those documents to protect against tampering attacks.
 
-There are a couple of mechanisms to sign OCI artifacts (like Cosign and Notary v2) which are open source software (OSS) and battle-proofed currently being used for docker images and helm charts. We will need to define how Margo handles signing for container images and helm charts as well as the application package so the same approach should also work for signing the desired state OCI blobs as well.
+There are a couple of mechanisms to sign OCI artifacts (like Cosign and Notary v2), which are open source software (OSS) and battle-proofed, currently being used for Docker images and Helm charts. We will need to define how Margo handles signing for container images and Helm charts, as well as the application package, so the same approach should also work for signing the desired state OCI blobs as well.
 
-An implementation of the [TUF (The Update Framework)](https://theupdateframework.io) can be used to provide the digest which unambiguously identifies the desired state document to be pulled. The different guarantees provided by TUF combined with the use of digests and increasing version numbers in the desired state metadata documents provide a best of the class security.
+An implementation of the [TUF (The Update Framework)](https://theupdateframework.io) can be used to provide the digest, which unambiguously identifies the desired state document to be pulled. The different guarantees provided by TUF, combined with the use of digests and increasing version numbers in the desired state metadata documents, provide a best-of-the-class security.
 
 ## Alternatives considered (optional)
 
 ### Signal: Update desired state
 
-There are two different approaches (which can be simultaneously active) to let the edge devices update their desire state documents:
+There are two different approaches (which can be simultaneously active) to let the edge devices update their desired state documents:
 
-1. Polling (pull approach): the edge device regularly checks the availability of a new desired state based on an internal schedule.
+1. Polling (pull approach): The edge device regularly checks the availability of a new desired state based on an internal schedule.
 2. Notifications (push approach): the edge device gets notified somehow from the backend that a new desired state might be available.
 
 This SUP is only making the easiest approach (polling) a requirement, leaving any advanced approach out of the scope of the specification for the time being.
 
-Providing protection against following attacks (among others) is part of advanced signaling approaches and therefore out the scope of this SUP:
+Protecting against the following attacks (among others) is part of advanced signaling approaches and therefore out of the scope of this SUP:
 
 1. Indefinite freeze attacks (freshness guarantee)
 2. Fast-forward attacks
@@ -341,7 +341,7 @@ Providing protection against following attacks (among others) is part of advance
 In the case of notifications, there are mechanisms capable of providing information about the latest desired state version in a trustworthy way.
 
 Notifications must be secure so that the information on which desired state documents are requested to be fetched can be trusted.
-That way any properly signed desired state document is trustworthy.
+That way, any properly signed desired state document is trustworthy.
 
 Different potential notification mechanisms are thinkable:
 
