@@ -67,7 +67,7 @@ The client polls this endpoint to retrieve the complete desired state for all wo
 
 #### 2. Retrieve an Individual Workload Configuration
 
-The client fetches the YAML for a single `ApplicationDeployment`.
+This endpoint is used by the client to fetch the YAML for a single `ApplicationDeployment` after it has processed a new State Manifest and identified a small number of new or updated deployments. This allows for highly efficient, incremental updates without needing to download the full bundle.
 
 To make individual workload retrievals race-free and cache-friendly, this endpoint is **content-addressable**: the digest of the expected YAML is part of the URL. This guarantees immutability of the fetched resource and prevents a time-of-check / time-of-use race where a deployment changes between manifest retrieval and content fetch.
 
