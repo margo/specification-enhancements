@@ -85,6 +85,9 @@ To make individual workload retrievals race-free and cache-friendly, this endpoi
 > [!IMPORTANT]
 > A 404 Not Found response from this endpoint only indicates that the server does not have this specific, content-addressed version of the deployment. It MUST NOT be interpreted by the client as a signal to delete the workload. The sole source of truth for determining if a workload should be deleted is its absence from the [State Manifest](#manifest-body-structure). Please refer to the [State Reconciliation](#state-reconciliation) section for further details.
 
+> [!NOTE]
+> Servers MAY offer compressed representations of the YAML payload using standard HTTP `Content-Encoding` (e.g., gzip). Clients SHOULD signal their ability to handle compressed content by sending the `Accept-Encoding` header in their request.
+
 > [!NOTE] Representation
 > Only `application/yaml` is supported for individual `ApplicationDeployment` retrieval. A single canonical wire format ensures the digest uniquely identifies the exact bytes served without introducing canonicalization rules across formats (e.g. JSON vs YAML). Future extensions MAY introduce alternative media types, but each additional representation would require its own stable digest scope.
 
