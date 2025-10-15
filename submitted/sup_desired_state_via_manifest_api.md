@@ -41,6 +41,8 @@ This proposal aligns with the core Margo vision of providing a standardized fram
 
 ## Technical proposal
 
+All Margo-compliant clients and servers implementing this specification MUST support HTTP/1.1 as a baseline for interoperability. This ensures compatibility across a wide range of devices and network environments. Implementations MAY support and negotiate newer versions such as HTTP/2 or HTTP/3 for performance enhancements.
+
 The proposed API is designed to be extensible. While this document focuses on workload deployments, the same manifest-based pattern and content-addressable bundles can be reused for future needs, such as distributing device-level configurations (e.g., via a new `/api/v1/devices/{deviceId}/configurations` endpoint). This ensures a consistent and evolvable API architecture.
 
 The following sections describe the API endpoints and a typical workflow.
