@@ -61,9 +61,12 @@ The client polls this endpoint to retrieve the complete desired state for all wo
 
 * **Headers**:
   * `If-None-Match` (optional): The client **SHOULD** send the `ETag` value of its last successfully synced manifest.
+  * `Accept` (optional): The client **SHOULD** send this header to indicate which manifest formats it supports, using the media types `application/vnd.margo.manifest.v1.jws+json` (signed) and/or `application/vnd.margo.manifest.v1+json` (unsigned). If this header is omitted, the server **MUST** respond with the `application/vnd.margo.manifest.v1+json` (unsigned) format.
 * **Success Responses**:
-  * **`200 OK`**: The body contains the new manifest as a JSON object (`Content-Type: application/json`) and the response includes a new `ETag` header.
+  * **`200 OK`**: The body contains the manifest in a format negotiated by the client. The `Content-Type` header **MUST** indicate the format being returned (either `application/vnd.margo.manifest.v1+json` for unsigned, or `application/vnd.margo.manifest.v1.jws+json` for signed). The response also includes a new `ETag` header.
   * **`304 Not Modified`**: Returned if the `If-None-Match` ETag matches. The body is empty.
+* **Failure Responses**:
+  * **`406 Not Acceptable`**: This status code **MUST** be returned if the server cannot generate a response that matches any of the media types listed in the client's `Accept` header.
 
 #### 2. Retrieve an Individual Workload Configuration
 
@@ -121,7 +124,7 @@ The `ETag` is a formal mechanism for cache validation.
   * Example: `ETag: "sha256:a1b2c3d4e5f6..."`
 * **Rationale**: Using a **secure hash of the manifest content** guarantees that the ETag changes *if and only if* the desired state changes. This provides a stateless and perfectly reliable caching mechanism.
 * **Computation Rule**: The manifest `ETag` **MUST** be the digest of the exact JSON response body of the manifest (after serialization). It is independent of any `bundle.digest` or individual deployment digests; it is a hash of the whole manifest document, not a field copy. Servers **SHOULD** serialize deterministically (stable field order, consistent key casing, no insignificant whitespace changes) to ensure consistent ETag generation. Clients MUST compare `If-None-Match` against this manifest ETag only.
-* **Canonicalization Guidance**: A server MAY choose a canonical JSON serialization (e.g., UTF-8, sorted keys, no trailing spaces, `\n` line endings) to guarantee stable digests across restarts or horizontally scaled instances. The exact method is an implementation detail but **MUST** yield identical bytes for semantically identical manifests.
+* **Canonicalization Guidance**: The `ETag` value is a digest of the response body. To ensure this `ETag` is stable and that HTTP caching functions correctly, the server **MUST** serialize its JSON response bodies in a deterministic manner. For any given logical state, the exact sequence of bytes in the response body **MUST** be identical across all requests. This specification **RECOMMENDS** the use of the [JSON Canonicalization Scheme (JCS)](https://datatracker.ietf.org/doc/html/rfc8785) to fulfill this requirement.
 * **Caching Rule (Mutable Manifest)**: The manifest endpoint MUST **NOT** be marked immutable. Servers SHOULD omit long-lived `Cache-Control: immutable` directives for the manifest and MAY use short `max-age` values (or none) because freshness is driven by `ETag` polling.
 
 > Content-addressable resources: Any endpoint whose path embeds a digest (e.g. `/api/v1/devices/{deviceId}/bundles/{digest}` or `/api/v1/devices/{deviceId}/deployments/{deploymentId}/{digest}`) serves immutable content. The server **MUST** set `ETag` to the quoted digest and **SHOULD** include `Cache-Control: public, max-age=31536000, immutable`. Servers **MUST NOT** apply HTTP `Content-Encoding` other than `identity` to these responses unless a future extension explicitly redefines the digest scope. This immutability guidance does **NOT** apply to the manifest endpoint, which is intentionally mutable. These ETags are strong validators (no `W/` prefix permitted).
@@ -148,9 +151,15 @@ Digests are used to verify the integrity of all fetched content. The formal spec
 * **Validation**: Before using any fetched content, the client **MUST** calculate its digest and verify that it matches the one provided in the manifest. This step provides a defense-in-depth guarantee against data corruption during transit.
 * **Exact Bytes Rule**: A digest always refers to the cryptographic hash of the exact sequence of bytes served in a successful `200 OK` response body for that resource (no reformatting, whitespace normalization, line-ending conversion, character set transcoding, compression differences, or YAML re-serialization). If `Content-Encoding` (e.g., gzip) is applied, the digest is computed over the decoded representation delivered to the application layer (after HTTP content-coding decompression). Servers and clients **MUST** adhere to this rule to ensure interoperability.
 
-#### Manifest Body Structure
+#### Manifest Formats and Authenticity
 
-The manifest is a JSON object that serves as the source of truth for the device's workload deployments.
+This specification defines two representations for the State Manifest: a simple unsigned JSON object and a highly secure, signed JWS object. The format served by the WFM is determined by HTTP Content Negotiation.
+
+##### Format 1: Unsigned State Manifest
+
+* **Media Type:** `application/vnd.margo.manifest.v1+json`
+
+This format is a plain JSON object. While it provides integrity for linked artifacts via digests, the manifest itself is not signed and thus offers no guarantee of authenticity.
 
 ```json
 {
@@ -182,21 +191,68 @@ The manifest is a JSON object that serves as the source of truth for the device'
 | `deployments[].digest` | string | Y | The [digest](#digest-specification) of the individual `ApplicationDeployment` YAML file. MUST equal the digest computed over the exact sequence of bytes in that deployment endpoint's HTTP `200 OK` response body (no transformations). |
 | `deployments[].url` | string | Y | Content-addressable endpoint of the form `/api/v1/devices/{deviceId}/deployments/{deploymentId}/{digest}`. The `{digest}` **MUST** equal `deployments[].digest`; the referenced resource is immutable. |
 
-> Note: Individual workload configurations are *implicitly versioned* by their digest. Any semantic change produces a new digest (and thus a new URL). Because the URL embeds the digest, these resources are immutable; no additional per-deployment version field is required. The `manifestVersion` counter is scoped per device and orders successive manifests for that device.
+> [!NOTE]
+> Individual workload configurations are *implicitly versioned* by their digest. Any semantic change produces a new digest (and thus a new URL). Because the URL embeds the digest, these resources are immutable; no additional per-deployment version field is required. The `manifestVersion` counter is scoped per device and orders successive manifests for that device.
+
+##### Format 2: Signed State Manifest (JWS)
+
+* **Media Type:** `application/vnd.margo.manifest.v1.jws+json`
+
+To guarantee authenticity and integrity, this format **MUST** be a **Flattened JWS JSON Serialization Object** as defined in [RFC 7515, Section 7.2.2](https://datatracker.ietf.org/doc/html/rfc7515#section-7.2.2). The [unsigned State Manifest](#format-1-unsigned-state-manifest) is the JWS `payload`.
+
+```json
+{
+  "payload": "eyJtYW5pZmVzdFZlcnNpb24iOjEwMSwi...",
+  "protected": "eyJhbGciOiJFUzI1NiJ9",
+  "signature": "ad_db3AdL-8p...s-91Xz4thGg"
+}
+```
+
+| Field | Type | Required? | Description |
+| :--- | :--- | :--- | :--- |
+| `payload` | string | Y | A Base64URL-encoded string of the [Unsigned State Manifest](#format-1-unsigned-state-manifest) |
+| `protected`| string | Y | A Base64URL-encoded JSON object containing the signature algorithm (e.g., `{"alg":"ES256"}`) |
+| `signature`| string | Y | A Base64URL-encoded string of the raw cryptographic signature |
+
+##### Security Phasing and Content Negotiation
+
+This specification defines a security model for manifest authenticity using JWS signatures. To facilitate rapid adoption and align with preview release timelines, this feature is being introduced with a phased implementation requirement.
+
+* For preview release of the Margo specification:
+  * A WFM server **MUST** support serving **unsigned** manifests. A server **SHOULD** also support serving **signed** manifests.
+  * A WFM client **MUST** support processing **unsigned** manifests. A client **SHOULD** also support verifying **signed** manifests.
+
+* For the Margo 1.0 Specification:
+  * All compliant WFM servers and clients **MUST** support the signed manifest format and its verification
+
+Clients **SHOULD** use HTTP Content Negotiation via the `Accept` header to signal their capabilities. A client that supports both formats should indicate its preference for the signed format using a higher quality value (`q`):
+
+`Accept: application/vnd.margo.manifest.v1.jws+json, application/vnd.margo.manifest.v1+json;q=0.8`
+
+##### Cryptographic Profile (for Signed Manifests)
+
+* A WFM server **MUST** support signing manifests with [algorithms](https://datatracker.ietf.org/doc/html/rfc7518) based on both ECDSA with P-256 (`ES256`) and RSA with 3072+ bit keys (`RS256`)
+* A WFM client **MUST** support verifying signatures for *at least one* of the server's mandatory-to-implement algorithms
+
+##### Key Identification and Trust
+
+A WFM client **MUST NOT** trust the `jwk` (JSON Web Key) or `jku` (JWK Set URL) JWS header parameters. The client **MUST** exclusively use public keys obtained through a secure, out-of-band mechanism. The specific mechanism for discovering and trusting the WFM's public signing keys is defined by the Margo security architecture and is outside the scope of this proposal.
 
 ### Typical Workflow and Client Behavior
 
 1. A **Workload Fleet Management Client** polls the manifest endpoint (`GET /api/v1/devices/{deviceId}/deployments`) provided by the **Workload Fleet Manager** with its cached `ETag`
 2. If it receives a `304 Not Modified` response, the process ends until the next poll cycle
 3. If it receives a `200 OK` response with a new manifest:
-
-    a.  **Security Check**: The client **MUST** perform a version check before proceeding. Let the newly received manifest be `new_manifest` and the locally stored version be `current_manifest_version`.
-        *If the client has no previously stored `current_manifest_version` (e.g., on initial startup or after a state reset), this check is bypassed.
-        *   Otherwise, the client **MUST** verify that `new_manifest.manifestVersion > current_manifest_version`. If this condition is false, the client **MUST** reject the update, discard `new_manifest`, and SHOULD log a security event. The process stops.
-    b.  **Content Fetch**: If the version check passes, the client determines the most efficient way to fetch content and downloads all required `ApplicationDeployment` YAMLs.
-    c.  **Integrity Check**: The client **MUST** validate the digest of all downloaded content *before* proceeding. If any digest is invalid, the client **MUST** abort the update and retain its previous state.
-    d.  **State Reconciliation**: Once all content is successfully fetched and validated, the client reconciles its current state with the desired state.
-    e.  **Cache Update**: Upon successful reconciliation, the client **MUST** persist the `new_manifest` as its new local source of truth. This action replaces the previous manifest, thereby updating the `current_manifest_version` and the cached `ETag` that will be used in the next poll cycle.
+    a.  **Security Check**: The client **MUST** inspect the `Content-Type` header of the response to determine the format of the manifest.
+        - **If the manifest is signed** (`application/vnd.margo.manifest.v1.jws+json`), the client **MUST first** verify the JWS signature. If the signature is invalid, the update **MUST** be aborted. The client then decodes the `payload` to get the State Manifest object.
+        - **If the manifest is unsigned** (`application/vnd.margo.manifest.v1+json`), the client proceeds with the raw JSON object.
+    b.  **Version Check**: The client **MUST** perform a version check before proceeding. Let the newly received manifest be `new_manifest` and the locally stored version be `current_manifest_version`.
+        - If the client has no previously stored `current_manifest_version` (e.g., on initial startup or after a state reset), this check is bypassed.
+        - Otherwise, the client **MUST** verify that `new_manifest.manifestVersion > current_manifest_version`. If this condition is false, the client **MUST** reject the update, discard `new_manifest`, and SHOULD log a security event. The process stops.
+    c.  **Content Fetch**: If the version check passes, the client determines the most efficient way to fetch content and downloads all required `ApplicationDeployment` YAMLs.
+    d.  **Integrity Check**: The client **MUST** validate the digest of all downloaded content *before* proceeding. If any digest is invalid, the client **MUST** abort the update and retain its previous state.
+    e.  **State Reconciliation**: Once all content is successfully fetched and validated, the client reconciles its current state with the desired state.
+    f.  **Cache Update**: Upon successful reconciliation, the client **MUST** persist the `new_manifest` as its new local source of truth. This action replaces the previous manifest, thereby updating the `current_manifest_version` and the cached `ETag` that will be used in the next poll cycle.
     *The client **MUST** durably persist (e.g., non-volatile storage) the last accepted `manifestVersion` and associated `ETag` so that rollback protection remains effective across restarts.*
 
 While the content fetching strategy is an implementation detail, clients SHOULD prefer downloading the bundle on initial sync and MAY choose to download the bundle if a large percentage of deployments have changed. For routine updates involving a small number of changes, fetching individual configurations is the most efficient method.
@@ -215,13 +271,24 @@ sequenceDiagram
     participant WFM as Workload Fleet<br>Manager
 
     loop Poll for updates
-        Client->>+WFM: GET /api/v1/devices/{id}/deployments<br>Header: If-None-Match: "sha256:abc..."
+        Client->>+WFM: GET /api/v1/devices/{id}/deployments<br>Header: If-None-Match: "sha256:abc..."<br>Header: Accept: application/vnd.margo...
 
         alt State has NOT changed
             WFM-->>-Client: 304 Not Modified
         else State HAS changed
-            WFM-->>Client: 200 OK<br>Header: ETag: "sha256:xyz..."<br>Body: New Manifest JSON
+            WFM-->>Client: 200 OK<br>Header: ETag: "sha256:xyz..."<br>Body: New Manifest JSON (signed or unsigned)
             
+            Client->>Client: Check Content-Type of response
+
+            alt Response is signed (JWS)
+              Client->>Client: Verify JWS Signature
+              alt Signature is INVALID
+                Client->>Client: Abort update, log security event
+              else Signature is VALID
+                Client->>Client: Decode payload to get State Manifest
+              end
+            end
+
             Client->>Client: Security Check: new.manifestVersion > current.manifestVersion (if current exists)
             alt Version Check Fails (Potential Rollback Attack)
                 Client->>Client: Abort update, log security event
@@ -250,12 +317,16 @@ sequenceDiagram
     end
 ```
 
+> [!NOTE]
+> To maintain readability, this diagram shows a simplified control flow. The normative text in step 6 (*"Abort update, log security event"*) **MUST** be followed: if signature verification fails, the update process **MUST** be aborted immediately, and no subsequent steps (like the version check) are performed.
+
 ### Security Considerations
 
 This protocol incorporates several mechanisms to ensure a secure state distribution process.
 
 * **Rollback Attack Prevention**: The protocol defends against rollback attacks by combining integrity with ordering. The `ETag` header (a content digest) lets the client detect that the state differs; the per-device, monotonically increasing `manifestVersion` lets it distinguish *newer* from merely *different*. A client **MUST** validate both and reject any manifest whose `manifestVersion` is not strictly greater than the last accepted value.
 * **Data Integrity**: The integrity of all distributed content is verifiable. The manifest provides digests for both the optional bundle and each individual `ApplicationDeployment` file. Clients **MUST** validate these digests after download and before application to protect against data corruption during transit.
+* **Authenticity (Signed Manifests)**: When the signed manifest format is used, the JWS signature provides a strong cryptographic guarantee of the manifest's authenticity and integrity, protecting against Man-in-the-Middle and other network attacks. It ensures the `manifestVersion` and all digests are from a trusted source.
 * **Authentication and Authorization**: This specification intentionally omits authentication and authorization. It is expected that all API endpoints are protected by a robust security framework defined elsewhere in the Margo specification, such as mutual TLS (mTLS) for device identity and OAuth2 for access control.
 
 ## Alternatives considered (optional)

@@ -170,6 +170,16 @@ func (s *DeploymentHandler) DeleteDeployment(w http.ResponseWriter, r *http.Requ
 func (s *DeploymentHandler) GetDeploymentManifest(w http.ResponseWriter, r *http.Request) {
 	deviceId := r.PathValue("deviceId")
 
+	// Check Accept header for supported media types
+	if !validateManifestAcceptHeader(r) {
+		logrus.WithFields(logrus.Fields{
+			"deviceId": deviceId,
+			"accept":   r.Header.Get("Accept"),
+		}).Warn("Client requested unsupported media types")
+		http.Error(w, "Not Acceptable: Server cannot generate a response that matches any of the media types listed in the Accept header", http.StatusNotAcceptable)
+		return
+	}
+
 	manifest, err := s.svc.GetDeploymentManifest(r.Context(), deviceId)
 	if err != nil {
 		switch {
@@ -234,7 +244,7 @@ func (s *DeploymentHandler) GetDeploymentManifest(w http.ResponseWriter, r *http
 	}
 
 	w.Header().Set("ETag", manifestETag)
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/vnd.margo.manifest.v1+json")
 	w.Write(jsonData)
 }
 
@@ -386,5 +396,30 @@ func clientHasETag(header http.Header, currentETag string) bool {
 		}
 	}
 
+	return false
+}
+
+func validateManifestAcceptHeader(r *http.Request) bool {
+	acceptHeader := r.Header.Get("Accept")
+	if acceptHeader == "" {
+		return true // No Accept header means accept anything
+	}
+
+	// Check if any of the supported media types are acceptable
+	supportedTypes := []string{
+		"application/vnd.margo.manifest.v1+json",
+		"*/*",
+		"application/*",
+		// not implemented yet:
+		// "application/vnd.margo.manifest.v1.jws+json",
+	}
+
+	for _, supportedType := range supportedTypes {
+		if strings.Contains(acceptHeader, supportedType) {
+			return true
+		}
+	}
+
+	// No supported media type found
 	return false
 }
