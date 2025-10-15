@@ -199,6 +199,8 @@ The manifest is a JSON object that serves as the source of truth for the device'
     e.  **Cache Update**: Upon successful reconciliation, the client **MUST** persist the `new_manifest` as its new local source of truth. This action replaces the previous manifest, thereby updating the `current_manifest_version` and the cached `ETag` that will be used in the next poll cycle.
     *The client **MUST** durably persist (e.g., non-volatile storage) the last accepted `manifestVersion` and associated `ETag` so that rollback protection remains effective across restarts.*
 
+While the content fetching strategy is an implementation detail, clients SHOULD prefer downloading the bundle on initial sync and MAY choose to download the bundle if a large percentage of deployments have changed. For routine updates involving a small number of changes, fetching individual configurations is the most efficient method.
+
 #### State Reconciliation
 
 The client is responsible for comparing the `new_manifest` to its **previously cached manifest** to determine the necessary actions.
