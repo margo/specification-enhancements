@@ -203,24 +203,18 @@ The manifest file MUST be created as defined by the OCI Image Manifest Specifica
 
 * The Media Type for the manifest MUST be `application/vnd.oci.image.manifest.v1+json`
 * The Artifact Type MUST be `application/vnd.org.margo.config.v1+json`
-* The manifest MUST contain one or more blobs (AKA layers) containing each one of the configurations for the desired state of an application in a GZIP file
+* The manifest MUST contain one or more blob references (AKA layers) containing each one of the configurations for the desired state of an application in a GZIP file
 * The Media Type for the desired state GZIP file layer MUST be `application/vnd.org.margo.manifests.layer.v1+gzip`
 
 It is possible to provide the desired state for multiple applications as separate blobs.
-
-Under certain circumstances, it is possible to embed the content of the blobs in the manifest.
-Saving that way the 2nd HTTP GET request.
-
-This is an option if:
-
-1. The manifest has been pushed with [embedded content][1].
-1. The size of the resulting manifest is acceptable for the OCI registry (typically 4MB).
 
 Manifests with [embedded content][1] provide the blobs both embedded in the [blob `data` property](https://github.com/opencontainers/image-spec/blob/main/descriptor.md#properties) and the referenced blob.
 Therefore, any client not capable of dealing with [embedded content][1] can work with the standard workflow.
 
 If the manifests provide [embedded content][1] and the client supports it, then the [blob request](#blob-request) is not needed.
 Resulting in a single HTTP GET request.
+
+The manifest MAY embed the content of the blobs in the manifest, saving the 2nd HTTP GET request, if the size of the resulting manifest is acceptable for the OCI registry (typically 4MB).
 
 ##### Response payload
 
