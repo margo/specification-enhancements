@@ -181,7 +181,7 @@ It MUST be possible for the device to pull the manifest and blob using the behav
 
 |  |  |  |
 |---|---|---|
-| `GET`/`HEAD` | `<prefix>/manifests/<digest>`| Used to pull the manifest describing the device's desired state|
+| `GET`/`HEAD` | `<prefix>/manifests/<reference>`| Used to pull the manifest describing the device's desired state|
 | `GET`/`HEAD` | `<prefix>/blobs/<digests>`| Used to pull the blob containing the device's desired state|
 
 If an OCI registry is used without an API gateway, then `<prefix>` must be `/v2/<name>`. Where `<name>` is the name assigned to the repository in the OCI registry.
@@ -191,7 +191,9 @@ How `<prefix>` is provided to the device is outside the scope of this proposal, 
 #### Manifest request
 
 The Workload Fleet Manager MUST provide the URL that the device must call to obtain the manifest (this is expected to be done during onboarding).
-The API is expected to behave as defined in the [Open Container Initiative Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md) for the `GET /v2/<name>/manifests/<reference>` endpoint.
+The API is expected to behave as defined in the [Open Container Initiative Distribution Specification](https://github.com/opencontainers/distribution-spec/blob/main/spec.md) for the `GET /v2/<name>/manifests/<reference>` endpoint. 
+
+> Note: For this SUP, the `<reference>` would be "latest". This SUP is a first step, and we are proposing using the "latest" tag for now.
 
 ##### Response
 
