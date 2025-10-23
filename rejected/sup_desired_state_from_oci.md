@@ -348,6 +348,10 @@ We have decided against proposing a notification approach for this first proposa
 
 ## Rejection reason
 
-> If a SUP is rejected, indicate the reason why it was rejected.
+This Specification Update Proposal (SUP) has been rejected by the Margo TWG members because they voted against using OCI to transport the desired state to the device. The following reasons were provided:
+
+* While either proposal would work, we believe delivering desired state from the manifest is a simpler approach that is more resilient against infrastructure or software failures.
+* When you look at the bigger picture of the other interactions between the Device and the WFM that also use the REST API, then keeping with a consistent solution seems the best approach.
+* Our primary reason for not approving/preferring this approach is that without adding some notification containing the digest for what to pull from OCI it has a big security hole, and we further suspect that closing that whole by having the WFM send some notifications (using SSE or other mechanism), we will end up with something quite close to the payload specified in "SUP Desired state from manifest".
 
 [1]: https://github.com/opencontainers/image-spec/blob/main/descriptor.md#embedded-content
