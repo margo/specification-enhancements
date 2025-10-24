@@ -80,7 +80,7 @@ To make individual workload retrievals race-free and cache-friendly, this endpoi
   | :------------- | :----- | :-------- | :---------- |
   | `{deviceId}` | string | Y | The unique identifier of the **Edge Compute Device** making the request |
   | `{deploymentId}` | string | Y | The unique UUID of the `ApplicationDeployment`, corresponding to the [`metadata.annotations.id`](https://specification.margo.org/margo-api-reference/workload-api/desired-state-api/desired-state/#annotations-attributes) field |
-  | `{digest}` | string | Y | Content-addressable digest of the `ApplicationDeployment` YAML file. MUST conform to the [Digest Specification](#digest-specification) and MUST equal the digest computed over the exact sequence of bytes in the HTTP `200 OK` response body (no transformations). If the server cannot produce content whose digest matches this value it MUST return `404 Not Found`. |
+  | `{digest}` | string | Y | Content-addressable digest of the `ApplicationDeployment` YAML file. MUST conform to the [Digest Specification](#digest-specification) and MUST equal the digest computed over the exact sequence of bytes (per [Exact Bytes Rule](#digest-specification)) in the HTTP `200 OK` response body. If the server cannot produce content whose digest matches this value it MUST return `404 Not Found`. |
 
 * **Success Response**:
   * **`200 OK`**: The response body is the raw `ApplicationDeployment` YAML file (`Content-Type: application/yaml`). The content **MUST** match the `{digest}` path segment; the server **MUST** return `404` if it does not have the exact digest referenced.
@@ -89,13 +89,13 @@ To make individual workload retrievals race-free and cache-friendly, this endpoi
 > A 404 Not Found response from this endpoint only indicates that the server does not have this specific, content-addressed version of the deployment. It MUST NOT be interpreted by the client as a signal to delete the workload. The sole source of truth for determining if a workload should be deleted is its absence from the [State Manifest](#manifest-body-structure). Please refer to the [State Reconciliation](#state-reconciliation) section for further details.
 
 > [!NOTE]
-> Servers MAY offer compressed representations of the YAML payload using standard HTTP `Content-Encoding` (e.g., gzip). Clients SHOULD signal their ability to handle compressed content by sending the `Accept-Encoding` header in their request.
+> Servers MAY offer compressed representations of the YAML payload using standard HTTP `Content-Encoding` (e.g., gzip, br). Clients SHOULD signal their ability to handle compressed content by sending the `Accept-Encoding` header in their request. The digest is always computed over the decoded representation (after decompression), per the [Exact Bytes Rule](#digest-specification).
 
 > [!NOTE] Representation
-> Only `application/yaml` is supported for individual `ApplicationDeployment` retrieval. A single canonical wire format ensures the digest uniquely identifies the exact bytes served without introducing canonicalization rules across formats (e.g. JSON vs YAML). Future extensions MAY introduce alternative media types, but each additional representation would require its own stable digest scope.
+> Only `application/yaml` is supported for individual `ApplicationDeployment` retrieval. A single canonical wire format ensures the digest uniquely identifies the exact bytes (per the [Exact Bytes Rule](#digest-specification)) without introducing canonicalization rules across formats (e.g. JSON vs YAML). Future extensions MAY introduce alternative media types, but each additional representation would require its own stable digest scope.
 
 > [!IMPORTANT] Immutability & Caching
-> This endpoint is content-addressable; the YAML is immutable. Servers set `ETag` to the quoted `digest` and SHOULD return `Cache-Control: public, max-age=31536000, immutable`. `If-None-Match` is optional for clients. SRefer to the [ETag section](#etag-header) for details.
+> This endpoint is content-addressable; the YAML is immutable. Servers set `ETag` to the quoted `digest` and SHOULD return `Cache-Control: public, max-age=31536000, immutable`. `If-None-Match` is optional for clients. Servers MAY apply `Content-Encoding` and SHOULD include `Vary: Accept-Encoding` if they do. Refer to the [ETag section](#etag-header) for details.
 
 #### 3. Retrieve a Bundled Workload Configuration
 
@@ -106,13 +106,13 @@ The client fetches a bundle of all `ApplicationDeployment` YAMLs for efficient i
   | Parameter      | Type   | Required? | Description |
   | :------------- | :----- | :-------- | :---------- |
   | `{deviceId}` | string | Y | The unique identifier of the **Edge Compute Device** making the request |
-  | `{digest}` | string | Y | Content-addressable digest of the bundle archive. MUST conform to the [Digest Specification](#digest-specification) and MUST equal the digest computed over the exact sequence of bytes in the HTTP `200 OK` response body (no transformations). If the server cannot produce content whose digest matches this value it MUST return `404 Not Found`. |
+  | `{digest}` | string | Y | Content-addressable digest of the bundle archive. MUST conform to the [Digest Specification](#digest-specification) and MUST equal the digest computed over the exact sequence of bytes (per [Exact Bytes Rule](#digest-specification)) in the HTTP `200 OK` response body. If the server cannot produce content whose digest matches this value it MUST return `404 Not Found`. |
 
 * **Success Response**:
   * **`200 OK`**: The response body is the compressed archive with the `Content-Type` specified in the manifest's `bundle.mediaType`.
 
 > [!IMPORTANT] Immutability & Caching
-> This endpoint is content-addressable; the archive is immutable. Servers set `ETag` to the quoted `digest` and SHOULD return `Cache-Control: public, max-age=31536000, immutable`. `If-None-Match` is optional for clients. Refer to the [ETag section](#etag-header) for details.
+> This endpoint is content-addressable; the archive is immutable. Servers set `ETag` to the quoted `digest` and SHOULD return `Cache-Control: public, max-age=31536000, immutable`. Servers MAY apply `Content-Encoding` and SHOULD include `Vary: Accept-Encoding` if they do. `If-None-Match` is optional for clients. Refer to the [ETag section](#etag-header) for details.
 
 ### Key Concepts and Specifications
 
@@ -127,7 +127,7 @@ The `ETag` is a formal mechanism for cache validation.
 * **Canonicalization Guidance**: The `ETag` value is a digest of the response body. To ensure this `ETag` is stable and that HTTP caching functions correctly, the server **MUST** serialize its JSON response bodies in a deterministic manner. For any given logical state, the exact sequence of bytes in the response body **MUST** be identical across all requests. This specification **RECOMMENDS** the use of the [JSON Canonicalization Scheme (JCS)](https://datatracker.ietf.org/doc/html/rfc8785) to fulfill this requirement.
 * **Caching Rule (Mutable Manifest)**: The manifest endpoint MUST **NOT** be marked immutable. Servers SHOULD omit long-lived `Cache-Control: immutable` directives for the manifest and MAY use short `max-age` values (or none) because freshness is driven by `ETag` polling.
 
-> Content-addressable resources: Any endpoint whose path embeds a digest (e.g. `/api/v1/devices/{deviceId}/bundles/{digest}` or `/api/v1/devices/{deviceId}/deployments/{deploymentId}/{digest}`) serves immutable content. The server **MUST** set `ETag` to the quoted digest and **SHOULD** include `Cache-Control: public, max-age=31536000, immutable`. Servers **MUST NOT** apply HTTP `Content-Encoding` other than `identity` to these responses unless a future extension explicitly redefines the digest scope. This immutability guidance does **NOT** apply to the manifest endpoint, which is intentionally mutable. These ETags are strong validators (no `W/` prefix permitted).
+> Content-addressable resources: Any endpoint whose path embeds a digest (e.g. `/api/v1/devices/{deviceId}/bundles/{digest}` or `/api/v1/devices/{deviceId}/deployments/{deploymentId}/{digest}`) serves immutable content. The server **MUST** set `ETag` to the quoted digest and **SHOULD** include `Cache-Control: public, max-age=31536000, immutable`. Servers **MAY** apply HTTP `Content-Encoding` (e.g., gzip, br) and SHOULD include `Vary: Accept-Encoding` if they do. The digest always refers to the decoded representation (after decompression). This immutability guidance does **NOT** apply to the manifest endpoint, which is intentionally mutable. These ETags are strong validators (no `W/` prefix permitted).
 
 #### Digest Specification
 
@@ -149,7 +149,7 @@ Digests are used to verify the integrity of all fetched content. The formal spec
 * **Unsupported Algorithm**: If a manifest references a digest with an unsupported algorithm, clients **MUST** treat the manifest as invalid and abort processing.
 
 * **Validation**: Before using any fetched content, the client **MUST** calculate its digest and verify that it matches the one provided in the manifest. This step provides a defense-in-depth guarantee against data corruption during transit.
-* **Exact Bytes Rule**: A digest always refers to the cryptographic hash of the exact sequence of bytes served in a successful `200 OK` response body for that resource (no reformatting, whitespace normalization, line-ending conversion, character set transcoding, compression differences, or YAML re-serialization). If `Content-Encoding` (e.g., gzip) is applied, the digest is computed over the decoded representation delivered to the application layer (after HTTP content-coding decompression). Servers and clients **MUST** adhere to this rule to ensure interoperability.
+* **Exact Bytes Rule**: A digest always refers to the cryptographic hash of the exact sequence of bytes served in a successful `200 OK` response body for that resource (no reformatting, whitespace normalization, line-ending conversion, character set transcoding, compression differences, or YAML re-serialization). If `Content-Encoding` (e.g., gzip, br) is applied, the digest is computed over the decoded representation delivered to the application layer (after HTTP content-coding decompression). Servers and clients **MUST** adhere to this rule to ensure interoperability.
 
 #### Manifest Formats and Authenticity
 
@@ -184,11 +184,11 @@ This format is a plain JSON object. While it provides integrity for linked artif
 | `manifestVersion` | number | Y | Monotonically increasing unsigned 64-bit integer in the inclusive range `[1, 2^64-1]`. The WFM **MUST** ensure each new manifest for the same device has a strictly greater value than the previous. The first manifest **MUST** use `1`. Prevents rollback attacks. |
 | `bundle` | object | N | Describes a single archive containing all `ApplicationDeployment` documents. If there are zero deployments (`deployments` array is empty) the property **MUST** be present with the value `null` (it MUST NOT be omitted). |
 | `bundle.mediaType`| string | Y | MUST be `application/vnd.margo.bundle.v1+tar+gzip`; a gzip-compressed tar whose root contains **one or more** `ApplicationDeployment` YAML files. If there are zero deployments then `bundle` **MUST** be `null` (an empty archive MUST NOT be served). The archive MUST contain exactly the set of YAML files referenced by `deployments`. |
-| `bundle.digest` | string | Y | The [digest](#digest-specification) of the bundle archive. MUST equal the digest computed over the exact sequence of bytes in the bundle endpoint's HTTP `200 OK` response body (no transformations). |
+| `bundle.digest` | string | Y | The [digest](#digest-specification) of the bundle archive. MUST equal the digest computed over the exact sequence of bytes (per [Exact Bytes Rule](#digest-specification)) in the bundle endpoint's HTTP `200 OK` response body. |
 | `bundle.url` | string | Y | Content-addressable retrieval endpoint of the form `/api/v1/devices/{deviceId}/bundles/{digest}` where `{digest}` equals `bundle.digest`. |
 | `deployments` | array | Y | A list of all deployment objects for the device |
 | `deployments[].deploymentId`| string | Y | The unique UUID from the `ApplicationDeployment`'s [`metadata.annotations.id`](https://specification.margo.org/margo-api-reference/workload-api/desired-state-api/desired-state/#annotations-attributes) |
-| `deployments[].digest` | string | Y | The [digest](#digest-specification) of the individual `ApplicationDeployment` YAML file. MUST equal the digest computed over the exact sequence of bytes in that deployment endpoint's HTTP `200 OK` response body (no transformations). |
+| `deployments[].digest` | string | Y | The [digest](#digest-specification) of the individual `ApplicationDeployment` YAML file. MUST equal the digest computed over the exact sequence of bytes (per [Exact Bytes Rule](#digest-specification)) in that deployment endpoint's HTTP `200 OK` response body. |
 | `deployments[].url` | string | Y | Content-addressable endpoint of the form `/api/v1/devices/{deviceId}/deployments/{deploymentId}/{digest}`. The `{digest}` **MUST** equal `deployments[].digest`; the referenced resource is immutable. |
 
 > [!NOTE]
