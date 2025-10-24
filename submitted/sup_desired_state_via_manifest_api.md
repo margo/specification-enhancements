@@ -185,10 +185,12 @@ This format is a plain JSON object. While it provides integrity for linked artif
 | `bundle` | object | N | Describes a single archive containing all `ApplicationDeployment` documents. If there are zero deployments (`deployments` array is empty) the property **MUST** be present with the value `null` (it MUST NOT be omitted). |
 | `bundle.mediaType`| string | Y | MUST be `application/vnd.margo.bundle.v1+tar+gzip`; a gzip-compressed tar whose root contains **one or more** `ApplicationDeployment` YAML files. If there are zero deployments then `bundle` **MUST** be `null` (an empty archive MUST NOT be served). The archive MUST contain exactly the set of YAML files referenced by `deployments`. |
 | `bundle.digest` | string | Y | The [digest](#digest-specification) of the bundle archive. MUST equal the digest computed over the exact sequence of bytes (per [Exact Bytes Rule](#digest-specification)) in the bundle endpoint's HTTP `200 OK` response body. |
+| `bundle.sizeBytes` | number | N | Unsigned 64-bit **advisory estimate** of the decoded payload length in bytes for the bundle archive. Provided for bandwidth estimation and update planning. **MUST NOT** be used for integrity; digest verification remains mandatory. |
 | `bundle.url` | string | Y | Content-addressable retrieval endpoint of the form `/api/v1/devices/{deviceId}/bundles/{digest}` where `{digest}` equals `bundle.digest`. |
 | `deployments` | array | Y | A list of all deployment objects for the device |
 | `deployments[].deploymentId`| string | Y | The unique UUID from the `ApplicationDeployment`'s [`metadata.annotations.id`](https://specification.margo.org/margo-api-reference/workload-api/desired-state-api/desired-state/#annotations-attributes) |
 | `deployments[].digest` | string | Y | The [digest](#digest-specification) of the individual `ApplicationDeployment` YAML file. MUST equal the digest computed over the exact sequence of bytes (per [Exact Bytes Rule](#digest-specification)) in that deployment endpoint's HTTP `200 OK` response body. |
+| `deployments[].sizeBytes` | number | N | Unsigned 64-bit **advisory estimate** of the decoded payload length in bytes for the deployment YAML. Provided for planning or progress display. **MUST NOT** be used for integrity; digest verification remains mandatory. |
 | `deployments[].url` | string | Y | Content-addressable endpoint of the form `/api/v1/devices/{deviceId}/deployments/{deploymentId}/{digest}`. The `{digest}` **MUST** equal `deployments[].digest`; the referenced resource is immutable. |
 
 > [!NOTE]
@@ -250,12 +252,12 @@ A WFM client **MUST NOT** trust the `jwk` (JSON Web Key) or `jku` (JWK Set URL) 
         - If the client has no previously stored `current_manifest_version` (e.g., on initial startup or after a state reset), this check is bypassed.
         - Otherwise, the client **MUST** verify that `new_manifest.manifestVersion > current_manifest_version`. If this condition is false, the client **MUST** reject the update, discard `new_manifest`, and SHOULD log a security event. The process stops.
     c.  **Content Fetch**: If the version check passes, the client determines the most efficient way to fetch content and downloads all required `ApplicationDeployment` YAMLs.
-    d.  **Integrity Check**: The client **MUST** validate the digest of all downloaded content *before* proceeding. If any digest is invalid, the client **MUST** abort the update and retain its previous state.
+    d.  **Integrity Check**: The client **MUST** validate the digest of all downloaded content *before* proceeding. If any digest is invalid, the client **MUST** abort the update and retain its previous state. The optional `sizeBytes` fields are advisory only and **MUST NOT** be used for integrity validation.
     e.  **State Reconciliation**: Once all content is successfully fetched and validated, the client reconciles its current state with the desired state.
     f.  **Cache Update**: Upon successful reconciliation, the client **MUST** persist the `new_manifest` as its new local source of truth. This action replaces the previous manifest, thereby updating the `current_manifest_version` and the cached `ETag` that will be used in the next poll cycle.
     *The client **MUST** durably persist (e.g., non-volatile storage) the last accepted `manifestVersion` and associated `ETag` so that rollback protection remains effective across restarts.*
 
-While the content fetching strategy is an implementation detail, clients SHOULD prefer downloading the bundle on initial sync and MAY choose to download the bundle if a large percentage of deployments have changed. For routine updates involving a small number of changes, fetching individual configurations is the most efficient method.
+While the content fetching strategy is an implementation detail, clients SHOULD prefer downloading the bundle on initial sync and MAY choose to download the bundle if a large percentage of deployments have changed. For routine updates involving a small number of changes, fetching individual configurations is the most efficient method. When present, `sizeBytes` values may be used as advisory estimates to guide this choice.
 
 #### State Reconciliation
 
