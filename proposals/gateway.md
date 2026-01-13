@@ -47,12 +47,12 @@ It is not intended to be part of PR1 as it introduces new functionalities. We ex
 
 A Margo Gateway allows a Margo Workload Fleet Manager (WFM) to connect and deploy workloads to non-margo devices. It translates the Margo WFM's interfaces to the non-margo devices' interfaces.
 
-The gateway could be viewed as a special type of compound device. Where a compound device is defined as a device made of several independent sub-devices, e.g, 
+A gateway and a compound device share concerns to manage sub-device and the proposed solution could work for both. We define a compound device as a device made of several independent sub-devices, e.g, 
 
 * a device with two independent CPU (an Arm A core and an Arm M core for example) each with their own OS and memory.
 * a modular or rack based device which can be extended with compute modules.
 
-In terms of deployments, a compound device could have three modes of operation: 
+In terms of deployments, a gateway could have three modes of operation: 
 
 * **autonomous** where the device decide on its own which sub-device to use for the deployments provided by the WFM.
 * **directed** where the WFM dictates the sub-device to use for each deployment.
@@ -67,7 +67,7 @@ A **see-thru** gateway ia gateway that provides visibility on the sub-devices it
 
 In both cases, opaque or see-thru, the gateway is responsible for onboarding and verifying the identity of the sub-devices it manages.
 
-The compound device/gateway interfaces with the WFM with 4 APIs:
+The gateway interfaces with the WFM with 4 APIs:
 
 * when **Onboarding** with the WFM
 * when providing its **Capabilities**
@@ -77,7 +77,7 @@ The compound device/gateway interfaces with the WFM with 4 APIs:
 
 ### Onboarding
 
-The compound device/gateway provides its own identity to the WFM.
+The gateway provides its own identity to the WFM.
 
 No changes needed to the current definition of the onboarding API.
 
@@ -96,7 +96,7 @@ For the WFM to be able to assign deployment to specific sub-devices it must be m
 
 We assign an id to each sub-device to differentiate them. This id should be assigned by the Device Management, but it could be assigned by the gateway.
 
-A new optional array, `subDevices`, is added to the `properties` section to provide the roles and resources of each sub-device. This array is needed only in the case of a compound device. If this array is present then the `properties.roles` and `properties.resources` attributes should be omitted or left empty.
+A new optional array, `subDevices`, is added to the `properties` section to provide the roles and resources of each sub-device. This array is needed only in the case of a gateway. If this array is present then the `properties.roles` and `properties.resources` attributes should be omitted or left empty.
 
 New attribute in `properties` section:
 
@@ -163,7 +163,7 @@ New `deploymentProfile` attribute:
 
 | Attribute	| Type | Required? | Description |
 | :--- | :--- | :--- | :--- |
-| target | string | N | the sub-device id to which the deployment is assigned if compound device. |
+| target | string | N | the sub-device id to which the deployment is assigned if gateway. |
 
 ```yaml
 apiVersion: application.margo.org/v1alpha1
@@ -342,13 +342,13 @@ New attribute:
 
 | Field | Type | Required? | Description |
 | :--- | :--- | :--- | :--- |
-| `deployment[].subDeviceId` | string | N | ID of the sub-device to which this deployment is assigned in case of compound device |
+| `deployment[].subDeviceId` | string | N | ID of the sub-device to which this deployment is assigned in case of gateway |
 
 ### Deployment status
 
 #### Alternative option A: no change
 
-Since the deployment ID is unique for each deployment on a device, no change is required to the defined interface for the compound device/gateway to report the status a  deployment.
+Since the deployment ID is unique for each deployment on a device, no change is required to the defined interface for the gateway to report the status a deployment.
 
 #### Alternative option B - use sub-device id in endpoint
 
