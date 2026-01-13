@@ -20,7 +20,7 @@ We envision three types of gateway service:
 
 ![Types of gateway (svg)](res/gateway/types-of-gateway.drawio.svg)
 
-While the opaque gateway and see-thru gateway are quiet different we believe the changes to the API and artifacts needed to enable them will be similar and propose the manage them in this SUP. If we find a strong divergence we can split the work into two SUP.
+While the opaque gateway and see-thru gateway are quite different we believe the changes to the API and artifacts needed to enable them will be similar and propose to manage them in this SUP. If we find a strong divergence we can split the work into two SUP.
 
 ## Reason for proposal
 
@@ -37,7 +37,7 @@ This SUP is related to the following technical features:
 - https://github.com/margo/specification/issues/99
 - https://github.com/margo/specification/issues/101
 
-It is not intended to be part of PR1 as it introduce new functionalities. We expect that the changes it will introduce will be localized and will not challenge what has already been defined.
+It is not intended to be part of PR1 as it introduces new functionalities. We expect that the changes it will introduce will be localized and will not challenge what has already been defined.
 
 ## Technical proposal
 
