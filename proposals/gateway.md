@@ -119,8 +119,8 @@ Changes to existing attributes:
 
 ```json
 {
-    "apiVersion": "device.margo/v1",
-    "kind": "DeviceCapabilities",
+    "apiVersion": "device.margo.org/v1alpha1",
+    "kind": "DeviceCapabilitiesManifest",
     "properties": {
         "id": "device.c",
         "vendor": "Northstar Industrial devices",
@@ -206,8 +206,8 @@ New attribute:
 
 ```json
 {
-    "apiVersion": "deployment.margo/v1",
-    "kind": "DeploymentStatus",
+    "apiVersion": "deployment.margo.org/v1alpha1",
+    "kind": "DeploymentStatusManifest",
     "subDeviceId": "001",
     "deploymentId": "a3e2f5dc-912e-494f-8395-52cf3769bc06",
     "status": {
@@ -252,15 +252,15 @@ A few alternatives options were explored. The option we selected appeared to be 
 
 **Endpoints**:
 
-* **Manifest**: `GET /api/v1/devices/{deviceId}-{subDeviceId}/deployments`
-* **Individual deployment**: `GET /api/v1/devices/{deviceId}-{subDeviceId}/deployments/{deploymentId}`
-* **Bundle**: `GET /api/v1/devices/{deviceId}-{subDeviceId}/bundles/{bundleDigest}`
+* **Manifest**: `GET /api/v1/clients/{clientId}-{subDeviceId}/deployments`
+* **Individual deployment**: `GET /api/v1/clients/{clientsId}-{subDeviceId}/deployments/{deploymentId}/{digest}`
+* **Bundle**: `GET /api/v1/clients/{clientId}-{subDeviceId}/bundles/{digest}`
 
 e.g.:
 
 ```
-GET /api/v1/devices/device.c-001/deployments
-GET /api/v1/devices/device.c-002/deployments
+GET /api/v1/clients/client.c-001/deployments
+GET /api/v1/clients/client.c-002/deployments
 ```
 
 No change to the request bodies and response bodies of the different API.
@@ -284,7 +284,7 @@ No change to the request bodies and response bodies of the different API.
   "bundle": {
     "mediaType": "application/vnd.margo.bundle.v1+tar+gzip",
     "digest": "sha256:b5c6d7e8f9...",
-    "url": "/api/v1/devices/northstarida.xtapro.k8s.edge/bundles/sha256:b5c6d7e8f9..."
+    "url": "/api/v1/clients/northstarida.xtapro.k8s.edge/bundles/sha256:b5c6d7e8f9..."
   },
   "deployments": [
     {
@@ -292,7 +292,7 @@ No change to the request bodies and response bodies of the different API.
       "applicationId": "com-northstartida-digitron-orchestrator",
       "version": "2.1.1",
       "digest": "sha256:a4e01b2c3d...",
-      "url": "/api/v1/devices/northstarida.xtapro.k8s.edge/deployments/a3e2f5dc-912e-494f-8395-52cf3769bc06"
+      "url": "/api/v1/clients/northstarida.xtapro.k8s.edge/deployments/a3e2f5dc-912e-494f-8395-52cf3769bc06"
     }
   ]
 }
@@ -312,7 +312,7 @@ New attribute:
 | `subDevices[].deployments[].applicationId`| string | Y | An identifier from the associated [`ApplicationDescription`](https://specification.margo.org/margo-api-reference/workload-api/application-package-api/application-description/) for context |
 | `subDevices[].deployments[].version`| string | Y | An identifier from the associated [`ApplicationDescription`](https://specification.margo.org/margo-api-reference/workload-api/application-package-api/application-description/) for context |
 | `subDevices[].deployments[].digest` | string | Y | The [digest](#digest-specification) of the individual `ApplicationDeployment` YAML file |
-| `subDevices[].deployment[].url` | string | Y | |
+| `subDevices[].deployments[].url` | string | Y | |
 
 #### Alternative Option C - add sub-device to deployment info in manifest 
 
@@ -323,7 +323,7 @@ New attribute:
   "bundle": {
     "mediaType": "application/vnd.margo.bundle.v1+tar+gzip",
     "digest": "sha256:b5c6d7e8f9...",
-    "url": "/api/v1/devices/northstarida.xtapro.k8s.edge/bundles/sha256:b5c6d7e8f9..."
+    "url": "/api/v1/clients/northstarida.xtapro.k8s.edge/bundles/sha256:b5c6d7e8f9..."
   },
   "deployments": [
     {
@@ -331,7 +331,7 @@ New attribute:
       "applicationId": "com-northstartida-digitron-orchestrator",
       "version": "2.1.1",
       "digest": "sha256:a4e01b2c3d...",
-      "url": "/api/v1/devices/northstarida.xtapro.k8s.edge/deployments/a3e2f5dc-912e-494f-8395-52cf3769bc06",
+      "url": "/api/v1/clients/northstarida.xtapro.k8s.edge/deployments/a3e2f5dc-912e-494f-8395-52cf3769bc06",
       "subDeviceId": "001"
     }
   ]
@@ -342,7 +342,7 @@ New attribute:
 
 | Field | Type | Required? | Description |
 | :--- | :--- | :--- | :--- |
-| `deployment[].subDeviceId` | string | N | ID of the sub-device to which this deployment is assigned in case of gateway |
+| `deployments[].subDeviceId` | string | N | ID of the sub-device to which this deployment is assigned in case of gateway |
 
 ### Deployment status
 
@@ -352,7 +352,7 @@ Since the deployment ID is unique for each deployment on a device, no change is 
 
 #### Alternative option B - use sub-device id in endpoint
 
-**Endpoint**: `POST /api/v1/device/{deviceId}-{subDeviceId}/deployment/{deploymentId}/status`
+**Endpoint**: `POST /api/v1/clients/{clientId}-{subDeviceId}/deployments/{deploymentId}/status`
 
 While not really necessary, this option makes sense if the endpoints used for the desired state also uses the sub-device id. This allows the WFM to treat each sub-device like they are regular device and no other changes is necessary.
 
