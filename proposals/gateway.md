@@ -90,6 +90,10 @@ No change necessary to the defined API. The gateway will simply reports the sum 
 
 As a consequence, some deployments that may appear as acceptable from the combined capabilities may not work because the resources they require are spread among multiple sub-devices.
 
+*Example:* An opaque gateway has two "standalone device" sub-devices. Each sub-device has an ARM64 processor with 2 cores and 5 GB of memory. The gateway will report capabilities of 4 cores and 10 GB of memory and a role of "Standalone Device". If the WFM wants to deploy an application requiring 2 cores and 6 GB of memory, it will look possible based on the capabilities reported but will fails because the gateway does not have a sub-device with 2 cores and 6 GB of memory available.
+
+*Example:* An opaque gateway has two sub-device. One is the equivalent to "Standalone Cluster" sub-device (supporting helm) and the other one is the equivalent to a "Standalone Device" (supporting compose). The Gateway will report both roles, Standalone Cluster and Standalone Device, in its capability payload. 
+
 #### See-thru gateway
 
 For the WFM to be able to assign deployment to specific sub-devices it must be made aware of all the available sub-devices and their capabilities (including roles to know if they can deploy compose file or helm chart, and resources).
