@@ -104,10 +104,13 @@ New attribute in `properties` section:
 | :--- | :--- | :--- | :--- |
 | subDevices | array | N |  |
 | subDevices[].id | string | Y | Id of the sub-device. Assigned by the Device Management. |
+| subDevices[].vendor | string | Y | Defines the device vendor. |
+| subDevices[].modelNumber | string | Y | Defines the model number of the device. |
+| subDevices[].serialNumber | string | Y | Defines the serial number of the device. |
 | subDevices[].roles | []string | Y | Role(s) of the sub-device. MUST be selected from following: Standalone Cluster, Cluster Leader, or Standalone Device. |
 | subDevices[].resources | Resource | Y | Element that defines the sub-device's resources available to the application deployed on the device. See the Resource Fields section below. |
 
-Changes to existing attributes:
+Changes to existing attributes of the `properties` section:
 
 | Attribute	| Type | Required? | Description |
 | :--- | :--- | :--- | :--- |
@@ -130,6 +133,9 @@ Changes to existing attributes:
         "subDevices": [
             {
                 "id": "001",
+                "vendor": "ACME Devices",
+                "ModelNumber": "11AD01",
+                "SerialNumber": "11AD012026010001",
                 "roles": [
                     "standalone Cluster",
                     "Cluster Leader"
@@ -140,6 +146,9 @@ Changes to existing attributes:
             },
             {
                 "id": "002",
+                "vendor": "ACME Devices",
+                "ModelNumber": "01AD55",
+                "SerialNumber": "01AD5520255200100",
                 "roles": [
                     "standalone device"
                 ],
