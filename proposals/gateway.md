@@ -54,9 +54,9 @@ A gateway and a compound device share concerns to manage sub-device and the prop
 
 In terms of deployments, a gateway could have three modes of operation: 
 
-* **autonomous** where the device decide on its own which sub-device to use for the deployments provided by the WFM.
+* **autonomous** where the gateway decides on its own which sub-devices to use for the deployments provided by the WFM.
 * **directed** where the WFM dictates the sub-device to use for each deployment.
-* **mixed** where the WFM dictates the placement of some deployments and let the device decide where to place the others. 
+* **mixed** where the WFM dictates the placement of some deployments and let the gateway decide the placement of the other deployments. 
 
 An **opaque** gateway is a gateway that does not provide visibility on the sub-devices it manages, it simply provide the sum of the capabilities of the sub-devices to the WFM. It can only support the autonomous mode of operation.
 
@@ -167,6 +167,8 @@ Changes to existing attributes of the `properties` section:
 
 
 ### Desired state
+
+For the **autonomous** operating mode, since the gateway decides where to place the deployments without special guidance by the WFM, there is no need to change to the desired state payload.
 
 For the **directed** and **mixed** operating modes the WFM needs to associate a deployment with a specific sub-device.
 
