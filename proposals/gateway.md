@@ -172,13 +172,13 @@ For the **autonomous** operating mode, since the gateway decides where to place 
 
 For the **directed** and **mixed** operating modes the WFM needs to associate a deployment with a specific sub-device.
 
-We propose to do that by adding a new optional attribute to the `ApplicationDeployment` yaml: `target`.
+We propose to do that by adding a new optional attribute to the `ApplicationDeployment` yaml: `subDeviceId`.
 
 New `deploymentProfile` attribute:
 
 | Attribute	| Type | Required? | Description |
 | :--- | :--- | :--- | :--- |
-| target | string | N | the sub-device id to which the deployment is assigned if gateway. |
+| `subDeviceId` | string | N | the sub-device id to which the deployment is assigned if gateway. |
 
 ```yaml
 apiVersion: application.margo.org/v1alpha1
@@ -189,9 +189,9 @@ metadata:
     applicationId: 
   name: 
   namespace: 
+  subDeviceId:
 spec:
     deploymentProfile:
-        target:
         type: 
         components:
             - name: 
