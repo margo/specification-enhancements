@@ -98,7 +98,7 @@ As a consequence, some deployments that may appear as acceptable from the combin
 
 For the WFM to be able to assign deployment to specific sub-devices it must be made aware of all the available sub-devices and their capabilities (including roles to know if they can deploy compose file or helm chart, and resources).
 
-We assign an id to each sub-device to differentiate them. This id should be assigned by the Device Management, but it could be assigned by the gateway.
+We assign an id to each sub-device to differentiate them. How this id is assigned is outside of the scope of Margo, it could be assigned by the Device Management or by the gateway directly. The only requirement is that this id must unique for a given gateway.
 
 We propose the following script for the reporting of the sub-devices and their capabilities by the gateway to the WFM:
 
