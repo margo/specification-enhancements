@@ -100,71 +100,76 @@ For the WFM to be able to assign deployment to specific sub-devices it must be m
 
 We assign an id to each sub-device to differentiate them. This id should be assigned by the Device Management, but it could be assigned by the gateway.
 
-A new optional array, `subDevices`, is added to the `properties` section to provide the roles and resources of each sub-device. This array is needed only in the case of a gateway. If this array is present then the `properties.roles` and `properties.resources` attributes should be omitted or left empty.
+We propose the following script for the reporting of the sub-devices and their capabilities by the gateway to the WFM:
 
-New attribute in `properties` section:
+1. The gateway reports its own capabilities, indicating it is a gateway by using the new `Gateway` value in the roles attribute.
+   
+   ```json
+   {
+        "apiVersion": "device.margo.org/v1alpha1",
+        "kind": "DeviceCapabilitiesManifest",
+        "properties": {
+            "id": "gateway01",
+            "vendor": "Northstar Industrial devices",
+            "modelNumber": "332ANZE1-N1",
+            "serialNumber": "PF45343-AA",
+            "roles": ["Gateway"],
+        }
+   }
+   ```
 
-| Attribute	| Type | Required? | Description |
-| :--- | :--- | :--- | :--- |
-| subDevices | array | N |  |
-| subDevices[].id | string | Y | Id of the sub-device. Assigned by the Device Management. |
-| subDevices[].vendor | string | Y | Defines the device vendor. |
-| subDevices[].modelNumber | string | Y | Defines the model number of the device. |
-| subDevices[].serialNumber | string | Y | Defines the serial number of the device. |
-| subDevices[].roles | []string | Y | Role(s) of the sub-device. MUST be selected from following: Standalone Cluster, Cluster Leader, or Standalone Device. |
-| subDevices[].resources | Resource | Y | Element that defines the sub-device's resources available to the application deployed on the device. See the Resource Fields section below. |
+   If the gateway has a single role, "Gateway", then the `resources` array of the `Properties` section can be omitted.  
+   If the gateway has additional roles (e.g. Standalone Cluster, Standalone Device, or Cluster Leader) it will add them to the `roles` array and will need to provide the resources available for those roles as well in the `resources` array.
 
-Changes to existing attributes of the `properties` section:
+2. The gateway reports the capabilities of all its sub-devices, one at a time. The `properties.id` attribute provides the id of the sub-device and is built as a path to indicate the hierarchy: `{gateway-device-id}/{sub-device-id}`.
 
-| Attribute	| Type | Required? | Description |
-| :--- | :--- | :--- | :--- |
-| roles | []string | **N** | Element that defines the device role it can provide to the Margo environment. MUST be one of the following: Standalone Cluster, Cluster Leader, or Standalone Device. **Required if `properties.subDevices` is not present, otherwise it should be ignored if present.** |
-| resources | []Resource | **N** | Element that defines the device's resources available to the application deployed on the device. See the Resource Fields section below. **Required if `properties.subDevices` is not present, otherwise it should be ignored if present.** | 
+   ```json
+   {
+       "apiVersion": "device.margo.org/v1alpha1",
+       "kind": "DeviceCapabilitiesManifest",
+       "properties": {
+            "id": "gateway01/dev01",
+            "vendor": "ACME Devices",
+            "ModelNumber": "11AD01",
+            "SerialNumber": "11AD012026010001",
+            "roles": [
+                "Standalone Device"
+            ],
+            "resources": {
+                ...
+            }
+       }
+   }
+   ```
 
-> [!NOTE]
-> In a separate SUP we should explore the idea of replacing the `roles` attribute with a `supportedDeployments` attribute that would list the types of deployment supported by the device, i.e., `compose` and `helm.v3`.
+The request body structure does not change, but some small changes are needed for some of the `Properties` attributes:
+
+| Field | Type | Required? | Description |
+| --- | --- | :---: | --- | 
+| id | string | Y | **Unique deviceID assigned to the device via the Device Owner. In case of a device behind a gateway, it takes the form of a path with the id of the parent gateway and the id of the device, i.e., "{gateway-device-id}/{sub-device-id}".** |
+| vendor | string | Y | Defines the device vendor. |
+| modelNumber | string | Y | Defines the model number of the device. |
+| serialNumber | string | Y | Defines the serial number of the device. |
+| roles | []string | Y | **Element that defines the device role it can provide to the Margo environment. MUST be one of the following: Standalone Cluster, Cluster Leader, Standalone Device, or Gateway** |
+| resources | []Resource | **N** | **Element that defines the device's resources available to the application deployed on the device. See the Resource Fields section below.<br> The element is required if the device has any of the following roles: Standalone Cluster, Cluster Leader, Standalone Device** |
+
+To enable the gateway to inform the WFM that a aub-device is not managed by the gateway we propose to add the DELETE method to the endpoint (keeping the same route).
+
+```
+DELETE /api/v1/clients/{clientId}/capabilities
+```
+
+The minimum payload required is 
 
 ```json
 {
     "apiVersion": "device.margo.org/v1alpha1",
     "kind": "DeviceCapabilitiesManifest",
     "properties": {
-        "id": "device.c",
-        "vendor": "Northstar Industrial devices",
-        "modelNumber": "332ANZE1-N1",
-        "serialNumber": "PF45343-AA",
-        "roles": [],
-        "subDevices": [
-            {
-                "id": "001",
-                "vendor": "ACME Devices",
-                "ModelNumber": "11AD01",
-                "SerialNumber": "11AD012026010001",
-                "roles": [
-                    "standalone Cluster",
-                    "Cluster Leader"
-                ],
-                "properties": {
-                  ...
-                }
-            },
-            {
-                "id": "002",
-                "vendor": "ACME Devices",
-                "ModelNumber": "01AD55",
-                "SerialNumber": "01AD5520255200100",
-                "roles": [
-                    "standalone device"
-                ],
-                "properties": {
-                  ...
-                }            
-            } 
-        ]
+        "id": "{gateway-device-id/sub-device-id}"
     }
 }
 ```
-
 
 ### Desired state
 
@@ -223,7 +228,7 @@ New attribute:
 {
     "apiVersion": "deployment.margo.org/v1alpha1",
     "kind": "DeploymentStatusManifest",
-    "subDeviceId": "001",
+    "subDeviceId": "gateway01/subdevice01",
     "deploymentId": "a3e2f5dc-912e-494f-8395-52cf3769bc06",
     "status": {
         "state": "pending",
@@ -260,6 +265,75 @@ New attribute:
 > Complete as part of Phase 3: SUP Technical Development
 
 A few alternatives options were explored. The option we selected appeared to be the most elegant to us.
+
+### Capabilities
+
+#### Alternative Option A - add array of sub-devices
+
+A new optional array, `subDevices`, is added to the `properties` section to provide the roles and resources of each sub-device. This array is needed only in the case of a gateway. If this array is present then the `properties.roles` and `properties.resources` attributes should be omitted or left empty.
+
+New attribute in `properties` section:
+
+| Attribute	| Type | Required? | Description |
+| :--- | :--- | :--- | :--- |
+| subDevices | array | N |  |
+| subDevices[].id | string | Y | Id of the sub-device. Assigned by the Device Management. |
+| subDevices[].vendor | string | Y | Defines the device vendor. |
+| subDevices[].modelNumber | string | Y | Defines the model number of the device. |
+| subDevices[].serialNumber | string | Y | Defines the serial number of the device. |
+| subDevices[].roles | []string | Y | Role(s) of the sub-device. MUST be selected from following: Standalone Cluster, Cluster Leader, or Standalone Device. |
+| subDevices[].resources | Resource | Y | Element that defines the sub-device's resources available to the application deployed on the device. See the Resource Fields section below. |
+
+Changes to existing attributes of the `properties` section:
+
+| Attribute	| Type | Required? | Description |
+| :--- | :--- | :--- | :--- |
+| roles | []string | **N** | Element that defines the device role it can provide to the Margo environment. MUST be one of the following: Standalone Cluster, Cluster Leader, or Standalone Device. **Required if `properties.subDevices` is not present, otherwise it should be ignored if present.** |
+| resources | []Resource | **N** | Element that defines the device's resources available to the application deployed on the device. See the Resource Fields section below. **Required if `properties.subDevices` is not present, otherwise it should be ignored if present.** | 
+
+> [!NOTE]
+> In a separate SUP we should explore the idea of replacing the `roles` attribute with a `supportedDeployments` attribute that would list the types of deployment supported by the device, i.e., `compose` and `helm.v3`.
+
+```json
+{
+    "apiVersion": "device.margo.org/v1alpha1",
+    "kind": "DeviceCapabilitiesManifest",
+    "properties": {
+        "id": "device.c",
+        "vendor": "Northstar Industrial devices",
+        "modelNumber": "332ANZE1-N1",
+        "serialNumber": "PF45343-AA",
+        "roles": [],
+        "subDevices": [
+            {
+                "id": "001",
+                "vendor": "ACME Devices",
+                "ModelNumber": "11AD01",
+                "SerialNumber": "11AD012026010001",
+                "roles": [
+                    "standalone Cluster",
+                    "Cluster Leader"
+                ],
+                "resources": {
+                  ...
+                }
+            },
+            {
+                "id": "002",
+                "vendor": "ACME Devices",
+                "ModelNumber": "01AD55",
+                "SerialNumber": "01AD5520255200100",
+                "roles": [
+                    "standalone device"
+                ],
+                "resources": {
+                  ...
+                }            
+            } 
+        ]
+    }
+}
+```
 
 ### Desired state
 
