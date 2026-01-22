@@ -258,6 +258,14 @@ New attribute:
 }
 ```
 
+We propose to define the following two error codes/messages for the `status` attribute to handle cases when the deployment fails because the sub-device is not available:
+
+| Use case | Error code | Error message |
+| --- | --- | --- |
+| Sub-device ID is not known by the gateway | 101 | Unknown sub-device ID | 
+| Sub-device is not reachable by the gateway | 102 | Sub-device unreachable |
+
+
 ## Alternatives considered (optional)
 
 > List any alternative solutions considered while working on the SUP and the reason for not choosing them. If the SUP owner knows that there is a risk of a competing SUP, this section can be used to make their case ahead of any potential votes on why their solution is better.
