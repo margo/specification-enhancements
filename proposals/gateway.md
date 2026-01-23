@@ -32,10 +32,9 @@ These enhancements may also prepare the way for supporting constrained devices.
 
 ## Requirements alignment acknowledgement
 
-This SUP is related to the following technical features:
+This SUP is related to the following technical feature:
 
-- https://github.com/margo/specification/issues/99
-- https://github.com/margo/specification/issues/101
+- https://github.com/margo/specification/issues/137
 
 It is not intended to be part of PR1 as it introduces new functionalities. We expect that the changes it will introduce will be localized and will not challenge what has already been defined.
 
