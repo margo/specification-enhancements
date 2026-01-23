@@ -98,11 +98,16 @@ As a consequence, some deployments that may appear as acceptable from the combin
 
 For the WFM to be able to assign deployment to specific sub-devices it must be made aware of all the available sub-devices and their capabilities (including roles to know if they can deploy compose file or helm chart, and resources).
 
-We assign an id to each sub-device to differentiate them. How this id is assigned is outside of the scope of Margo, it could be assigned by the Device Management or by the gateway directly. The only requirement is that this id must unique for a given gateway.
+We assign an id to each sub-device to differentiate them. How this id is assigned is outside of the scope of Margo, it could be assigned by the Device Management or by the gateway directly. The only requirements are that this id must be unique for a given client and be URL compatible.
 
 We propose the following script for the reporting of the sub-devices and their capabilities by the gateway to the WFM:
 
 1. The gateway reports its own capabilities, indicating it is a gateway by using the new `Gateway` value in the roles attribute.
+
+    ```
+    POST /api/v1/clients/{clientId}/capabilities/
+    PUT /api/v1/clients/{clientId}/capabilities/
+    ```
    
    ```json
    {
@@ -113,15 +118,23 @@ We propose the following script for the reporting of the sub-devices and their c
             "vendor": "Northstar Industrial devices",
             "modelNumber": "332ANZE1-N1",
             "serialNumber": "PF45343-AA",
-            "roles": ["Gateway"],
+            "roles": ["Gateway"]
         }
    }
    ```
 
-   If the gateway has a single role, "Gateway", then the `resources` array of the `Properties` section can be omitted.  
+   If the gateway has a single role, "Gateway", then the `resources` array of the `properties` section can be omitted.  
    If the gateway has additional roles (e.g. Standalone Cluster, Standalone Device, or Cluster Leader) it will add them to the `roles` array and will need to provide the resources available for those roles as well in the `resources` array.
 
-2. The gateway reports the capabilities of all its sub-devices, one at a time. The `properties.id` attribute provides the id of the sub-device and is built as a path to indicate the hierarchy: `{gateway-device-id}/{sub-device-id}`.
+2. The gateway reports the capabilities of all its sub-devices, one at a time.
+
+   The sub-device id is built as a path to indicate the hierarchy: `{gateway-device-id}/{sub-device-id}`. It is appended to the endpoint URL to indicate that the capability being reported is for a sub-device managed by the gateway. It is also included in the `properties.id` attribute of the request body.
+   The `gateway-device-id` must be unique for a given `clientId`, and the `sub-device-id` must be unique for a given `gateway-device-id`. It must be URL compatible.
+
+   ```
+   POST /api/v1/clients/{clientId}/capabilities/{gateway-device-id}/{sub-device-id}
+   PUT /api/v1/clients/{clientId}/capabilities/{gateway-device-id}/{sub-device-id}
+   ```
 
    ```json
    {
@@ -130,8 +143,8 @@ We propose the following script for the reporting of the sub-devices and their c
        "properties": {
             "id": "gateway01/dev01",
             "vendor": "ACME Devices",
-            "ModelNumber": "11AD01",
-            "SerialNumber": "11AD012026010001",
+            "modelNumber": "11AD01",
+            "serialNumber": "11AD012026010001",
             "roles": [
                 "Standalone Device"
             ],
@@ -142,34 +155,23 @@ We propose the following script for the reporting of the sub-devices and their c
    }
    ```
 
-The request body structure does not change, but some small changes are needed for some of the `Properties` attributes:
+3. To remove a sub-device from the WFM, the gateway will use the DELETE method on the same endpoint.
+
+   ```
+   DELETE /api/v1/clients/{clientId}/capabilities/{gateway-device-id}/{sub-device-id}
+   ```
+
+The request body structure for the PUT/POST methods does not change, but some small changes are needed for some of the `Properties` attributes:
 
 | Field | Type | Required? | Description |
 | --- | --- | :---: | --- | 
-| id | string | Y | **Unique deviceID assigned to the device via the Device Owner. In case of a device behind a gateway, it takes the form of a path with the id of the parent gateway and the id of the device, i.e., "{gateway-device-id}/{sub-device-id}".** |
+| id | string | Y | **Unique deviceID assigned to the device via the Device Owner. In case of a device behind a gateway, it takes the form of a path with the id of the parent gateway and the id of the device, i.e., "{gateway-device-id}/{sub-device-id}". It must be URL compatible. The {gateway-device-id} must be unique for a given {clientId}, and the {sub-device-id} must be unique for a given {gateway-device-id}.** |
 | vendor | string | Y | Defines the device vendor. |
 | modelNumber | string | Y | Defines the model number of the device. |
 | serialNumber | string | Y | Defines the serial number of the device. |
 | roles | []string | Y | **Element that defines the device role it can provide to the Margo environment. MUST be one of the following: Standalone Cluster, Cluster Leader, Standalone Device, or Gateway** |
 | resources | []Resource | **N** | **Element that defines the device's resources available to the application deployed on the device. See the Resource Fields section below.<br> The element is required if the device has any of the following roles: Standalone Cluster, Cluster Leader, Standalone Device** |
 
-To enable the gateway to inform the WFM that a aub-device is not managed by the gateway we propose to add the DELETE method to the endpoint (keeping the same route).
-
-```
-DELETE /api/v1/clients/{clientId}/capabilities
-```
-
-The minimum payload required is 
-
-```json
-{
-    "apiVersion": "device.margo.org/v1alpha1",
-    "kind": "DeviceCapabilitiesManifest",
-    "properties": {
-        "id": "{gateway-device-id/sub-device-id}"
-    }
-}
-```
 
 ### Desired state
 
@@ -177,7 +179,9 @@ For the **autonomous** operating mode, since the gateway decides where to place 
 
 For the **directed** and **mixed** operating modes the WFM needs to associate a deployment with a specific sub-device.
 
-We propose to do that by adding a new optional attribute to the `ApplicationDeployment` yaml: `subDeviceId`.
+We propose to do that by adding a new optional attribute to the `ApplicationDeployment` yaml: `subDeviceId`. This attribute will contain the id of the sub-device to which the deployment is assigned (format `{gateway-device-id}/{sub-device-id}`).
+
+If the gateway itself is capable of hosting deployments, then the `subDeviceId` attribute will contain just the gateway id for the deployments targeted for the gateway.
 
 New `deploymentProfile` attribute:
 
