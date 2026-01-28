@@ -95,21 +95,34 @@ As a consequence, some deployments that may appear as acceptable from the combin
 
 #### See-thru gateway
 
-For the WFM to be able to assign deployment to specific sub-devices it must be made aware of all the available sub-devices and their capabilities (including roles to know if they can deploy compose file or helm chart, and resources).
+For the WFM to be able to assign deployment to specific sub-devices (or child devices) it must be made aware of all the available sub-devices and their capabilities (including roles to know if they can deploy compose file or helm chart, and resources).
 
-We assign an id to each sub-device to differentiate them. How this id is assigned is outside of the scope of Margo, it could be assigned by the Device Management or by the gateway directly. The only requirements are that this id must be unique for a given client and be URL compatible.
+We assign an id to each child device to differentiate them. How this id is assigned is outside of the scope of Margo, it could be assigned by the Device Management or by the gateway directly. The only requirements are that this id must be unique for a given gateway and be URL compatible.
+
+To allow for a client to report the capabilities (add) of multiple devices, parents and children, and remove devices from the client we propose to modify the endpoint to include the top-level device id as a mandatory path parameter and children device ids as optional path parameters. 
+
+```
+POST /api/v1/clients/{clientId}/capabilities/{device-id}[/{device-id}[/{device-id}...]]
+PUT /api/v1/clients/{clientId}/capabilities/{device-id}[/{device-id}[/{device-id}...]]
+DELETE /api/v1/clients/{clientId}/capabilities/{device-id}[/{device-id}[/{device-id}...]]
+```
+
+The top-level `device-id` must be unique for a given `clientId` and must be URL compatible and be URL compatible.  
+The children `device-id` must be unique for a given parent `device-id` and they must be URL compatible.
+
+Note: using multiple device ids in the endpoint does not register multiple devices in a single request, but indicates a hierarchy of devices, with a parent/child relationship.
 
 We propose the following script for the reporting of the sub-devices and their capabilities by the gateway to the WFM:
 
 1. The gateway reports its own capabilities, indicating it is a gateway by using the new `Gateway` value in the roles attribute.
 
     ```
-    POST /api/v1/clients/{clientId}/capabilities/
-    PUT /api/v1/clients/{clientId}/capabilities/
+    POST /api/v1/clients/{clientId}/capabilities/{device-id}
+    PUT /api/v1/clients/{clientId}/capabilities/{device-id}
     ```
-   
-   ```json
-   {
+
+    ```json
+    {
         "apiVersion": "device.margo.org/v1alpha1",
         "kind": "DeviceCapabilitiesManifest",
         "properties": {
@@ -119,52 +132,51 @@ We propose the following script for the reporting of the sub-devices and their c
             "serialNumber": "PF45343-AA",
             "roles": ["Gateway"]
         }
-   }
-   ```
+    }
+    ```
 
-   If the gateway has a single role, "Gateway", then the `resources` array of the `properties` section can be omitted.  
-   If the gateway has additional roles (e.g. Standalone Cluster, Standalone Device, or Cluster Leader) it will add them to the `roles` array and will need to provide the resources available for those roles as well in the `resources` array.
+    If the gateway has a single role, "Gateway", then the `resources` array of the `properties` section can be omitted.  
+    If the gateway has additional roles (e.g. Standalone Cluster, Standalone Device, or Cluster Leader) it will add them to the `roles` array and will need to provide the resources available for those roles as well in the `resources` array.
 
 2. The gateway reports the capabilities of all its sub-devices, one at a time.
 
-   The sub-device id is built as a path to indicate the hierarchy: `{gateway-device-id}/{sub-device-id}`. It is appended to the endpoint URL to indicate that the capability being reported is for a sub-device managed by the gateway. It is also included in the `properties.id` attribute of the request body.
-   The `gateway-device-id` must be unique for a given `clientId`, and the `sub-device-id` must be unique for a given `gateway-device-id`. It must be URL compatible.
+    The sub-device `device-id` is appended to the endpoint URL to indicate that the capability being reported is for a sub-device managed by the gateway. It is also included in the `properties.id` attribute of the request body.
+    
+    ```
+    POST /api/v1/clients/{clientId}/capabilities/{device-id}/{device-id}
+    PUT /api/v1/clients/{clientId}/capabilities/{device-id}/{device-id}
+    ```
 
-   ```
-   POST /api/v1/clients/{clientId}/capabilities/{gateway-device-id}/{sub-device-id}
-   PUT /api/v1/clients/{clientId}/capabilities/{gateway-device-id}/{sub-device-id}
-   ```
-
-   ```json
-   {
-       "apiVersion": "device.margo.org/v1alpha1",
-       "kind": "DeviceCapabilitiesManifest",
-       "properties": {
-            "id": "gateway01/dev01",
-            "vendor": "ACME Devices",
-            "modelNumber": "11AD01",
-            "serialNumber": "11AD012026010001",
-            "roles": [
-                "Standalone Device"
-            ],
-            "resources": {
-                ...
-            }
-       }
-   }
-   ```
+    ```json
+    {
+        "apiVersion": "device.margo.org/v1alpha1",
+        "kind": "DeviceCapabilitiesManifest",
+        "properties": {
+              "id": "gateway01/dev01",
+              "vendor": "ACME Devices",
+              "modelNumber": "11AD01",
+              "serialNumber": "11AD012026010001",
+              "roles": [
+                  "Standalone Device"
+              ],
+              "resources": {
+                  ...
+              }
+        }
+    }
+    ```
 
 3. To remove a sub-device from the WFM, the gateway will use the DELETE method on the same endpoint.
 
-   ```
-   DELETE /api/v1/clients/{clientId}/capabilities/{gateway-device-id}/{sub-device-id}
-   ```
+    ```
+    DELETE /api/v1/clients/{clientId}/capabilities/{device-id}/{device-id}
+    ```
 
 The request body structure for the PUT/POST methods does not change, but some small changes are needed for some of the `Properties` attributes:
 
 | Field | Type | Required? | Description |
 | --- | --- | :---: | --- | 
-| id | string | Y | **Unique deviceID assigned to the device via the Device Owner. In case of a device behind a gateway, it takes the form of a path with the id of the parent gateway and the id of the device, i.e., "{gateway-device-id}/{sub-device-id}". It must be URL compatible. The {gateway-device-id} must be unique for a given {clientId}, and the {sub-device-id} must be unique for a given {gateway-device-id}.** |
+| id | string | Y | **Unique deviceID assigned to the device via the Device Owner. In case of a device behind a gateway, it takes the form of a path with the id of the parent gateway and the id of the child device, i.e., "{device-id}/{device-id}". It must be URL compatible. The top-level {device-id} must be unique for a given {clientId}, and the children {device-id} must be unique for a given parent {device-id}.** |
 | vendor | string | Y | Defines the device vendor. |
 | modelNumber | string | Y | Defines the model number of the device. |
 | serialNumber | string | Y | Defines the serial number of the device. |
@@ -174,19 +186,17 @@ The request body structure for the PUT/POST methods does not change, but some sm
 
 ### Desired state
 
-For the **autonomous** operating mode, since the gateway decides where to place the deployments without special guidance by the WFM, there is no need to change to the desired state payload.
+To allow the WFM to assign deployments to specific devices or sub-devices, we propose to augment the desired state payload to include the device id for each deployment. We propose to add `deviceId` as a mandatory attribute to the `metadata` section of the `ApplicationDeployment` yaml. This attribute will contain the id of the device, with hierarchy if applicable, to which the deployment is assigned (format `{device-id}[/{device-id}[/...]]`).
 
-For the **directed** and **mixed** operating modes the WFM needs to associate a deployment with a specific sub-device.
+If the gateway itself is capable of hosting deployments, then the `deviceId` attribute will contain just the gateway id for the deployments targeted for the gateway.
 
-We propose to do that by adding a new optional attribute to the `ApplicationDeployment` yaml: `subDeviceId`. This attribute will contain the id of the sub-device to which the deployment is assigned (format `{gateway-device-id}/{sub-device-id}`).
+If the gateway is capable of autonomously placing deployments on its sub-devices (autonomous mode), the WFM can request the gateway to do so by using `*` for the last child device id (e.g. `gateway01/*`) in the `deviceId` attribute. The `*` value is only valid for the last device id in the hierarchy.
 
-If the gateway itself is capable of hosting deployments, then the `subDeviceId` attribute will contain just the gateway id for the deployments targeted for the gateway.
-
-New `deploymentProfile` attribute:
+New `metadata` attribute:
 
 | Attribute	| Type | Required? | Description |
 | :--- | :--- | :--- | :--- |
-| `subDeviceId` | string | N | the sub-device id to which the deployment is assigned if gateway. |
+| `deviceId` | string | Y | the device id to which the deployment is assigned. To reference a sub-device the format is `{device-id}[/{device-id}[/...]]`. To request the gateway to choose the sub-device, use `*` for the last device id in the hierarchy (i.e. `{device-id}/[{device-id}/.../]*`). |
 
 ```yaml
 apiVersion: application.margo.org/v1alpha1
@@ -197,7 +207,7 @@ metadata:
     applicationId: 
   name: 
   namespace: 
-  subDeviceId:
+  deviceId:
 spec:
     deploymentProfile:
         type: 
@@ -217,57 +227,107 @@ The assumption is that the gateway will need to convert the content of the `Appl
 
 ### Deployment Status
 
-We propose to add a new optional attribute to the deployment status API request body: `subDeviceId`.
+#### deviceId attribute
+
+We propose to add a new attribute to the deployment status API request body: `deviceId`.
 
 While not necessary to report the status of a deployment since each deployment has its own unique ID, it allows for a see-thru gateway in autonomous or mixed mode to inform about the sub-device it has selected for the deployment. 
+
+If the gateway was requested to deploy on itself, then the `deviceId` attribute will contain just the id of the gateway.
+
+If the gateway was requested to autonomously place the deployment on a sub-device (using `*` in the `deviceId` attribute of the desired state), then the `deviceId` attribute contains the id of the sub-device selected by the gateway for the deployment. If the gateway could not place the deployment because no sub-device was available, then the `deviceId` attribute matches the one in the desired state (`{device-id}[/...]/*`). If the gateway decides to move te deployment to another sub-device later, it will send a new deployment status report with the new sub-device id.
 
 New attribute: 
 
 | Fields | Type | Required? | Description |
 | :--- | :--- | :--- | :--- |
-| `subDeviceId` | string | N | sub-device hosting the deployment |
+| `deviceId` | string | Y | Device hosting the deployment. Includes the full device hierarchy if applicable. |
+
+#### Error codes/messages for sub-device not available
+
+We propose to define two error codes/messages for the `status` attribute to handle cases when the deployment fails because the sub-device is not available. 
+
+| Use case | Error code | Error message |
+| --- | --- | --- |
+| Child device ID is not known by the gateway | 101 | Unknown child device ID | 
+| Child device is not reachable by the gateway | 102 | Child device unreachable |
+
+To avoid error number collision we propose to enhance the error structure with a `namespace` attribute. 
+
+* When the error is generated by the gateway, the namespace is set to the device id of the gateway (with its full hierarchy if applicable). 
+* When the error is not generated by the gateway, 
+    * the namespace for the `status.error` attribute is set to the device id of the sub-device (with its full hierarchy) as used in the `deviceId` attribute.
+    * the namespace for the `components.error` attribute is set to the component name as used in `components[].name` for that component.
+
+#### Examples
 
 ```json
 {
     "apiVersion": "deployment.margo.org/v1alpha1",
     "kind": "DeploymentStatusManifest",
-    "subDeviceId": "gateway01/subdevice01",
+    "deviceId": "gateway01/subdevice01",
     "deploymentId": "a3e2f5dc-912e-494f-8395-52cf3769bc06",
     "status": {
-        "state": "pending",
+        "state": "failed",
         "error": {
-            "code": "",
-            "message": ""
+            "code": "102",
+            "namespace": "gateway01",
+            "message": "Child device unreachable"
         }
     },
     "components": [
         {
             "name": "digitron-orchestrator",
-            "state": "pending",
+            "state": "failed",
             "error": {
-                "code":"",
-                "message":""
+                "code":"102",
+                "namespace":"gateway01",
+                "message":"Child device unreachable"
             }
         },
         {
             "name": "database-services",
-            "state": "pending",
+            "state": "failed",
             "error": {
-                "code": "",
-                "message ": ""
+                "code": "102",
+                "namespace":"gateway01",
+                "message":"Child device unreachable"
             }
         }
     ]
 }
 ```
-
-We propose to define the following two error codes/messages for the `status` attribute to handle cases when the deployment fails because the sub-device is not available:
-
-| Use case | Error code | Error message |
-| --- | --- | --- |
-| Sub-device ID is not known by the gateway | 101 | Unknown sub-device ID | 
-| Sub-device is not reachable by the gateway | 102 | Sub-device unreachable |
-
+```json
+{
+    "apiVersion": "deployment.margo.org/v1alpha1",
+    "kind": "DeploymentStatusManifest",
+    "deviceId": "gateway01/subdevice01",
+    "deploymentId": "a3e2f5dc-912e-494f-8395-52cf3769bc06",
+    "status": {
+        "state": "failed",
+        "error": {
+            "code": "1",
+            "namespace": "gateway01/subdevice01",
+            "message": "Not enough resources"
+        }
+    },
+    "components": [
+        {
+            "name": "digitron-orchestrator",
+            "state": "pending"
+        },
+        {
+            "name": "database-services",
+            "state": "failed",
+            "error": {
+                "code": "1",
+                "namespace":"database-services",
+                "message":"Not enough resources"
+            }
+        }
+    ]
+}
+```
 
 ## Alternatives considered (optional)
 
