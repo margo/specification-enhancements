@@ -55,3 +55,4 @@ Phase 4 is a PR to merge the full proposal to the `/submitted` folder. During th
 |Owner|Description|Stage|LINK|
 |-----|-----------|-----|----|
 |@julienduquesnay-se | Device gateway | P3 | [Draft PR](https://github.com/margo/specification-enhancements/pull/36) |
+|@matlec | Margo Identity and Authorization Framework | P3 | [Draft PR](https://github.com/margo/specification-enhancements/pull/38)
