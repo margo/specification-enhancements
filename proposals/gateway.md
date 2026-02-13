@@ -343,7 +343,7 @@ New attribute in `error` structure:
 
 ### Multi-steps examples
 
-#### Example A - see-thru gateway wih directed deployments
+#### Example A - see-thru gateway with directed deployments
 
 For this example we will use a system composed of:
 
