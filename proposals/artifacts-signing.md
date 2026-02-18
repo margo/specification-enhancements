@@ -73,6 +73,8 @@ artifacts that are strong candidates for digital signatures:
 - Application packages
 - Desired state
 
+**Philip Comment**: I think it makes sense to require the application package, Helm charts, and container images to be signed. I would also suggest the proposal updates the spec to indicate the Compose tar files should be signed with Sigstore/Cosign as well, instead of GPG. I don't know that the desired state needs to be signed because this is communicated directly through the API. There is already some security in place for how the API works, so I don't know that signing the desired state adds anything. We could potentially indicate that the device can be configured to allow unsigned artifacts, but it seems like the default would be to require them all to be signed, and then the customer could choose to change this to just a warning or something if they are not signed, if the device allows it.
+
 ## Requirements for the Signing Solution
 
 The proposed signing solution must address the following critical requirements:
@@ -116,6 +118,8 @@ personas within the Margo ecosystem.
     - Consumers may obtain applications from third-party sources rather than
       directly from authors.
 The proposed solution must gracefully accommodate this diversity.
+
+**Philip Comment**: One of the things we need to be careful of here is having CAs/trust bundles that are too generic. For example, if someone just has a Digicert CA that could potentially be used to verify a lot of different things. It might not be possible to make this a requirement, but we should at least make it a recommended practice to have specific trust chains used for this purpose that don't introduce security risk for CAs being used to verify more than what is intended.
 
 ### Support for Air-Gapped Scenarios
 
@@ -190,3 +194,5 @@ keys need to be made somehow reachable for verification.
 
 If the signer uses self-signed certificates, then a consumer needs to obtain
 the corresponding public keys and explicitly trust them.
+
+**Philip Comment**: We have an opinion on this that we'd rather any CA/trust bundles be added directly to the device by the device vendor or customer instead of those coming through the workload fleet manager. We can discuss this some and see. Part of this is a trust issue; if the workload fleet manager is providing the trust bundles, they could potentially also be recreating the artifacts and signing them with their own keys. 
