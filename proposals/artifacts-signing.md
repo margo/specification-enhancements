@@ -174,25 +174,214 @@ In the end Cosign is a mature and secure approach to software artifacts signing.
 Due to its architecture, Cosign is very open to different setups that can help
 addressing the above mentioned requirements.
 
+Openness has two facets:
+It offers many options but forces decisions.
+Additionally, it increases potential incompatibilities.
+
+It is out of the scope of Margo mandating an approach on signing (at least
+within the scope of what is supported by Cosign).
+That way it's a relationship between artifact creators and consumers in which
+Margo remains unopinionated.
+
+Cosign's openness, unconstrained by Margo requirements, fosters a lively
+and potentially heterogeneous ecosystem.
+
 #### Signing
 
 Cosign supports the use of:
 
 - Self-signed certificates
 - CA-signed certificates
-- So-walled "keyless singing" using freely available Sigstore services
-- So-walled "keyless singing" using self-hosted Sigstore services
+- So-called "keyless signing" using freely available Sigstore services
+- So-called "keyless signing" using self-hosted Sigstore services
 
-This enables different scenarios with different implications.
+It is out of the scope of Margo mandating which of these approaches must be
+supported.
+Each one of them enables different scenarios
+but have also different implications.
 
-##### Verification
+#### Verification
 
 Verification depends strongly on the signing approach.
 
-If the signer has used self-signed certificates, then the corresponding public
-keys need to be made somehow reachable for verification.
+Any of the above mentioned approaches for signing is technically supported by
+Cosign.
+Therefore they can be easily supported if no artificial limitation is added,
+for example with some policies.
 
-If the signer uses self-signed certificates, then a consumer needs to obtain
-the corresponding public keys and explicitly trust them.
+#### Self-signed Certificates
+
+If the signer has used self-signed certificates, then the corresponding public
+keys need to be made somehow available for verification.
+
+Different possibilities exist for making self-signed certificates available to
+consumers:
+
+- Out-of-band distribution: Through email, chat, or other communication channels
+- Enterprise tools:
+  Using existing PKI infrastructure, certificate management systems, or internal
+  artifact repositories
+- Artifacts registry:
+  Embedding public keys within the artifacts registry metadata
+- Physical distribution:
+  On physical media like USB drives, smart cards, or hardware tokens
+- Documentation:
+  Publishing keys in publicly accessible documentation or websites
+- TUF (The Update Framework):
+  Leveraging TUF's trusted delegation system for key distribution
+
+#### CA-signed Certificates
+
+If the signer uses CA-signed certificates, then a consumer needs to obtain
+the corresponding CA certificate(s) and add them to their trust store.
 
 **Philip Comment**: We have an opinion on this that we'd rather any CA/trust bundles be added directly to the device by the device vendor or customer instead of those coming through the workload fleet manager. We can discuss this some and see. Part of this is a trust issue; if the workload fleet manager is providing the trust bundles, they could potentially also be recreating the artifacts and signing them with their own keys. 
+
+Different possibilities exist for making CA-signed certificates available to
+consumers:
+
+- System trust stores:
+  Pre-installed CA certificates in operating systems and applications
+- Enterprise PKI:
+  Corporations can push CA certificates to all devices in their domain using
+  group policies or MDM
+- Public CAs:
+  Well-known public certificate authorities are already included in most trust
+  stores
+- Certificate bundles:
+  CA certificates can be distributed in bundles alongside artifacts
+- Directory services:
+  Using LDAP or other directory services for certificate distribution
+- Configuration management:
+  Tools like Ansible, Chef, Puppet, or SaltStack can distribute CA certificates
+- Platform-specific mechanisms:
+  Vendor-specific platforms may have built-in trust distribution mechanisms
+- Cloud platforms:
+  Cloud providers often have trusted CA infrastructure and utilities for
+  certificate management
+
+#### Keyless Signing (Public Sigstore Services)
+
+Keyless signing is a signing approach that eliminates the need for the signer
+to manage long-lived private keys.
+Instead, it uses Sigstore's publicly available services:
+
+- [Fulcio](https://github.com/sigstore/fulcio):
+  A certificate authority that issues short-lived certificates based on OpenID
+  Connect (OIDC) identity
+- [Rekor](https://github.com/sigstore/rekor):
+  A transparency log that records all signed artifacts and their signatures
+
+How it works:
+
+1. The signer authenticates using an OIDC identity provider (e.g., GitHub,
+   Google, corporate SSO)
+2. Fulcio issues a short-lived certificate containing the identity information
+3. The artifact is signed with the short-lived certificate
+4. The signature and certificate are recorded in Rekor's transparency log
+5. Rekor issues a log entry that can be used to verify that the short-lived
+   certificate was valid a the time of signing
+
+Benefits:
+
+- No long-lived private key management required
+- Identity is embedded in the certificate
+- All signatures are transparent and publicly auditable
+- Time-bound certificates (typically 10 minutes expiration), which reduce
+  risk of leaked certificate misuse
+- Simplified key rotation (automatic with short-lived certificates)
+
+Requirements for signers:
+
+- Access to the public Sigstore services (internet connectivity)
+- OIDC identity provider (GitHub, Google, email-based, or custom)
+- Authentication credentials for the OIDC provider
+
+Verification:
+
+With Cosign v3, consumers verify signatures by:
+1. Using the trusted Trust Root document to validate the signature
+2. The Trust Root contains all necessary verification information (keys,
+   transparency log data)
+3. Optionally checking the identity claims embedded in the certificate
+
+Trust model:
+
+Consumers trust the Trust Root document obtained from official Sigstore
+infrastructure.
+
+For air-gapped environments:
+Consumers need to pre-provision the Trust Root document instead of relying on
+network access.
+
+#### Keyless Signing (Self-Hosted Sigstore Services)
+
+Self-hosted keyless signing provides the same fundamental approach as public
+Sigstore services but with full control over the infrastructure.
+
+Key differences from public services:
+
+Infrastructure ownership:
+- Fulcio and Rekor instances are deployed and maintained within your
+  organization
+- Requires dedicated operations resources for deployment, maintenance, and
+  monitoring
+- Greater control over availability and configuration
+
+Identity providers:
+- Can use internal OIDC providers (corporate SSO, internal systems)
+- Support for custom identity claims and verification policies
+- Often tighter integration with existing authentication infrastructure
+
+**Trust model:**
+- Consumers trust your organization's Trust Root document
+- Potentially simplified trust if using corporate PKI and pre-shared Trust Roots
+- Verification requires only the Trust Root document, not separate keys
+
+**Air-gapped scenarios:**
+- Can operate entirely without internet connectivity
+- All components (Fulcio, Rekor, artifact registry) can be internal
+- More suitable for highly restricted environments
+- Trust Root document can be distributed offline
+
+**Operational considerations:**
+- Signers require access to your internal infrastructure
+- Verification requires only the pre-provisioned Trust Root document
+- Requires proper backup and disaster recovery planning for Trust Root
+  distribution
+
+Security trade-offs:
+- Greater control over security configurations
+- Potential for more tailored identity verifications
+- Additional responsibility for securing infrastructure components
+
+#### Consequences
+
+Both artifact creators as well as consumers must be aware of the consequences
+of taking one approach or another.
+
+An application creator which decides to use self-signed certificates must be
+aware that it will be losing some consumers that only trust some root
+certificates.
+But on the other side, a small company providing a custom application for
+another company can take the low-effort of self-signed certificates knowing on
+advance, that the consumer will trust them.
+
+An application creator which wants to reach a wide audience will remain
+abstinent from using self-signed certificates and will go for CA-signed
+certificates.
+
+An application consumer with high security requirements might only accept
+keyless signing approaches, implicitly excluding some applications with that
+decission.
+
+### Extensibility
+
+Signatures are not embedded into the artifacts, therefore it's very easy to:
+
+- Update signatures
+- Append additional signatures 
+
+For packages using OCI mechanisms for distribution, it's also
+very easy to generate packages containing the signatures embedded in them.
+
