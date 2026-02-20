@@ -148,12 +148,144 @@ The use of Cosign for signing and verifying not only covers the above mentioned
 requirements, but also incorporates other features that will be explained in
 this section of the document.
 
+### Technical Details
+
+#### Margo-Specific Context
+
+Margo strongly relies on OCI technologies:
+
+- Currently supported deployment types (Compose and Helm) are based on
+  containers themselves, which are based on the OCI specification
+- Application packaging and distribution are also based on OCI registries
+  and artifacts
+
+Cosign supports signing OCI artifacts, with container images being the
+first-supported type of artifact natively.
+Therefore, using Cosign for signing Margo artifacts is straightforward.
+
+See below section [Replace PGP Requirement](#replace-pgp-requirement) for 
+details on how Cosign compares with other previously considered signing
+approach: PGP (Pretty Good Privacy). 
+
+#### Signing Recursivity
+
+OCI artifacts are
+[Merkle trees](https://en.wikipedia.org/wiki/Merkle_tree)
+if only [digest references](https://oras.land/docs/concepts/reference/)
+(which are hashes of the referred artifact) are used instead of tags.
+
+> [!NOTE]
+> There is currently no requirement enforcing the use of digests for
+> references.
+> See below section
+> [Recommend/Require Use of Digests for References](#recommendrequire-use-of-digests-for-references)
+> for more details.
+
+By signing the digest of the tree root node, the so-called
+[Merkle signature scheme](https://en.wikipedia.org/wiki/Merkle_signature_scheme)
+effectively signs the entire application.
+
+#### Signing Non-OCI Artifacts
+
+Cosign supports OCI-artifacts natively, but also files and content (not only
+text, but also binary content) can be signed.
+
+The mechanism to sign and verify the signatures is exactly the same as for OCI-
+artifacts.
+
+### Required Specification changes
+
+#### Replace PGP Requirement
+
+As of now the specification is stating:
+
+> When digitally signing the package PGP encryption MUST be used.
+
+But there are good reasons to use Cosign instead of PGP:
+
+- Native Support for OCI Artifacts:
+  - Cosign:
+    Designed specifically to sign and verify OCI (Open Container Initiative)
+    artifacts (like container images) and store their signatures directly in OCI
+    registries.
+  - PGP:
+    Not natively designed for OCI artifacts; requires external tooling or
+    different storage mechanisms for signatures.
+- Simplified Key Management:
+  - Cosign:
+    Uses short-lived, ephemeral keys or managed keys, eliminating the burden of
+    long-term private key management for users.
+  - PGP:
+    Requires users to generate, secure, and manage long-lived private keys,
+    including revocation.
+- Stronger Identity Binding:
+  - Cosign:
+    Binds signatures to verified OIDC identities (e.g., GitHub ID, corporate
+    email) via short-lived X.509 certificates from Fulcio.
+  - PGP:
+    Binds keys to arbitrary identities (often email addresses) through a
+    decentralized "Web of Trust" that can be complex to establish and verify.
+- Transparency and Auditability:
+  - Cosign:
+    All signing events are recorded in the immutable Rekor transparency log,
+    providing a public, auditable record.
+  - PGP:
+    Lacks a centralized, public transparency log, making it harder to detect
+    backdating or compromised keys at scale.
+- Improved Compromise Recovery:
+  - Cosign:
+    Short-lived certificates drastically limit the impact window of a
+    compromised key; Rekor helps identify affected artifacts.
+  - PGP:
+    Compromise of a long-lived key can have widespread, long-lasting, and
+    difficult-to-trace consequences.
+- Designed for Automation and CI/CD:
+  - Cosign:
+    Built from the ground up for integration with automated CI/CD pipelines and
+    machine identities.
+  - PGP:
+    While automatable, its key management model is less suited for ephemeral,
+    machine-driven signing contexts.
+- Secure Trust Distribution (TUF):
+  - Cosign:
+    Leverages TUF for secure, automated distribution and updates of its root of
+    trust (trusted-root.json), protecting against various attacks.
+  - PGP:
+    Relies on the "Web of Trust" for key distribution and validation, which can
+    be cumbersome and less robust against certain supply chain attacks.
+- Policy-Driven Verification:
+  - Cosign:
+    Enables robust policy enforcement during verification (e.g., signed by
+    specific identities, within certain timeframes, recorded in Rekor).
+  - PGP:
+    Verification is primarily about cryptographic validity, with less native
+    support for detailed policy checks.
+
+#### Recommend/Require Use of Digests for References
+
+Margo applications build up a Merkle Tree only if any OCI references use
+digests instead of tags.
+Without them, the proposed signing approach would not work.
+
+The specification should recommend the use of digests instead of tags and
+require it for fully-signed applications.
+
+OCI references might be difficult to identify without context.
+However, if references are used only in clear contexts, tooling can be created
+to detect the use of tags instead of digests.
+
+Two possible approaches are:
+
+- Margo requires the use of digests and enforces it
+- Margo creates two types of applications (regarding integrity, authorship, etc.) and can
+  clearly differentiate them
+
 ### Well-Established Solution
 
 Cosign is a software component of the Sigstore project that is around 5 years in
 use for productive systems consuming container images.
 
-Initially is was created to
+Initially it was created to
 [sign container images](https://blog.sigstore.dev/cosign-signed-container-images-c1016862618/),
 but nowadays it can be used to sign any kind of software artifact (from a file
 to any string or binary).
@@ -280,7 +412,7 @@ How it works:
 3. The artifact is signed with the short-lived certificate
 4. The signature and certificate are recorded in Rekor's transparency log
 5. Rekor issues a log entry that can be used to verify that the short-lived
-   certificate was valid a the time of signing
+   certificate was valid at the time of signing
 
 Benefits:
 
@@ -333,18 +465,18 @@ Identity providers:
 - Support for custom identity claims and verification policies
 - Often tighter integration with existing authentication infrastructure
 
-**Trust model:**
+Trust model:
 - Consumers trust your organization's Trust Root document
 - Potentially simplified trust if using corporate PKI and pre-shared Trust Roots
 - Verification requires only the Trust Root document, not separate keys
 
-**Air-gapped scenarios:**
+Air-gapped scenarios:
 - Can operate entirely without internet connectivity
 - All components (Fulcio, Rekor, artifact registry) can be internal
 - More suitable for highly restricted environments
 - Trust Root document can be distributed offline
 
-**Operational considerations:**
+Operational considerations:
 - Signers require access to your internal infrastructure
 - Verification requires only the pre-provisioned Trust Root document
 - Requires proper backup and disaster recovery planning for Trust Root
@@ -373,8 +505,18 @@ certificates.
 
 An application consumer with high security requirements might only accept
 keyless signing approaches, implicitly excluding some applications with that
-decission.
+decision.
 
+### Flexibility
+
+The above mentioned openness is key to have a flexible signing framework that accommodates different scenarios:
+
+- **Small developers** can leverage keyless signing with public Sigstore services with minimal setup
+- **Large enterprises** can deploy self-hosted Sigstore infrastructure for complete control
+- **Security-conscious organizations** can use CA-signed certificates with internal PKI
+- **Air-gapped environments** can operate with pre-distributed Trust Root documents and self-signed certificates
+
+This flexibility ensures Margo remains applicable across diverse deployment contexts without mandating a one-size-fits-all approach.
 ### Extensibility
 
 Signatures are not embedded into the artifacts, therefore it's very easy to:
