@@ -34,24 +34,63 @@ If you, as an individual non-Margo member, own the contribution, you **MUST SIGN
   - (Optional) Specification update proposal (SUP) document submitted and approved by the TWG technical leads
 
 ***
+
 ## SUP Status
 
 ### Stages
 
-[Phase 2 Decision Gate 3 (P2)](https://github.com/margo/Margo-collaboration/blob/main/specification_update_processes/process-overview.md#decision-gate-3)
+[Phase 3: SUP Technical Design (P1)](https://github.com/margo/Margo-collaboration/blob/main/specification_update_processes/process-overview.md#phase-3-sup-technical-design)
 
-Decision gate 3 is a PR to merge the initial proposal into the `/proposals` folder. The focus is on making sure what the SUP owner plans to propose is clear and aligns with the roadmap. Technical details are not expected at this point.
+A `draft` PR was created in the `/proposals` folder indicating the SUP has been started and the SUP group is working on the technical design and supporting code. During this phase community members can comment on the daft PR if they wish even though the SUP details are still being worked on.
 
-[Phase 3: Technical Design (P3)](https://github.com/margo/Margo-collaboration/blob/main/specification_update_processes/process-overview.md#phase-3-sup-technical-design)
+[Phase 3: Final Review (P2)](https://github.com/margo/Margo-collaboration/blob/main/specification_update_processes/process-overview.md#phase-3-sup-technical-design)
 
-Phase 3 is when SUP groups work on the technical design. The SUP owner may create a draft PR to merge the SUP into the `/submitted` folder to help get feedback from the community.
+The PR has been moved out of the `draft` state indicating the technical details and example code are ready for a final review before voting. Margo community members have two weeks to start providing feedback on the PR, or prepare alternative proposals. Once all comments are addressed, the SUP will be voted on by the TWG leads.
 
-[Phase 4: Final (P4)](https://github.com/margo/Margo-collaboration/blob/main/specification_update_processes/process-overview.md#phase-4-final-decision)
+[Phase 4: SUP Approved (P3)](https://github.com/margo/Margo-collaboration/blob/main/specification_update_processes/process-overview.md#decision-gate-2)
 
-Phase 4 is a PR to merge the full proposal to the `/submitted` folder. During this phase, community members can post comments on the PR. Once comments have been addressed, the SUP will be voted on by the TWG Leads.
+The SUP has been approved and the SUP group is working on updating the specification and code first sandbox repositories.
 
 ### Status
 
 |Owner|Description|Stage|LINK|
 |-----|-----------|-----|----|
-|@julienduquesnay-se | Device gateway | P3 | [Draft PR](https://github.com/margo/specification-enhancements/pull/36) |
+|@julienduquesnay-se | Device gateway | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/36) |
+|@matlec | Margo Identity and Authorization Framework | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/38)
+|@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40)
+
+## SUP Owner SUP Checklist
+
+This is a checklist for the [Specification Update Proposal processes](https://github.com/margo/Margo-collaboration/blob/main/specification_update_processes/process-overview.md) for SUP owners for follow. Please read the full processes to make sure you understand it before using this checklist
+
+### Phase 1- Research & Roadmap Alignment
+
+- [ ] Review [In Progress](https://github.com/margo/specification-enhancements#status) and [Rejected](https://github.com/margo/specification-enhancements/tree/main/rejected) SUPs to see if any information applies to your SUP
+- [ ] Review [TWG Feature Backlog](https://github.com/orgs/margo/projects/22/views/3) to see if there are any features your SUP addresses
+- [ ] Optional: Discuss planned SUP with TWG Char/Co-Chair, with PM group during a weekly PM meeting, or with the TWG during a bi-weekly technical sync call
+
+### Phase 2 - Proposal Creation
+
+- [ ] Complete the [SUP template's](https://github.com/margo/specification-enhancements/blob/main/sup-template.md) "Owner", "Summary" and "Reason for Proposal" sections
+- [ ] Create a [`Draft` PR](https://github.blog/news-insights/product-news/introducing-draft-pull-requests/) to add your SUP to the `proposals` folder in the [specification-enhancements](https://github.com/margo/specification-enhancements) repository
+- [ ] Notify the TWG Chair/Co-Chair and Proposal Committee, via tagging in a PR comment, you are starting a SUP
+
+### Phase 3 - SUP Technical Design
+
+- [ ] Optional: Invited community members to join your SUP group to help work on the SUP
+- [ ] Complete the `Technical Proposal` and `Alternatives considered (optional)` template sections
+- [ ] Implement your proposal on a branch of the [Sandbox repository](https://github.com/margo/sandbox) or as a PoC in a different location
+- [ ] Ensure a feature exists in the backlog and is documented in the `Requirements Alignment Acknowledgement` template section. Work with the TWG Chair/Co-Chair or PM Group to create a feature if one does not exist.
+- [ ] Move your PR out of `Draft` state
+- [ ] Notify the TWG Chair/Co-Chair and Proposal Committee, via tagging in a PR comment, you are ready to submit your SUP
+
+### Phase 4 - Final Decision: Approved
+
+- [ ] Update the specification with the details for the SUP and create a PR
+- [ ] Work with the dev team to implement the changes to the Sandbox and create a PR
+- [ ] Once PRs are completed notify the TWG Chair/Co-Chair and Proposal Committee that the SUP has been completed.
+
+> **Note:**
+>
+> - if SUP is rejected, the SUP owner does not need to do anything further.
+> - If SUP is undecided, the SUP owner does not need to do anything further until the external community has evaluated the options, provided feedback, and a decision has been made.
