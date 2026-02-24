@@ -117,6 +117,7 @@ personas within the Margo ecosystem.
       services.
     - Consumers may obtain applications from third-party sources rather than
       directly from authors.
+
 The proposed solution must gracefully accommodate this diversity.
 
 **Philip Comment**: One of the things we need to be careful of here is having CAs/trust bundles that are too generic. For example, if someone just has a Digicert CA that could potentially be used to verify a lot of different things. It might not be possible to make this a requirement, but we should at least make it a recommended practice to have specific trust chains used for this purpose that don't introduce security risk for CAs being used to verify more than what is intended.
@@ -135,6 +136,29 @@ These devices operate in air-gapped environments.
 - Full offline mode (ideal):
   Ideally, the solution would even support a complete offline verification
   mode.
+
+#### Artifacts Heterogeneity
+
+Although most artifacts in Margo are packaged as [OCI][1] artifacts,
+there are current, and potential future, non-OCI artifacts that are worth
+signing.
+
+The proposed solution should be able to cope with this heterogeneity with
+respect to artifact types.
+
+#### Multi-Signature
+
+It should be possible to have multiple parties signing the same artifact.
+Each signature has a completely different meaning.
+For example:
+
+- The author can sign to make authenticity clear.
+- The operator of a marketplace can sign to signify that the artifact has
+  undergone some quality assurance.
+- The IT-department of a consumer might sign that artifact to signal the
+  agreement with the deployment of the artifact.
+- The device operator might sign to ensure the integrity of what gets deployed
+  and to mark the origin of the deployment approval
 
 ## Proposed Solution
 
@@ -165,7 +189,7 @@ Therefore, using Cosign for signing Margo artifacts is straightforward.
 
 See below section [Replace PGP Requirement](#replace-pgp-requirement) for 
 details on how Cosign compares with other previously considered signing
-approach: PGP (Pretty Good Privacy). 
+approaches, particularly PGP (Pretty Good Privacy). 
 
 #### Signing Recursivity
 
@@ -203,65 +227,23 @@ As of now the specification is stating:
 
 But there are good reasons to use Cosign instead of PGP:
 
-- Native Support for OCI Artifacts:
-  - Cosign:
-    Designed specifically to sign and verify OCI (Open Container Initiative)
-    artifacts (like container images) and store their signatures directly in OCI
-    registries.
-  - PGP:
-    Not natively designed for OCI artifacts; requires external tooling or
-    different storage mechanisms for signatures.
-- Simplified Key Management:
-  - Cosign:
-    Uses short-lived, ephemeral keys or managed keys, eliminating the burden of
-    long-term private key management for users.
-  - PGP:
-    Requires users to generate, secure, and manage long-lived private keys,
-    including revocation.
-- Stronger Identity Binding:
-  - Cosign:
-    Binds signatures to verified OIDC identities (e.g., GitHub ID, corporate
-    email) via short-lived X.509 certificates from Fulcio.
-  - PGP:
-    Binds keys to arbitrary identities (often email addresses) through a
-    decentralized "Web of Trust" that can be complex to establish and verify.
-- Transparency and Auditability:
-  - Cosign:
-    All signing events are recorded in the immutable Rekor transparency log,
-    providing a public, auditable record.
-  - PGP:
-    Lacks a centralized, public transparency log, making it harder to detect
-    backdating or compromised keys at scale.
-- Improved Compromise Recovery:
-  - Cosign:
-    Short-lived certificates drastically limit the impact window of a
-    compromised key; Rekor helps identify affected artifacts.
-  - PGP:
-    Compromise of a long-lived key can have widespread, long-lasting, and
-    difficult-to-trace consequences.
-- Designed for Automation and CI/CD:
-  - Cosign:
-    Built from the ground up for integration with automated CI/CD pipelines and
-    machine identities.
-  - PGP:
-    While automatable, its key management model is less suited for ephemeral,
-    machine-driven signing contexts.
-- Secure Trust Distribution (TUF):
-  - Cosign:
-    Leverages TUF for secure, automated distribution and updates of its root of
-    trust (trusted-root.json), protecting against various attacks.
-  - PGP:
-    Relies on the "Web of Trust" for key distribution and validation, which can
-    be cumbersome and less robust against certain supply chain attacks.
-- Policy-Driven Verification:
-  - Cosign:
-    Enables robust policy enforcement during verification (e.g., signed by
-    specific identities, within certain timeframes, recorded in Rekor).
-  - PGP:
-    Verification is primarily about cryptographic validity, with less native
-    support for detailed policy checks.
+| | Cosign | PGP |
+| - | - | - |
+| **Native Support for OCI Artifacts** | Designed specifically to sign and verify OCI (Open Container Initiative) artifacts (like container images) and store their signatures directly in OCI registries. | Not natively designed for OCI artifacts; requires external tooling or different storage mechanisms for signatures. |
+| **Simplified Key Management** | Uses short-lived, ephemeral keys or managed keys, eliminating the burden of long-term private key management for users. | Requires users to generate, secure, and manage long-lived private keys, including revocation. |
+| **Stronger Identity Binding** | Binds signatures to verified OIDC identities (e.g., GitHub ID, corporate email) via short-lived X.509 certificates from Fulcio. | Binds keys to arbitrary identities (often email addresses) through a decentralized "Web of Trust" that can be complex to establish and verify. |
+| **Transparency and Auditability** | All signing events are recorded in the immutable Rekor transparency log, providing a public, auditable record. | Lacks a centralized, public transparency log, making it harder to detect backdating or compromised keys at scale. |
+| **Improved Compromise Recovery** | Short-lived certificates drastically limit the impact window of a compromised key; Rekor helps identify affected artifacts. | Compromise of a long-lived key can have widespread, long-lasting, and difficult-to-trace consequences. |
+| **Designed for Automation and CI/CD** | Built from the ground up for integration with automated CI/CD pipelines and machine identities. | While automatable, its key management model is less suited for ephemeral, machine-driven signing contexts. |
+| **Secure Trust Distribution (TUF)** | Leverages TUF for secure, automated distribution and updates of its root of trust (trusted-root.json), protecting against various attacks. | Relies on the "Web of Trust" for key distribution and validation, which can be cumbersome and less robust against certain supply chain attacks. |
+| **Policy-Driven Verification** | Enables robust policy enforcement during verification (e.g., signed by specific identities, within certain timeframes, recorded in Rekor). | Verification is primarily about cryptographic validity, with less native support for detailed policy checks. |
 
 #### Recommend/Require Use of Digests for References
+
+> [!NOTE]
+> This section is still open for discussion.
+> Therefore it uses weak (should) verbs where stronger verbs (must) might be expected.
+> Big changes might happen.
 
 Margo applications build up a Merkle Tree only if any OCI references use
 digests instead of tags.
@@ -277,8 +259,30 @@ to detect the use of tags instead of digests.
 Two possible approaches are:
 
 - Margo requires the use of digests and enforces it
-- Margo creates two types of applications (regarding integrity, authorship, etc.) and can
-  clearly differentiate them
+- Margo creates three types of applications (regarding integrity, authorship,
+  etc.) and can clearly differentiate them:
+  1. *Bundle-signed* applications
+  2. *Scattered-signed* applications
+  3. *Unfully-signed* applications
+
+*Bundle-signed* applications: those applications that build a Merkle tree
+(because the only use digests in the references) only need to sign the top of
+the tree.
+
+*Scattered-signed* applications: those applications that don't build a Merkle
+tree (because tags are used in the references), but are signed by signing each
+individual part.
+The whole application can be considered signed as long as the immutability of any
+used tag is trusted.
+For example, because it's in the control of a trusted entity.
+This approach to signing should be avoided because it creates a false sense of
+trust.
+
+*Non-signed* applications: those applications that don't build a Merkle tree
+and have unsigned components (like a container image).
+Non-signed applications should be avoided in productive systems, but they are
+probably required for development purposes and possibly for some specific
+environments.
 
 ### Well-Established Solution
 
@@ -511,12 +515,13 @@ decision.
 
 The above mentioned openness is key to have a flexible signing framework that accommodates different scenarios:
 
-- **Small developers** can leverage keyless signing with public Sigstore services with minimal setup
-- **Large enterprises** can deploy self-hosted Sigstore infrastructure for complete control
-- **Security-conscious organizations** can use CA-signed certificates with internal PKI
-- **Air-gapped environments** can operate with pre-distributed Trust Root documents and self-signed certificates
+- Small developers can leverage keyless signing with public Sigstore services with minimal setup
+- Large enterprises can deploy self-hosted Sigstore infrastructure for complete control
+- Security-conscious organizations can use CA-signed certificates with internal PKI
+- Air-gapped environments can operate with pre-distributed Trust Root documents and self-signed certificates
 
 This flexibility ensures Margo remains applicable across diverse deployment contexts without mandating a one-size-fits-all approach.
+
 ### Extensibility
 
 Signatures are not embedded into the artifacts, therefore it's very easy to:
@@ -527,3 +532,4 @@ Signatures are not embedded into the artifacts, therefore it's very easy to:
 For packages using OCI mechanisms for distribution, it's also
 very easy to generate packages containing the signatures embedded in them.
 
+[1]: https://opencontainers.org/
