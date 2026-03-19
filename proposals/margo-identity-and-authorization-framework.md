@@ -47,6 +47,7 @@
     - [Certificate Validation](#certificate-validation)
   - [8. Security Considerations](#8-security-considerations)
     - [Threat Model Overview](#threat-model-overview)
+  - [9. Future Work: WFM Client Identity Profile (Informative)](#9-future-work-wfm-client-identity-profile-informative)
 - [Alternatives considered (optional)](#alternatives-considered-optional)
   - [Certificate-Based Device Enrollment Protocols](#certificate-based-device-enrollment-protocols)
     - [Rationale for standardized `/api/v1/identities` endpoint](#rationale-for-standardized-apiv1identities-endpoint)
@@ -105,7 +106,7 @@ This SUP therefore does two things:
 
 In short:
 
-> **PR1 gave us WFM Client identities. This SUP gives us Device identities - under a framework that every Margo component can build on.**
+> **PR1 gave us WFM Client identities. This SUP gives us Device identities - under a framework that every Margo component can build on.** MIAF directly replaces PR1's device onboarding, trust anchor distribution, and cryptographic requirements with a unified, standards-based approach, and lays the groundwork for replacing PR1's client authentication model. A future **WFM Client Identity Profile** will build on this device identity foundation to address the distinct authentication needs of WFM Clients across standalone, cluster, and gateway topologies.
 
 This proposal is:
 
@@ -164,7 +165,7 @@ This layered model ensures that hardware trust and software trust are managed in
 
 ### What this SUP introduces <!-- omit from toc -->
 
-To address these limitations **without disrupting PR1's WFM APIs**, this SUP introduces two closely related elements:
+To address these limitations, this SUP **replaces PR1's device identity and onboarding model, and lays the foundation for replacing its client authentication model,** by introducing two closely related elements:
 
 1. **The Margo Identity and Authorization Framework (MIAF):** A shared framework for all Margo components, based on cryptographically verifiable identities and a unified trust-domain model.
    It enables authentication and authorization decisions to be made directly using verifiable identities.
@@ -176,7 +177,33 @@ To address these limitations **without disrupting PR1's WFM APIs**, this SUP int
    - how that identity is represented in X.509 certificates, and
    - lifecycle operations and **bootstrap methods** that map existing hardware credentials (for example, FDO, TPM, or IEEE 802.1AR) into the Margo identity model.
 
-Together, these establish the foundation for interoperable identity and trust across Margo components and vendors, while preserving backward compatibility with PR1.
+Together, these establish the foundation for interoperable identity and trust across Margo components and vendors, replacing PR1's device onboarding and trust model with a unified, lifecycle-managed approach and providing the basis for future WFM Client identity changes.
+
+### Relationship to PR1 <!-- omit from toc -->
+
+MIAF replaces core elements of the device identity, trust, and onboarding model introduced in Preview Release 1, and defines the framework that will enable replacement of WFM client authentication in a future profile.
+
+**Directly replaced by this SUP:**
+
+- **Device identity foundation:** PR1's device-facing identity and per-WFM trust model are replaced by Trust Domain-scoped device identities issued by the Margo Identity Service (MIS). The device's identity is no longer WFM-specific but portable across all Margo components within the Trust Domain.
+- **Onboarding:** PR1's WFM-centric onboarding flow (`POST /api/v1/onboarding`) is replaced by MIAF's bootstrap and enrollment mechanism (`POST /api/v1/identities`), which binds a device's Physical Device Identity to a Logical Device Identity within the Trust Domain.
+- **Trust anchor distribution:** PR1's per-WFM root CA endpoint (`GET /api/v1/onboarding/certificate`) is replaced by the SPIFFE Trust Bundle, retrieved from a standardized Trust Bundle endpoint and distributed in the SPIFFE Bundle Map format.
+- **Cryptographic requirements:** PR1's permitted signature algorithms are superseded by MIAF's cryptographic requirements.
+- **Device security requirements:** PR1's informational references to hardware key protection (TPM, secure boot, attestation) become normative requirements under MIAF's [Device Key Protection](#device-key-protection) section.
+
+**Enabled but not yet defined by this SUP:**
+
+A dedicated **WFM Client Identity Profile** (see [Future Work](#future-work-wfm-client-identity-profile-informative)) is expected to:
+
+- replace PR1's WFM-specific `client_id` model with a MIAF-defined WFM Client identity;
+- define the SPIFFE ID path format for WFM Client identities within the Margo Trust Domain;
+- define how device identities are used to bind WFM Client credentials for each supported deployment topology;
+- address the lifecycle requirements of each supported topology (standalone, cluster, gateway); and
+- inform the corresponding updates to the WFM API specification (for example, replacing `{clientId}` path parameters and PR1's [RFC 9421](https://datatracker.ietf.org/doc/html/rfc9421) HTTP Message Signatures security scheme with MIAF-based authentication).
+
+Until that profile is defined, this SUP does **not** specify how WFM Clients authenticate to WFM APIs. A device SVID is not itself a WFM Client credential. The device identity defined here is the prerequisite for, but not a substitute for, WFM Client identity.
+
+The WFM API's **API behavior** - desired state retrieval, deployment content distribution, and status reporting - is not changed by this SUP.
 
 ## Requirements alignment acknowledgement
 
@@ -216,7 +243,7 @@ This SUP supports Margo's core goals of **security**, **scalability**, **interop
 - **[Parent Epic 5: Build a Margo compatible edge device (#41)](https://github.com/margo/product_management/issues/41):**
   Satisfies **[#56](https://github.com/margo/product_management/issues/56)** by defining the minimal identity and security capabilities every Margo-compatible device must implement and by extending the device requirements around key protection and identity representation.
 - **[Parent Epic 6: Enroll an edge device with a workload fleet manager (#42)](https://github.com/margo/product_management/issues/42):**
-  Complements PR1's onboarding flow by introducing a standardized **device-level identity** and bootstrap methods that can be reused when enrolling devices into Margo environments, aligning with **[#57](https://github.com/margo/product_management/issues/57)** and supporting late binding and pre-provisioned credentials (**[#62](https://github.com/margo/product_management/issues/62)**, **[#63](https://github.com/margo/product_management/issues/63)**).
+  Replaces PR1's WFM-centric onboarding model with a Trust Domain-scoped enrollment mechanism based on standardized **device-level identity** and extensible bootstrap methods, aligning with **[#57](https://github.com/margo/product_management/issues/57)** and supporting late binding and pre-provisioned credentials (**[#62](https://github.com/margo/product_management/issues/62)**, **[#63](https://github.com/margo/product_management/issues/63)**).
 - **[Parent Epic 12: Manage enrolled edge devices (#48)](https://github.com/margo/product_management/issues/48):**
   Provides the lifecycle primitives (enrollment, renewal, revocation, replacement, termination) required for large-scale device management and auditability.
 - **[Parent Epic 7: Enroll an edge device with a device fleet manager (#43)](https://github.com/margo/product_management/issues/43):**
@@ -265,7 +292,7 @@ This SUP concerns identities used by these *non-human* components.
 
 #### Workload Fleet Management (WFM) Client (relationship to MIAF) <!-- omit from toc -->
 
-A **Margo client component** as defined in the [Technical Lexicon](https://specification.margo.org/personas-and-definitions/technical-lexicon/). While a WFM Client runs on an Edge Compute Device, its identity (`client_id`) represents the deployed **client instance**, not the device itself. The **Logical Device Identity** defined in this SUP provides the stable, hardware-bound identity of the device, which in future profiles may attest and launch components like the WFM Client.
+A **Margo client component** as defined in the [Technical Lexicon](https://specification.margo.org/personas-and-definitions/technical-lexicon/). While a WFM Client runs on an Edge Compute Device, its identity represents the deployed **client instance**, not the device itself. The **Logical Device Identity** defined in this SUP provides the stable, hardware-bound identity of the device. A planned **WFM Client Identity Profile** will define how WFM Clients obtain their own distinct Margo Identities, building on the device identity as their authentication foundation. This separation is necessary because device identity and WFM Client identity have different lifecycles, authorization scopes, and cardinalities across topologies (standalone devices, Kubernetes clusters, device gateways).
 
 #### Margo Identity (MI) <!-- omit from toc -->
 
@@ -1694,6 +1721,34 @@ Primary objectives: protect private keys, preserve identity integrity, and minim
 | **Service Impersonation / MITM** | An adversary attempts to impersonate MIS or another service. | All endpoints **MUST** use HTTPS with TLS 1.3 and strict certificate validation. Clients **MUST** verify that peer certificates are valid SVIDs issued under the expected Trust Domain and signed by anchors in the Trust Bundle. |
 | **Replay of Bootstrap Assertions** | A factory JWT assertion or bootstrap credential is captured and re-submitted. | MIS **MUST** reject any assertion with duplicate `jti` values and **MUST** enforce tight time windows (`exp` <= 5 minutes). |
 | **Cross-Domain Trust Confusion** | Components accept identities from unintended Trust Domains. | Verifiers **MUST** determine the Trust Domain from the SPIFFE ID and **MUST NOT** trust SVIDs unless the domain is explicitly configured or federated. |
+
+### 9. Future Work: WFM Client Identity Profile (Informative)
+
+The **Edge Compute Device Identity Profile** defined in this SUP establishes the authentication **foundation** for Edge Compute Devices within a Margo Trust Domain. However, the device SVID is **not itself** the credential used to authenticate to the WFM API.
+
+A device's Logical Device Identity proves that a specific physical or virtual platform is authentic and enrolled within the Trust Domain. A **WFM Client**, by contrast, is a software component that runs on one or more devices and interacts with a specific Workload Fleet Manager. These are fundamentally different principals:
+
+- **Different lifecycles.** A device identity is established at bootstrap and persists across software updates. A WFM Client identity is established when a client registers with a WFM and ceases when the binding is removed - independently of the device's continued existence.
+- **Different authorization scopes.** A device identity asserts *"this device is authentic."* A WFM Client identity asserts *"this client is authorized to retrieve deployments from and report status to WFM X."*
+- **Different cardinalities across topologies.** Margo supports multiple device topologies, each with a distinct mapping between devices and WFM Clients:
+
+  | Topology | Device : WFM Client |
+  | :------- | :------------------ |
+  | Standalone Device | 1 : 1 |
+  | Kubernetes Cluster | N devices : 1 WFM Client |
+  | Device Gateway | 1 gateway device (+N non-Margo sub-devices) : 1 WFM Client |
+
+  In the cluster case, multiple devices share a single WFM Client relationship - the cluster's WFM Client identity must survive leader failover without being bound to any single device's SVID. In the gateway case, a single gateway device holds one WFM Client identity and mediates access to non-Margo sub-devices on their behalf; sub-device targeting is handled through payload-level routing fields (such as `deviceId`), not through separate Margo Identities.
+
+A dedicated **WFM Client Identity Profile** is expected to be defined in a subsequent SUP. That profile is anticipated to:
+
+- replace PR1's WFM-specific `client_id` model with a MIAF-defined WFM Client identity;
+- define the SPIFFE ID path format for WFM Client identities within the Margo Trust Domain;
+- define how device identities are used to bind WFM Client credentials for each supported deployment topology;
+- address the lifecycle requirements of each supported topology (standalone, cluster, gateway); and
+- inform the corresponding updates to the WFM API specification (for example, replacing `{clientId}` path parameters and PR1's RFC 9421 HTTP Message Signatures security scheme with MIAF-based authentication).
+
+Until that profile is defined, this SUP does **not** specify how WFM Clients authenticate to WFM APIs. A device SVID is not itself a WFM Client credential. The device identity defined here is the prerequisite for, but not a substitute for, WFM Client identity.
 
 ## Alternatives considered (optional)
 
