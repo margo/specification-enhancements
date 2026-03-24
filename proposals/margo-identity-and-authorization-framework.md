@@ -92,7 +92,7 @@ With this SUP, that vision becomes tangible through its first concrete applicati
 MIAF defines:
 
 - a **Margo Identity Service (MIS)** that issues, renews, and revokes identities within a **Margo Trust Domain**, and
-- a shared device identity and trust model based on cryptographically verifiable credentials, aligned with open cloud-native identity standards.
+- a shared identity and trust model based on cryptographically verifiable credentials, aligned with open cloud-native identity standards, with its first normative application defining device identity.
 
 A **Margo Trust Domain** is the security boundary of a Margo deployment - for example, an end-user's factory network or a multi-tenant environment operated by a fleet management vendor. Within a Trust Domain, identities, policies, and trust anchors are governed consistently and understood by all participating Margo components.
 
@@ -259,7 +259,7 @@ This Specification Update Proposal defines the normative technical foundation fo
 
 It introduces the **Margo Identity and Authorization Framework (MIAF)** and applies it to the first concrete use case: the **Edge Compute Device Identity Profile**.
 
-This section is therefore two-layered:
+This SUP is therefore two-layered:
 
 - **Framework (MIAF):** shared trust and identity concepts for any Margo component:
 
