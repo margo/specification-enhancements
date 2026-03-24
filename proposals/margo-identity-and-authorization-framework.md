@@ -91,10 +91,12 @@ With this SUP, that vision becomes tangible through its first concrete applicati
 
 MIAF defines:
 
-- a **Margo Identity Service (MIS)** that issues, renews, and revokes identities within a **Margo Trust Domain**, and
+- a **Margo Identity Service (MIS)** that issues, renews, and revokes identities within a **Trust Domain**, and
 - a shared identity and trust model based on cryptographically verifiable credentials, aligned with open cloud-native identity standards, with its first normative application defining device identity.
 
-A **Margo Trust Domain** is the security boundary of a Margo deployment - for example, an end-user's factory network or a multi-tenant environment operated by a fleet management vendor. Within a Trust Domain, identities, policies, and trust anchors are governed consistently and understood by all participating Margo components.
+A **Trust Domain** is the security boundary of a Margo deployment - for example, an end-user's factory network or a multi-tenant environment operated by a fleet management vendor. Within a Trust Domain, identities, policies, and trust anchors are governed consistently and understood by all participating Margo components.
+
+This SUP defines roles, profiles, and APIs for Margo deployments. It does **not** define or provide a centrally operated identity service.
 
 Preview Release 1 (PR1) focuses on **Workload Fleet Management** and defines the **Margo Management Interface for Workload Fleet Management**, where a **WFM Client**, running on an Edge Compute Device (standalone or as a single-node Kubernetes cluster), connects securely to its **WFM** using client-provided certificates and WFM-specific *client identifiers*.
 This proves that a Margo Management Interface can be secured, but it does **not** define a portable, verifiable identity for the **Edge Compute Device** itself, nor a shared trust model that other Margo components can reuse.
@@ -102,7 +104,7 @@ This proves that a Margo Management Interface can be secured, but it does **not*
 This SUP therefore does two things:
 
 1. **Defines MIAF** - a framework for non-human identity and authorization in Margo, based on cryptographically verifiable identities following open, widely adopted cloud-native standards. It aligns Margo with modern IT practices while remaining extensible to enterprise PKI and API gateway infrastructures where needed.
-2. **Applies MIAF to Edge Compute Devices** through the **Edge Compute Device Identity Profile**, which introduces a persistent, verifiable **device identity**, a defined lifecycle, and an **extensible bootstrap mechanism**. This model allows Margo to leverage standard onboarding methods (for example, **FIDO Device Onboard**, **IEEE 802.1AR DevID**, **factory certificates**) and to support **late binding** to a Margo Trust Domain.
+2. **Applies MIAF to Edge Compute Devices** through the **Edge Compute Device Identity Profile**, which introduces a persistent, verifiable **device identity**, a defined lifecycle, and an **extensible bootstrap mechanism**. This model allows Margo to leverage standard onboarding methods (for example, **FIDO Device Onboard**, **IEEE 802.1AR DevID**, **factory certificates**) and to support **late binding** to a Trust Domain.
 
 In short:
 
@@ -117,7 +119,7 @@ This proposal is:
   - **express and verify identities** (who is calling), and
   - **enforce authorization policies** (what they are allowed to do)
 
-  within a shared **Margo Trust Domain**.
+  within a shared **Trust Domain**.
 
 Finally, this identity foundation **enables** - though does not yet integrate with - related work such as the **[Gateway SUP](https://github.com/margo/specification-enhancements/blob/28f04d64e8cedad8b82dad09840d0918bf6c699a/proposals/single-client-for-multiple-devices.md)** by providing the Logical Device Identity model that gateway-capable Edge Compute Devices could build upon in the future.
 
@@ -159,7 +161,7 @@ This proposal addresses these gaps by clearly separating two concepts:
 - a **Device Identity**, representing the physical or virtual platform itself, and
 - a **Client or Workload Identity**, representing the software components that operate on that platform (such as the WFM Client).
 
-The new device-level identity defined in this SUP establishes a **trusted foundation** for the platform - a verifiable, hardware-bound identity that proves the authenticity of the device within a Margo Trust Domain.
+The new device-level identity defined in this SUP establishes a **trusted foundation** for the platform - a verifiable, hardware-bound identity that proves the authenticity of the device within a Trust Domain.
 Once this trusted base exists, additional software components running on the device (for example, WFM Clients or managed workloads) can securely obtain their **own, distinct identities** in future extensions of the framework.
 This layered model ensures that hardware trust and software trust are managed independently, enabling secure, auditable, and interoperable relationships across the Margo ecosystem.
 
@@ -196,7 +198,7 @@ MIAF replaces core elements of the device identity, trust, and onboarding model 
 A dedicated **WFM Client Identity Profile** (see [Future Work](#future-work-wfm-client-identity-profile-informative)) is expected to:
 
 - replace PR1's WFM-specific `client_id` model with a MIAF-defined WFM Client identity;
-- define the SPIFFE ID path format for WFM Client identities within the Margo Trust Domain;
+- define the SPIFFE ID path format for WFM Client identities within the Trust Domain;
 - define how device identities are used to bind WFM Client credentials for each supported deployment topology;
 - address the lifecycle requirements of each supported topology (standalone, cluster, gateway); and
 - inform the corresponding updates to the WFM API specification (for example, replacing `{clientId}` path parameters and PR1's [RFC 9421](https://datatracker.ietf.org/doc/html/rfc9421) HTTP Message Signatures security scheme with MIAF-based authentication).
@@ -211,7 +213,7 @@ This SUP supports Margo's core goals of **security**, **scalability**, **interop
 
 ### Security <!-- omit from toc -->
 
-- Establishes a **cryptographically verifiable identity model** for Edge Compute Devices within a Margo Trust Domain, using open, cloud-native non-human identity standards.
+- Establishes a **cryptographically verifiable identity model** for Edge Compute Devices within a Trust Domain, using open, cloud-native non-human identity standards.
 - Introduces stronger guidance and extensions around protecting private keys associated with device identities, refining the Margo Device Requirements specification.
 - Authentication - and the basis for authorization decisions - is provided directly by verified device identities, rather than opaque, ad-hoc credentials.
 - The MIS and associated trust-bundle mechanisms provide standard, auditable points for identity issuance, renewal, and revocation.
@@ -265,7 +267,7 @@ This SUP is therefore two-layered:
 
   - how a **Margo Identity Service (MIS)** issues, renews, and revokes identities;
   - how identities are expressed as verifiable credentials (**SVIDs**); and
-  - how policies and **Trust Bundles** define the security boundary of a **Margo Trust Domain**.
+  - how policies and **Trust Bundles** define the security boundary of a **Trust Domain**.
 
 - **Edge Compute Device Identity Profile:** a specialization for Edge Compute Devices:
 
@@ -279,41 +281,73 @@ Where mTLS is not feasible, a short-lived **JWT SVID** may be issued as a bearer
 
 A conceptual overview of how the **Margo Identity Service**, **Trust Domains**, and Margo components interact appears as an informative architecture diagram at the start of [Section 3](#3-margo-identity-and-authorization-framework-miaf).
 
+#### Relationship to SPIFFE <!-- omit from toc -->
+
+MIAF is intended to **reuse SPIFFE identity primitives** rather than invent Margo-specific credential formats or trust semantics.
+In particular, this SUP:
+
+- **adopts by reference** the SPIFFE concepts of **Trust Domain**, **SPIFFE ID**, **X.509-SVID**, **JWT-SVID**, and **Trust Bundle / Bundle Map**;
+- **profiles or constrains** some of those standards where Margo needs device-specific rules; and
+- **defines new Margo-specific behavior** for device bootstrap, lifecycle management, discovery, enrollment, renewal, revocation, and profile-specific authorization behavior.
+
+This SUP does **not** adopt the **SPIFFE Workload API** or **SPIFFE Workload Endpoint** model. Those specifications define a local gRPC-based interface for workload identity delivery. The APIs defined here are **remote HTTPS lifecycle interfaces** designed for the device bootstrap and management problem.
+
+Existing SPIFFE libraries and tooling can be used for SVID validation, Trust Bundle handling, and SPIFFE ID processing. A Margo-conformant deployment additionally requires the bootstrap methods, device identity lifecycle, discovery, and remote APIs defined in this SUP.
+
+| Topic | Source | Notes |
+| :---- | :----- | :---- |
+| SPIFFE ID syntax and validation rules | SPIFFE, adopted by reference | This SUP defines only Margo path conventions where needed. |
+| X.509-SVID baseline semantics | SPIFFE, adopted by reference + constrained | This SUP adds device-profile constraints. |
+| JWT-SVID baseline semantics | SPIFFE, adopted by reference + constrained | This SUP defines device-profile usage and exchange behavior. |
+| Trust Bundle / Bundle Map | SPIFFE, adopted by reference | This SUP defines discovery and retrieval conventions around it. |
+| Discovery document | Margo | Not part of SPIFFE. |
+| Enrollment / renewal / revocation / JWT exchange APIs | Margo | Remote HTTPS lifecycle interfaces, not the SPIFFE Workload API. |
+| LDI / PDI / ESI model | Margo | Device-specific concepts introduced by this SUP. |
+| Bootstrap methods | Margo + external standards | FDO, IEEE 802.1AR, and factory-certificate methods are integrated here. |
+
 ### 2. Terminology
 
 The following terms define the common vocabulary for Margo's non-human identity and authorization model.
-They align with open standards (for example, [**SPIFFE**](https://spiffe.io/)) but are restated here for consistency within the Margo specification.
+Some are adopted directly from open standards such as [**SPIFFE**](https://spiffe.io/); others are Margo-specific concepts introduced by this SUP.
 
-#### Margo Component <!-- omit from toc -->
+This SUP concerns identities used by *non-human* **Margo components** — logical units of the Margo system such as the Device Fleet Manager (DFM), Workload Fleet Manager (WFM), their clients, and infrastructure services such as registries or observability collectors, as defined in the [Envisioned System Design](https://specification.margo.org/overview/envisioned-system-design/).
 
-A logical unit of the Margo system as defined in the [Envisioned System Design](https://specification.margo.org/overview/envisioned-system-design/).
-Examples include the **Device Fleet Manager (DFM)**, **Workload Fleet Manager (WFM)**, their clients, and infrastructure services such as registries or observability collectors.
-This SUP concerns identities used by these *non-human* components.
+The **WFM Client** is called out specifically because this SUP draws a sharp distinction between *device identity* and *client identity*. A WFM Client runs on an Edge Compute Device, but its identity represents the deployed **client instance**, not the device itself. The **Logical Device Identity** defined here provides the stable, hardware-bound identity of the device; a planned **WFM Client Identity Profile** will define how WFM Clients obtain their own distinct identities, building on the device identity as their authentication foundation. This separation is necessary because device identity and WFM Client identity have different lifecycles, authorization scopes, and cardinalities across topologies (standalone devices, Kubernetes clusters, device gateways).
 
-#### Workload Fleet Management (WFM) Client (relationship to MIAF) <!-- omit from toc -->
+#### Terms adopted from SPIFFE <!-- omit from toc -->
 
-A **Margo client component** as defined in the [Technical Lexicon](https://specification.margo.org/personas-and-definitions/technical-lexicon/). While a WFM Client runs on an Edge Compute Device, its identity represents the deployed **client instance**, not the device itself. The **Logical Device Identity** defined in this SUP provides the stable, hardware-bound identity of the device. A planned **WFM Client Identity Profile** will define how WFM Clients obtain their own distinct Margo Identities, building on the device identity as their authentication foundation. This separation is necessary because device identity and WFM Client identity have different lifecycles, authorization scopes, and cardinalities across topologies (standalone devices, Kubernetes clusters, device gateways).
+The following terms are used as defined by SPIFFE. This SUP does not redefine them; it applies them within the Margo context.
 
-#### Margo Identity (MI) <!-- omit from toc -->
+##### Trust Domain <!-- omit from toc -->
 
-The verifiable digital identity of a Margo component within a **Margo Trust Domain**, represented by an **SVID** and managed by the **Margo Identity Service (MIS)** across its lifecycle (enrollment, renewal, revocation, replacement, termination).
-
-#### Margo Identity Service (MIS) <!-- omit from toc -->
-
-The authority that issues, renews, and revokes **Margo Identities**.
-The MIS validates **Bootstrap Credentials**, enforces Trust Domain policy, and binds a component's physical or cryptographic root of trust to a stable **Margo Identity**. For this SUP, MIS issues **device identities** under the Edge Compute Device Identity Profile. Future SUPs may extend MIS to issue identities for other components such as WFM Clients or workloads.
-
-#### Margo Trust Domain <!-- omit from toc -->
-
-A governed security boundary within which Margo Identities are issued and mutually recognized (for example, an end-user's factory network or a multi-tenant deployment). A Trust Domain defines:
+The governed security boundary within which identities are issued and mutually recognized. This SUP uses **Trust Domain** in the SPIFFE sense: a trust-root-backed identity namespace and policy boundary. A Trust Domain defines:
 
 - authoritative **trust anchors** (root and intermediate CAs);
 - the namespace for **SPIFFE IDs**; and
 - policies for identity lifecycle and authorization.
 
-#### Logical Device Identity (LDI) <!-- omit from toc -->
+##### SPIFFE Verifiable Identity Document (SVID) <!-- omit from toc -->
 
-The persistent, verifiable identity assigned to an **Edge Compute Device** within a Margo Trust Domain. It is expressed as a SPIFFE URI, for example:
+The verifiable credential representing an identity within a Trust Domain. An SVID binds a SPIFFE ID to a key pair.
+This SUP adopts SPIFFE **X.509-SVID** and **JWT-SVID** by reference and defines how Margo components use them. For the Edge Compute Device Identity Profile, LDIs are represented by **X.509 SVIDs**, while **JWT SVIDs** are optional derived credentials for short-lived bearer use in non-mTLS scenarios.
+
+##### Policy-Based Authorization <!-- omit from toc -->
+
+Authorization based on verified **SPIFFE IDs** and associated attributes, evaluated locally within the Trust Domain — not on external token scopes.
+
+#### Terms introduced by this SUP <!-- omit from toc -->
+
+The following terms are defined by this SUP. They represent Margo-specific concepts that build on the SPIFFE primitives above.
+
+##### Margo Identity Service (MIS) <!-- omit from toc -->
+
+A role that each Margo deployment must fill: the identity service within a Margo deployment that issues, renews, and revokes identities for components in a Trust Domain.
+The MIS validates **Bootstrap Credentials**, enforces Trust Domain policy, and binds a component's physical or cryptographic root of trust to a stable identity within the Trust Domain. For this SUP, MIS issues **device identities** under the Edge Compute Device Identity Profile. Future SUPs may extend MIS to issue identities for other components such as WFM Clients or workloads.
+The MIS is **not** a centrally provided Margo implementation; vendors, operators, or deployment tooling provide the actual service.
+
+##### Logical Device Identity (LDI) <!-- omit from toc -->
+
+The persistent, verifiable identity assigned to an **Edge Compute Device** within a Trust Domain. It is expressed as a SPIFFE URI, for example:
 
 ```text
 spiffe://<trust-domain>/margo/device/<uuid-v4>
@@ -322,45 +356,36 @@ spiffe://<trust-domain>/margo/device/<uuid-v4>
 and represented by an **X.509 SVID**.
 The LDI remains stable across hardware replacement or firmware updates when policy permits rebinding and serves as the anchor for device-level authentication and authorization.
 
-#### Physical Device Identity (PDI) <!-- omit from toc -->
+##### Physical Device Identity (PDI) <!-- omit from toc -->
 
 A hardware-rooted credential used during bootstrap, such as a factory X.509 certificate, a TPM-bound key, a **FIDO Device Onboard (FDO)** voucher, or an **IEEE 802.1AR DevID**. The MIS verifies the PDI and binds it to a **Logical Device Identity** during enrollment.
 
-#### Bootstrap Credential <!-- omit from toc -->
+##### Bootstrap Credential <!-- omit from toc -->
 
 A cryptographic credential presented by a Margo component to prove authenticity during initial enrollment with the MIS.
 For devices, it conveys evidence of the **Physical Device Identity**. Each supported **Bootstrap Method** defines how this credential is formatted and verified.
 
-#### Bootstrap Method <!-- omit from toc -->
+##### Bootstrap Method <!-- omit from toc -->
 
 A pluggable, normative method by which a Margo component presents its **Bootstrap Credential** to the MIS for enrollment.
 This SUP defines methods for Edge Compute Devices, including **FDO**, **factory certificate** (via mTLS or JWT assertion), and **IEEE 802.1AR DevID**. Future SUPs may introduce methods for other Margo components.
 
-#### Enrollment Subject Identifier (ESI) <!-- omit from toc -->
+##### Enrollment Subject Identifier (ESI) <!-- omit from toc -->
 
 A deterministic, globally unique identifier derived by the MIS from the presented **Bootstrap Credential** during enrollment.
-It is used to decide whether the presented bootstrap proof corresponds to an existing **Margo Identity** or a new one.
+It is used to decide whether the presented bootstrap proof corresponds to an existing identity within the Trust Domain or a new one.
 
 The derivation is **method-specific** and defined by each **Bootstrap Method**.
 *Example (device profile):* from a verified PDI, the ESI may be the certificate fingerprint, or a hash derived from a device certificate contained in an FDO Ownership Voucher.
 ESIs **MUST** be stable and unique within the Trust Domain and **MUST NOT** be reversible to the original credential material.
 
-#### SPIFFE Verifiable Identity Document (SVID) <!-- omit from toc -->
-
-The verifiable credential representing a **Margo Identity**. An SVID binds a SPIFFE ID to a key pair.
-This SUP defines the **X.509 SVID profile** as the normative representation for LDIs and a **JWT SVID** profile for short-lived bearer use in non-mTLS scenarios.
-
-#### JWT SVID Exchange <!-- omit from toc -->
+##### JWT SVID Exchange <!-- omit from toc -->
 
 An API by which a holder of a valid **X.509 SVID** requests a short-lived **JWT SVID** for use behind TLS-terminating infrastructure. The request uses a **Client Authentication Assertion** signed with the SVID's private key.
 
-#### Policy-Based Authorization <!-- omit from toc -->
-
-Authorization based on verified **SPIFFE IDs** and associated attributes, evaluated locally within the Trust Domain - not on external token scopes.
-
 ### 3. Margo Identity and Authorization Framework (MIAF)
 
-The **Margo Identity and Authorization Framework (MIAF)** defines how Margo components establish trust, authenticate, and are authorized within a **Margo Trust Domain**.
+The **Margo Identity and Authorization Framework (MIAF)** defines how Margo components establish trust, authenticate, and are authorized within a **Trust Domain**.
 
 MIAF prevents per-component identity silos by standardizing:
 
@@ -374,22 +399,22 @@ MIAF prevents per-component identity silos by standardizing:
 
 Conceptually, the **Margo Identity and Authorization Framework (MIAF)** consists of four main elements that together define how trust is established and maintained across the Margo ecosystem:
 
-1. **Margo Trust Domain**
-   The logical and administrative boundary within which Margo Identities are issued and mutually recognized - for example, an end-user's factory network or a managed service operated by a fleet-management vendor.
-   A Margo Trust Domain defines:
+1. **Trust Domain**
+   The logical and administrative boundary within which identities are issued and mutually recognized - for example, an end-user's factory network or a managed service operated by a fleet-management vendor.
+   A Trust Domain defines:
 
    - the authoritative **trust anchors** (root and intermediate CAs);
    - the namespace for **SPIFFE IDs** (e.g., `spiffe://factory.example/...`);
    - and the **policies** governing identity lifecycle and authorization within that boundary.
 
-   Each issued Margo Identity (SPIFFE ID) is scoped to exactly one Trust Domain; verifiers **MAY** validate identities from multiple Trust Domains via configuration and/or federation.
+   Each issued SPIFFE ID is scoped to exactly one Trust Domain; verifiers **MAY** validate identities from multiple Trust Domains via configuration and/or federation.
 
 2. **Margo Identity Service (MIS)**
    The identity authority of a Trust Domain.
    MIS is responsible for:
 
    - validating **Bootstrap Credentials** presented by components during enrollment;
-   - issuing, renewing, and revoking **SPIFFE Verifiable Identity Documents (SVIDs)** that represent **Margo Identities**; and
+   - issuing, renewing, and revoking **SVIDs** for identities in the Trust Domain; and
    - maintaining the binding between **Physical Device Identities (PDIs)** and **Logical Device Identities (LDIs)** for devices covered by this SUP.
 
    MIS exposes a consistent set of APIs - **discovery**, **enrollment**, **renewal**, **revocation**, and **JWT SVID exchange** - that all identity profiles build upon.
@@ -402,18 +427,18 @@ Conceptually, the **Margo Identity and Authorization Framework (MIAF)** consists
    - **verifiers**, validating peer SVIDs using the Trust Domain's **Trust Bundle**, then applying **policy-based authorization** based on verified **SPIFFE IDs** and attributes.
 
 4. **Trust Bundles**
-   Each Margo Trust Domain publishes a **Trust Bundle** containing:
+   Each Trust Domain publishes a **Trust Bundle** containing:
 
    - root and intermediate certificates used to validate X.509 SVID chains; and
    - public keys used to verify JWT SVIDs (if used).
 
-   Trust Bundles are identified by their Margo Trust Domain name and distributed using the SPIFFE **Bundle Map mechanism**, as defined in the [SPIFFE Trust Domain and Bundle specification](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md).
+   Trust Bundles are identified by their Trust Domain name and distributed using the SPIFFE **Bundle Map mechanism**, as defined in the [SPIFFE Trust Domain and Bundle specification](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md).
    Margo clients and servers use these bundles when validating SVIDs during mutual authentication.
 
-A typical interaction sequence in MIAF (applicable to all Margo components, not just devices) is as follows:
+A typical interaction sequence in MIAF (applicable to all Margo components, not just devices) is as follows. This sequence is **informative** and illustrates a typical flow; normative API details are in [Section 5](#5-apis).
 
-1. **Discovery:** A Margo component locates MIS endpoints and Trust Bundle locations via the `.well-known/margo` **Margo Discovery Document** defined in this SUP.
-2. **Enrollment:** The component presents a **Bootstrap Credential** (per its Bootstrap Method) to the MIS and receives an **SVID** representing its **Margo Identity**.
+1. **Discovery:** A Margo component locates MIS endpoints and Trust Bundle locations via the `.well-known/margo` discovery document defined in this SUP.
+2. **Enrollment:** The component presents a **Bootstrap Credential** (per its Bootstrap Method) to the MIS and receives an **SVID** for its identity.
 3. **Renewal:** Before expiry, the component renews its SVID via an authenticated request (for example, mTLS using the current SVID).
 4. **Authentication to peers:** The component authenticates to other Margo components using mTLS with its **X.509 SVID**, or, where mTLS is not possible, using a short-lived **JWT SVID** obtained from the MIS.
 5. **Authorization:** The receiving component validates the SVID (or JWT SVID) against the **Trust Bundle** and applies local **policy-based authorization** using the verified **SPIFFE ID** and associated attributes.
@@ -422,7 +447,7 @@ Specific details of these flows for **Edge Compute Devices** are defined later i
 
 > **Conceptual Trust and Identity Architecture (Informative)**
 > The diagram below illustrates MIAF in its most general form.
-> Any Margo component - for example, a DFM Client, WFM Client, or OTEL Agent - enrolls with the **Margo Identity Service (MIS)** to obtain a verifiable **Margo Identity**, represented as either an **X.509 SVID** or a **JWT SVID** within a governed **Margo Trust Domain**.
+> Any Margo component - for example, a DFM Client, WFM Client, or OTEL Agent - enrolls with the **Margo Identity Service (MIS)** to obtain a verifiable identity, represented as either an **X.509 SVID** or a **JWT SVID** within a governed **Trust Domain**.
 > Components authenticate to one another using these SVIDs:
 >
 > - X.509 SVIDs are typically used for mTLS-based authentication.
@@ -436,10 +461,10 @@ Specific details of these flows for **Edge Compute Devices** are defined later i
 >
 >  Client["**Margo Client Component**<br/>(e.g., DFM Client, WFM Client, Telemetry Agent)"]
 >  Server["**Margo Server Component**<br/>(e.g., DFM, WFM, Observability Platform, Component Registry)"]
->  MIS["**Margo Identity Service (MIS)**<br/>Issues, renews, and revokes Margo Identities (SVIDs)"]
->  TD["**Margo Trust Domain**<br/>Defines trust anchors, policies, and namespace"]
->  X509["**Margo Identity (X.509 SVID)**<br/>Certificate binding SPIFFE ID to key pair"]
->  JWT["**Margo Identity (JWT SVID)**<br/>Token binding SPIFFE ID to signed JWT claim set"]
+>  MIS["**Margo Identity Service (MIS)**<br/>Issues, renews, and revokes SVIDs"]
+>  TD["**Trust Domain**<br/>Defines trust anchors, policies, and namespace"]
+>  X509["**X.509 SVID**<br/>Certificate binding SPIFFE ID to key pair"]
+>  JWT["**JWT SVID**<br/>Token binding SPIFFE ID to signed JWT claim set"]
 >  TB["**Trust Bundle**<br/>Root and intermediate certificates,<br/>JWT verification keys"]
 >
 >  Client -->|"requests identity (X.509 SVID)"| MIS
@@ -465,8 +490,8 @@ Specific details of these flows for **Edge Compute Devices** are defined later i
 
 MIAF defines a unified identity model for all Margo components:
 
-- **Margo Identity (MI):** A verifiable identity issued by the MIS within a Trust Domain, represented by an **SVID** and identified by a **SPIFFE ID**.
-  For devices, this SUP defines the **Logical Device Identity (LDI)** as a specific type of Margo Identity.
+- **Identity representation:** An identity in a Trust Domain is named by a **SPIFFE ID** and represented by an **SVID** issued by the MIS.
+  For devices, this SUP defines the **Logical Device Identity (LDI)** as the device-specific realization of that model.
 
 - **Uniqueness and stability:** Each SPIFFE ID uniquely identifies one logical component within its Trust Domain.
   For devices, the **LDI** remains stable across hardware or firmware changes if policy permits rebinding.
@@ -488,78 +513,85 @@ MIAF defines a unified identity model for all Margo components:
 
 #### SVID profiles and negotiation
 
-Within a Trust Domain, MIAF uses **[SPIFFE Verifiable Identity Documents (SVIDs)](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE.md)** to represent verifiable Margo Identities.
+Within a Trust Domain, MIAF uses **[SPIFFE Verifiable Identity Documents (SVIDs)](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE.md)** to represent verifiable identities.
 Each **SVID profile** defines how an identity is encoded, validated, and used for authentication (for example, as an **X.509 certificate** or a **JWT**).
 Profiles are referenced by **profile URIs** in API exchanges.
 
-This SUP defines two normative SVID profiles:
+This SUP uses two SPIFFE-defined SVID types:
 
-- an **X.509 SVID profile**, used for mTLS authentication; and
-- a **JWT SVID profile**, used for bearer-style authentication.
+- **X.509-SVID**, used for mTLS authentication; and
+- **JWT-SVID**, used for bearer-style authentication.
 
-Both profiles are equivalent at the framework level and may represent any Margo Identity.
-They differ only in transport and validation - X.509 SVIDs are validated through certificate chains, while JWT SVIDs are verified using public keys from the **Trust Bundle**.
+> **Informative summary:**
+> At the framework level, both are SVID-based representations of an identity. They differ in transport and validation semantics: X.509-SVIDs validate through certificate chains, while JWT-SVIDs validate through public keys distributed in the **Trust Bundle**.
 
 For the **Edge Compute Device Identity Profile**, this SUP mandates:
 
-- **X.509 SVIDs** as the default representation for Logical Device Identities; and
-- optional **JWT SVIDs**, issued via the **JWT SVID Exchange Endpoint**, for environments where end-to-end mTLS is not feasible.
+- **X.509-SVIDs** as the only permitted representation for device enrollment and issuance of Logical Device Identities; and
+- optional **JWT-SVIDs**, obtained only after enrollment via the **JWT SVID Exchange Endpoint**, for environments where end-to-end mTLS is not feasible.
 
 **Profile identifiers:**
 
-| Type        | Profile URI                                      | Status                              |
-| :---------- | :----------------------------------------------- | :---------------------------------- |
-| `x509-svid` | `https://margo.org/profiles/spiffe/x509-svid/v1` | **Normative** ([defined by this SUP](#x509-svid-profile)) |
-| `jwt-svid`  | `https://margo.org/profiles/spiffe/jwt-svid/v1`  | **Normative** ([defined by this SUP](#jwt-svid-profile)) |
+| Type        | Profile URI                                      | Status |
+| :---------- | :----------------------------------------------- | :----- |
+| `x509-svid` | `https://margo.org/profiles/spiffe/x509-svid/v1` | **Normative** ([adopts SPIFFE X.509-SVID by reference; constrained by this SUP](#x509-svid-profile)) |
+| `jwt-svid`  | `https://margo.org/profiles/spiffe/jwt-svid/v1`  | **Normative** ([adopts SPIFFE JWT-SVID by reference; constrained by this SUP](#jwt-svid-profile)) |
 
-Both are equally valid identity representations.
-A Trust Domain **MAY** issue either format through the same enrollment and renewal APIs.
-Future SUPs may introduce additional SVID profiles, but all **MUST** remain interoperable and SPIFFE-conformant.
+A Trust Domain **MAY** support both types through the lifecycle APIs. Individual identity profiles define which types are permitted; for the Edge Compute Device Identity Profile, X.509-SVID is mandatory and JWT-SVID is optional and derived.
+Future SUPs may introduce additional SVID profiles, but all **MUST** remain interoperable with the SPIFFE-based identity model used here.
 
 ##### X.509 SVID Profile
 
-This profile adopts the
-[SPIFFE X.509-SVID specification](https://github.com/spiffe/spiffe/blob/main/standards/X509-SVID.md) and defines how a Margo Identity is represented as an X.509 certificate chain within a Margo Trust Domain.
+This SUP adopts the
+[SPIFFE X.509-SVID specification](https://github.com/spiffe/spiffe/blob/main/standards/X509-SVID.md) by reference.
+The following requirements are the **MIAF-specific constraints** that apply in addition to the base specification.
 
-| Field | Requirement | Notes |
-| :---- | :---------- | :---- |
-| **Subject Alternative Name (URI)** | Exactly one URI SAN containing the SPIFFE ID (e.g., `spiffe://<trust-domain>/margo/<component>/<uuid>`). | The SAN URI is the **only authoritative identity claim**; the Subject DN MUST be ignored. |
-| **BasicConstraints** | `CA=false` for leaf SVIDs; `CA=true` permitted for intermediate issuers. | Issuer SVIDs SHOULD use `nameConstraints` to restrict SPIFFE ID namespaces. |
-| **KeyUsage** | `digitalSignature` (**MUST**) | Other usages (e.g., `keyEncipherment`, `cRLSign`) MUST NOT be set. |
-| **ExtendedKeyUsage** | `clientAuth` (**RECOMMENDED**) | Used for mTLS client authentication. |
-| **Validity Period** | **RECOMMENDED:** <= 1 year | Actual lifetime may be defined by the identity profile. |
-| **NameConstraints** | **OPTIONAL** | May be used by MIS to limit valid SPIFFE ID namespaces. |
+> **Informative summary:**
+> An X.509-SVID carries exactly one SPIFFE ID in a URI SAN and is validated using the Trust Bundle for the SPIFFE ID's Trust Domain.
 
-Verification:
+| Field | Requirement | Source | Notes |
+| :---- | :---------- | :----- | :---- |
+| **Subject Alternative Name (URI)** | Exactly one URI SAN containing the SPIFFE ID (e.g., `spiffe://<trust-domain>/margo/<component>/<uuid>`). | SPIFFE X.509-SVID | The SAN URI is the **only authoritative identity claim**; the Subject DN MUST be ignored. |
+| **BasicConstraints** | `CA=false` for leaf SVIDs; `CA=true` permitted for intermediate issuers. | SPIFFE X.509-SVID | Issuer SVIDs SHOULD use `nameConstraints` to restrict SPIFFE ID namespaces. |
+| **KeyUsage** | `digitalSignature` (**MUST**). `keyCertSign` and `cRLSign` **MUST NOT** be set. | SPIFFE X.509-SVID | Other usages such as `keyEncipherment` or `keyAgreement` **MAY** be set, per SPIFFE X.509-SVID. |
+| **ExtendedKeyUsage** | If present, **MUST** follow the SPIFFE X.509-SVID specification. | SPIFFE X.509-SVID | MIAF does not introduce a different EKU rule at the framework level. |
+| **Validity Period** | **RECOMMENDED:** <= 1 year | **MIAF** | SPIFFE does not define validity period constraints. Actual lifetime may be further constrained by the identity profile. |
+| **NameConstraints** | **OPTIONAL** | SPIFFE X.509-SVID | May be used by MIS to limit valid SPIFFE ID namespaces. |
+
+Validation (per SPIFFE X.509-SVID):
 
 - Certificate chains **MUST** validate against the **Trust Bundle** of the Trust Domain.
 - Each SPIFFE ID **MUST** be unique within its Trust Domain.
 
-This profile forms the **foundation** for all X.509-based identity representations in Margo, including the [**Edge Compute Device Identity Profile**](#4-edge-compute-device-identity-profile).
-
 ##### JWT SVID Profile
 
-The **JWT SVID Profile** defines how a Margo Identity is represented as a signed JSON Web Token (JWT), aligned with the
-[SPIFFE JWT-SVID specification](https://github.com/spiffe/spiffe/blob/main/standards/JWT-SVID.md).
+This SUP adopts the
+[SPIFFE JWT-SVID specification](https://github.com/spiffe/spiffe/blob/main/standards/JWT-SVID.md) by reference.
+The following requirements are the **MIAF-specific constraints** that apply in addition to the base specification.
 
-| Field | Requirement | Notes |
-| :---- | :--------- | :----- |
-| **`sub` (Subject Claim)** | MUST contain the SPIFFE ID. | Authoritative identity binding. |
-| **`aud` (Audience Claim)** | MUST be present. | Specifies the intended verifier(s). |
-| **Signature Algorithm** | MUST follow [Cryptographic Requirements](#cryptographic-requirements). | |
-| **Lifetime** | SHOULD be short-lived (e.g., minutes). | Reduces replay and theft risk. |
-| **Issuer** | MUST be the MIS of the Trust Domain. | |
+> **Informative summary:**
+> A JWT-SVID carries the SPIFFE ID in its `sub` claim and is validated using JWT signing keys from the Trust Bundle for the subject's Trust Domain.
 
-Validation:
+| Field | Requirement | Source | Notes |
+| :---- | :--------- | :----- | :----- |
+| **`sub` (Subject Claim)** | MUST contain the SPIFFE ID. | SPIFFE JWT-SVID | Authoritative identity binding. |
+| **`aud` (Audience Claim)** | MUST be present. | SPIFFE JWT-SVID | Specifies the intended verifier(s). |
+| **Signature Algorithm** | MUST follow [Cryptographic Requirements](#cryptographic-requirements). | **MIAF** | SPIFFE allows a broader set of algorithms. |
 
-- JWT SVIDs are verified using **public keys** distributed via the **Trust Bundle**.
+Validation (per SPIFFE JWT-SVID):
+
+- JWT-SVIDs are verified using **public keys** distributed via the **Trust Bundle**.
 - Audience, expiry, and signature validation are mandatory.
-
-This profile is **normatively defined** by MIAF and may be constrained by identity profiles (e.g., device-specific issuance or TTLs).
 
 #### Trust Bundles and Distribution
 
-Each Margo Trust Domain maintains a **Trust Bundle**, the authoritative set of cryptographic material used to validate SVIDs within that domain.
+This SUP adopts the SPIFFE **Trust Domain and Bundle / Bundle Map** model by reference.
+The following requirements describe how MIAF deployments publish, retrieve, and use Trust Bundles.
+
+> **Informative summary:**
+> A Trust Bundle contains the cryptographic material needed to validate SVIDs for exactly one Trust Domain. Trust Bundles from different Trust Domains must remain distinct and bound to the Trust Domain they represent.
+
+Each Trust Domain maintains a **Trust Bundle**, the authoritative set of cryptographic material used to validate SVIDs within that domain.
 
 A Trust Bundle **MUST** include:
 
@@ -576,11 +608,11 @@ Bundles:
 Validation process:
 
 1. Determine the peer's Trust Domain from its SPIFFE ID.
-2. Retrieve the corresponding Trust Bundle (via the [**Margo Discovery Document**](#discovery-document-endpoint) or from cache).
-3. Validate the SVID chain or JWT signature using the Bundle.
+2. Retrieve the corresponding Trust Bundle (via the [discovery document](#discovery-document-endpoint) or from cache).
+3. Validate the SVID chain or JWT signature using that Trust Bundle.
 4. If validation succeeds and local policy allows, apply **policy-based authorization**.
 
-Cross-domain trust (for example, between operator and vendor) is configured explicitly by bundle sharing or federation. Federation mechanisms are out of scope for this SUP but may be defined in future work.
+Cross-domain trust is configured explicitly by associating a Trust Domain with the correct Trust Bundle. The SPIFFE Bundle Map format supports inclusion of bundles for multiple Trust Domains, which can serve as a basis for cross-domain trust. Full federation lifecycle semantics, as defined by SPIFFE Federation, are out of scope for this SUP and may be addressed in future work.
 
 #### Cryptographic Requirements
 
@@ -605,7 +637,7 @@ These modes differ only in internal PKI hierarchy; external APIs and semantics r
 | Mode | Description | Typical Use Case |
 | :--- | :---------- | :--------------- |
 | **Root CA Mode** | MIS operates as a self-signed **Root CA**, directly issuing all SVIDs. | Self-contained or air-gapped environments. |
-| **Intermediate CA Mode** | MIS is an **Intermediate CA** signed by an enterprise or offline Root CA, chaining Margo SVIDs to an enterprise trust root. | Enterprise environments aligned with corporate PKI. |
+| **Intermediate CA Mode** | MIS is an **Intermediate CA** signed by an enterprise or offline Root CA, chaining issued SVIDs to an enterprise trust root. | Enterprise environments aligned with corporate PKI. |
 | **Registration Authority (RA) Mode** | MIS acts as a **Registration Authority**, validating enrollment and delegating issuance to a backend CA (e.g., EST, CMPv2, ACME). | Shared or external issuance infrastructures. |
 
 > **Informative:**
@@ -614,7 +646,7 @@ These modes differ only in internal PKI hierarchy; external APIs and semantics r
 
 ### 4. Edge Compute Device Identity Profile
 
-The **Edge Compute Device Identity Profile** applies the **Margo Identity and Authorization Framework (MIAF)** to **Edge Compute Devices**, defining how each device receives and maintains a verifiable **Logical Device Identity (LDI)** within a **Margo Trust Domain**.
+The **Edge Compute Device Identity Profile** applies the **Margo Identity and Authorization Framework (MIAF)** to **Edge Compute Devices**, defining how each device receives and maintains a verifiable **Logical Device Identity (LDI)** within a **Trust Domain**.
 
 This profile specifies the normative representation of device identities (X.509 SVIDs), their lifecycle, SPIFFE ID structure, cryptographic and key-protection requirements, and the process for obtaining short-lived JWT SVIDs when mTLS cannot be used.
 
@@ -649,7 +681,7 @@ This identifier is unique within a Trust Domain and is the canonical reference f
 
 #### Logical Device Identity Lifecycle
 
-The LDI follows the **standard Margo Identity lifecycle** defined in [Identity model](#identity-model). The MIS applies device-specific policy and ensures consistent creation, renewal, replacement, and retirement within the Trust Domain.
+The LDI follows the **standard identity lifecycle** defined in [Identity model](#identity-model). The MIS applies device-specific policy and ensures consistent creation, renewal, replacement, and retirement within the Trust Domain.
 
 | Lifecycle Phase | Description |
 | :---- | :---------- |
@@ -734,23 +766,14 @@ This SUP does not yet standardize how such authorization evidence is conveyed to
 
 This profile **refines** the generic [X.509 SVID Profile](#x509-svid-profile) with additional certificate-level requirements for **device** identities. The MIS **MUST** issue device SVIDs as follows:
 
-| Field | Requirement | Notes |
-| :---- | :---------- | :---- |
-| **Subject Alternative Name (URI)**| Exactly one URI SAN containing `spiffe://<trust-domain>/margo/device/<uuid-v4>`. | The SAN is the authoritative device identity. |
-| **Validity** | **MUST NOT** exceed **5 years**. **RECOMMENDED:** <= **90 days** for regularly online devices. | Shorter lifetimes reduce risk; operators may choose longer for intermittently connected fleets. |
-| **KeyUsage** | `digitalSignature` (**MUST**) | Other bits (e.g., `keyEncipherment`, `keyAgreement`, `keyCertSign`, `cRLSign`) **MUST NOT** be set. |
-| **ExtendedKeyUsage** | `clientAuth` (**MUST**); `serverAuth` (**MUST NOT**) | Device SVIDs are used for client authentication only. |
+| Field | Requirement | Source | Notes |
+| :---- | :---------- | :----- | :---- |
+| **Subject Alternative Name (URI)**| Exactly one URI SAN containing `spiffe://<trust-domain>/margo/device/<uuid-v4>`. | **MIAF** | The Margo device path convention. The SAN is the authoritative device identity. |
+| **Validity** | **MUST NOT** exceed **5 years**. **RECOMMENDED:** <= **90 days** for regularly online devices. | **MIAF** | SPIFFE does not constrain validity. Shorter lifetimes reduce risk; operators may choose longer for intermittently connected fleets. |
 
 All other fields **MUST** comply with the base [X.509 SVID Profile](#x509-svid-profile).
 
-**Verification requirements:**
-
-- The SVID chain **MUST** validate against the Trust Domain's **Trust Bundle**.
-- The SPIFFE ID **MUST** be unique per device within the Trust Domain.
-- The same LDI **MUST NOT** be active for multiple PDIs concurrently.
-
-**Relationship to MIAF:**
-The X.509 SVID Profile defines *how* any Margo Identity is expressed as an X.509 certificate; this device profile defines *additional, device-specific constraints* on that expression.
+The same LDI **MUST NOT** be active for multiple PDIs concurrently.
 
 #### Profile-specific Enrollment and Identity Issuance
 
@@ -791,6 +814,7 @@ The Margo Identity and Authorization APIs define the network interfaces through 
 This SUP normatively defines how these APIs apply to **Edge Compute Devices** via the Edge Compute Device Identity Profile, but the same endpoints and semantics are intended to be reusable by future profiles for other Margo components.
 
 These APIs implement the operational behaviors described in previous sections - including identity issuance, renewal, revocation, and JWT SVID exchange - using RESTful patterns over HTTPS.
+They are **Margo-specific lifecycle APIs**. They do **not** adopt the SPIFFE Workload API or SPIFFE Workload Endpoint specifications, which define a local gRPC-based interface for workload identity delivery.
 
 All APIs in this section are **normative**.
 They **MUST** use JSON for all request and response bodies unless otherwise specified, and **MUST** return errors in [RFC 9457](https://datatracker.ietf.org/doc/html/rfc9457) Problem Details format (see [Appendix B](#appendix-b-error-responses-normative) for details).
@@ -823,7 +847,9 @@ All endpoints using `{spiffeIdEncoded}` **MUST** follow this same encoding rule.
 
 #### Discovery Document Endpoint
 
-The discovery document serves as the **entry point** to a Margo Trust Domain. Before any enrollment, renewal, or JWT SVID exchange operation, a client **MUST** retrieve this document to discover MIS location, supported bootstrap methods, and compatible SVID profiles. It provides the foundational metadata required to interact with all subsequent APIs defined in this specification.
+The discovery document serves as the **entry point** to a Trust Domain. Before any enrollment, renewal, or JWT SVID exchange operation, a client **MUST** retrieve this document to discover MIS location, supported bootstrap methods, and compatible SVID profiles. It provides the foundational metadata required to interact with all subsequent APIs defined in this specification.
+
+This document is **Margo-specific metadata**. It advertises Margo endpoints and bootstrap capabilities and points clients to the standard SPIFFE Trust Bundle resource published for the Trust Domain.
 
 | Item | Value |
 | :--- | :---- |
@@ -843,7 +869,7 @@ The discovery document serves as the **entry point** to a Margo Trust Domain. Be
 
 | Field | Type | Required | Description |
 | :---- | :--- | :------- | :---------- |
-| `trust_domain` | string | Y  | Identifier of the Margo Trust Domain (e.g., `factory.example`). All SPIFFE IDs issued by the MIS **MUST** belong to this trust domain. |
+| `trust_domain` | string | Y  | Identifier of the Trust Domain (e.g., `factory.example`). All SPIFFE IDs issued by the MIS **MUST** belong to this trust domain. |
 | `trust_bundle_uri` | string | Y | Absolute HTTPS URL to the **SPIFFE Bundle Map** for this Trust Domain. The resource **MUST** conform to the [SPIFFE Trust Domain and Bundle Map specification](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md#5-spiffe-bundle-map) and **MUST** contain the Trust Bundle for the domain identified by `trust_domain`. The resource **SHOULD** expose caching headers (`ETag`, `Last-Modified`). Clients **MUST** authenticate the HTTPS connection used to retrieve this resource per [Initial Trust Bootstrap](#initial-trust-bootstrap). |
 | `margo_identity_service_base_uri` | string | Y | Absolute HTTPS base URL of the Margo Identity Service (MIS). All MIS endpoints defined in this section are derived from this base URI. Clients **MUST** authenticate the HTTPS connection to this host per [Initial Trust Bootstrap](#initial-trust-bootstrap). |
 | `supported_bootstrap_methods` | array of string | Y | URNs of supported bootstrap methods. Each URN **MUST** reference a method defined in [Appendix A](#appendix-a-bootstrap-methods-normative) or a registered vendor extension (`urn:margo:bootstrap:<method>:<version>`). Custom methods **SHOULD** use an organization-scoped namespace (e.g., `urn:margo:bootstrap:acme-factory:v1`). Servers **MUST NOT** advertise a method without a corresponding verification configuration in MIS. |
@@ -906,7 +932,7 @@ During enrollment, the client **MUST** include the selected `svid_profile_uri` i
 
 #### Trust Bundle Retrieval Endpoint
 
-The Trust Bundle endpoint provides the authoritative set of public trust anchors for a Margo Trust Domain.
+The Trust Bundle endpoint provides the authoritative set of public trust anchors for a Trust Domain.
 Its location is given by the `trust_bundle_uri` field in the [Discovery Document](#discovery-document-endpoint).
 
 | Item | Value |
@@ -921,14 +947,14 @@ Its location is given by the `trust_bundle_uri` field in the [Discovery Document
 > **Informative:**
 > Clients **MUST** retrieve and validate this bundle before validating any SVIDs issued within the Trust Domain.
 > The HTTPS connection used to retrieve the Trust Bundle **MUST** be authenticated using an initial trust mechanism as defined in [Initial Trust Bootstrap](#initial-trust-bootstrap).
-> The same mechanism also allows Trust Domain federation via multiple bundle entries in the SPIFFE Bundle Map.
+> The SPIFFE Bundle Map format supports inclusion of bundles for multiple Trust Domains, which can serve as a basis for cross-domain trust. Full federation lifecycle semantics, as defined by SPIFFE Federation, are out of scope for this SUP.
 
 #### Enrollment and Identity Issuance Endpoint
 
 This endpoint is used by a Margo component (for this SUP: an Edge Compute Device) or an authorized bootstrap intermediary acting on its behalf (for example, an FDO Owner Onboarding Service component of the MIS) to perform **initial enrollment** with the Margo Identity Service (MIS).
 
-During enrollment, the component authenticates using its **Bootstrap Credential** and requests issuance of a new Margo Identity, represented by an SVID.
-For Edge Compute Devices, this operation establishes the authoritative binding between the device's **Physical Device Identity** and **Logical Device Identity** within the Margo Trust Domain.
+During enrollment, the component authenticates using its **Bootstrap Credential** and requests issuance of a new identity, represented by an SVID.
+For Edge Compute Devices, this operation establishes the authoritative binding between the device's **Physical Device Identity** and **Logical Device Identity** within the Trust Domain.
 
 | Item | Value |
 | :--- | :---- |
@@ -958,7 +984,7 @@ For Edge Compute Devices, this operation establishes the authoritative binding b
 | `svid` | object | Y | Profile-specific payload containing the issued SVID. See [Profile-specific `svid` formats (response payload)](#profile-specific-svid-formats-response-payload) below. |
 
 > **Informative:**
-> The MIS returns `201 Created` when it creates a new Margo Identity record and `200 OK` when it issues a new SVID for an existing identity as part of a re-enrollment or recovery flow.
+> The MIS returns `201 Created` when it creates a new identity record and `200 OK` when it issues a new SVID for an existing identity as part of a re-enrollment or recovery flow.
 > Identity-profile-specific interpretations (for example, mapping Physical to Logical Device Identity for devices) are defined in the corresponding profile section.
 
 ##### Profile-specific `svid_request` formats (request payload) <!-- omit from toc -->
@@ -1008,9 +1034,8 @@ For `svid_profile_uri = "https://margo.org/profiles/spiffe/jwt-svid/v1"`, the `s
 
 **Validation (normative):**
 
-- The MIS **MUST** include the requested audiences in the JWT SVID's `aud` claim (possibly filtered by policy).
 - If `ttl` is omitted, the MIS **MUST** use a default configured lifetime.
-- The effective lifetime **MUST** comply with the [JWT SVID Profile](#jwt-svid-profile), for example, being short-lived and within deployment-specific maximums.
+- JWT SVID lifetime limits are defined by the applicable endpoint (see [JWT SVID Exchange Endpoint](#jwt-svid-exchange-endpoint)).
 
 > **Important:**
 > The **Edge Compute Device Identity Profile** defined in this SUP **MUST NOT** use the JWT SVID profile for enrollment. Devices **MUST** request X.509 SVIDs only. The JWT SVID profile is defined here for framework completeness and for future identity profiles.
@@ -1029,7 +1054,7 @@ For `svid_profile_uri = "https://margo.org/profiles/spiffe/x509-svid/v1"`, the `
 
 | Field | Type | Required | Description |
 | :---- | :--- | :------- | :---------- |
-| `certificate_chain_pem` | array of string | Y | PEM-encoded X.509 certificate chain. The first element **MUST** be the SVID (leaf certificate representing the Margo Identity), followed by any required intermediates. The root **MAY** be omitted if distributed via the Margo Trust Bundle. PEM strings **MUST** be base64 with line breaks; clients **MUST NOT** assume a specific wrap width. |
+| `certificate_chain_pem` | array of string | Y | PEM-encoded X.509 certificate chain. The first element **MUST** be the SVID (leaf certificate representing the issued identity), followed by any required intermediates. The root **MAY** be omitted if distributed via the Trust Bundle. PEM strings **MUST** be base64 with line breaks; clients **MUST NOT** assume a specific wrap width. |
 
 ###### JWT SVID profile (`https://margo.org/profiles/spiffe/jwt-svid/v1`) <!-- omit from toc -->
 
@@ -1044,7 +1069,7 @@ For `svid_profile_uri = "https://margo.org/profiles/spiffe/jwt-svid/v1"`, the `s
 
 | Field | Type | Required | Description |
 | :---- | :--- | :------- | :---------- |
-| `jwt` | string | Y | The compact JWT SVID string, as defined by the [JWT SVID Profile](#jwt-svid-profile). Its `sub` claim **MUST** contain the SPIFFE ID of the Margo Identity. |
+| `jwt` | string | Y | The compact JWT SVID string, as defined by the [JWT SVID Profile](#jwt-svid-profile). Its `sub` claim **MUST** contain the SPIFFE ID of the issued identity. |
 | `expires_at` | string (ISO 8601) | N | UTC timestamp indicating when the JWT SVID expires. If omitted, clients **MUST** derive expiry from the token's `exp` claim. |
 
 > **Usage of JWT SVIDs (normative):**
@@ -1096,7 +1121,7 @@ This logic ensures consistent handling of first-time enrollments, retried networ
 1. **Derive Enrollment Subject Identifier**
 
    The MIS **MUST** derive a deterministic **[Enrollment Subject Identifier](#enrollment-subject-identifier-esi)** from the presented `bootstrapCredential`.
-   This identifier anchors the binding between the presented bootstrap material and the resulting Margo Identity (for devices: between the Physical Device Identity and the Logical Device Identity).
+   This identifier anchors the binding between the presented bootstrap material and the resulting identity (for devices: between the Physical Device Identity and the Logical Device Identity).
 
 2. **Validate bootstrap proof**
 
@@ -1118,12 +1143,12 @@ This logic ensures consistent handling of first-time enrollments, retried networ
    - **Case A - No binding exists (initial enrollment)**
 
       - The MIS applies operator-defined Trust Domain policy to determine whether new identities may be created.
-      - Upon approval, the MIS **MUST** create a new **Margo Identity** (for devices: a UUIDv4 Logical Device Identity) and persist a mapping between the enrollment subject identifier and that identity.
+      - Upon approval, the MIS **MUST** create a new identity (for devices: a UUIDv4 Logical Device Identity) and persist a mapping between the enrollment subject identifier and that identity.
       - The MIS then issues an SVID according to the selected `svid_profile_uri` and returns `201 Created` with the profile-conformant response body.
 
    - **Case B - Binding exists (re-enrollment / recovery)**
 
-      - The MIS **MUST** retrieve the existing Margo Identity bound to the enrollment subject identifier.
+      - The MIS **MUST** retrieve the existing identity bound to the enrollment subject identifier.
       - If the CSR contains a **new** public key, the MIS **MUST** apply operator policy to decide if **key rotation** (same identity, new key) is permitted. If not permitted, return `409 Conflict`. If permitted, issue a new SVID and invalidate the prior SVID.
       - The MIS then issues a new SVID for the same identity and returns `200 OK`.
 
@@ -1142,7 +1167,7 @@ This logic ensures consistent handling of first-time enrollments, retried networ
 
 #### SVID Renewal Endpoint
 
-This endpoint allows an already enrolled component to **renew its expiring SVID** while preserving its existing Margo Identity.
+This endpoint allows an already enrolled component to **renew its expiring SVID** while preserving its existing identity.
 
 Renewal is authenticated **directly with an existing SVID**:
 the client either presents its current X.509 SVID as a TLS client certificate (mTLS), or presents a JWT SVID as an HTTP Bearer token, and the MIS issues a new SVID for the same SPIFFE ID.
@@ -1165,7 +1190,7 @@ the client either presents its current X.509 SVID as a TLS client certificate (m
 | `svid_request` | object | Y | Profile-specific renewal payload. For X.509 SVID, this object contains a Base64-encoded CSR as defined in [X.509 SVID Profile](#x509-svid-profile). For JWT SVIDs, it contains an `aud`/`ttl` object as defined in [JWT SVID Profile](#jwt-svid-profile). |
 
 > **Note:**
-> JWT SVID renewal behavior depends on the applicable **Margo Identity Profile**:
+> JWT SVID renewal behavior depends on the applicable **identity profile under MIAF**:
 >
 > - For the **Edge Compute Device Identity Profile** defined in this SUP, JWT SVIDs are **derived credentials** obtained from an X.509 SVID. They are short-lived and **MUST NOT** be renewed via this endpoint. Devices requiring a fresh JWT SVID **MUST** use the [JWT SVID Exchange Endpoint](#jwt-svid-exchange-endpoint).
 > - For other (future) identity profiles that directly issue JWT SVIDs through `/identities`, renewal semantics **MAY** be defined in those profiles.
@@ -1232,7 +1257,7 @@ To prevent resource exhaustion, credential churn, or abuse through automated rep
 
 #### JWT SVID Exchange Endpoint
 
-This endpoint allows a component that already holds a valid X.509 SVID to request a **short-lived JWT SVID** representing the same Margo Identity.
+This endpoint allows a component that already holds a valid X.509 SVID to request a **short-lived JWT SVID** representing the same identity.
 
 It is intended for environments where end-to-end mTLS is not feasible (for example, in the presence of TLS-terminating proxies), while still using the MIS and Trust Domain as the source of truth for identities.
 
@@ -1261,7 +1286,7 @@ The JWT **MUST** be digitally signed using the private key associated with the c
 > **Warning:** Do not confuse this **Client Authentication Assertion** with the **Bootstrap Assertion** used in the `factory-cert-jwt` bootstrap method:
 >
 > - **Bootstrap Assertion:** Signed by the **factory private key** (PDI). Used only once during initial enrollment.
-> - **Client Authentication Assertion:** Signed by the active **Margo Identity private key** (LDI). Used repeatedly to exchange an existing X.509 SVID for a fresh JWT SVID.
+> - **Client Authentication Assertion:** Signed by the active **identity private key** (LDI). Used repeatedly to exchange an existing X.509 SVID for a fresh JWT SVID.
 
 **Request body schema (`application/json`):**
 
@@ -1327,7 +1352,7 @@ Content-Type: application/json
 
 #### Revocation List Endpoint
 
-This endpoint provides a **machine-readable list of revoked SVIDs** within the Margo Trust Domain maintained by the Margo Identity Service (MIS).
+This endpoint provides a **machine-readable list of revoked SVIDs** within the Trust Domain maintained by the Margo Identity Service (MIS).
 
 Clients and services use it to check SVID status and enforce revocation, without relying solely on traditional PKI mechanisms such as CRLs or OCSP.
 
@@ -1403,7 +1428,7 @@ Last-Modified: Sat, 25 Oct 2025 14:12:31 GMT
 
 ##### Revocation Model <!-- omit from toc -->
 
-The Margo Identity Service (MIS) **MUST** maintain a consistent revocation model to ensure that compromised or decommissioned Margo Identities cannot be used for authentication.
+The Margo Identity Service (MIS) **MUST** maintain a consistent revocation model to ensure that compromised or decommissioned identities cannot be used for authentication.
 
 1. **Short-lived credentials (primary containment)**
 
@@ -1565,7 +1590,7 @@ The `client_assertion` used at the exchange endpoint **MUST** use an algorithm p
 The following flows expand on [Enrollment and Identity Issuance](#enrollment-and-identity-issuance-endpoint) and illustrate selected bootstrap methods defined in [Appendix A: Bootstrap Methods (Normative)](#appendix-a-bootstrap-methods-normative).
 They are **informative only** and do not introduce additional normative requirements.
 
-Each flow shows how a device presents its bootstrap credential, how the MIS validates it, and how the **enrollment subject identifier** (as defined in [Section 5](#mis-validation-and-processing-logic)) is derived from that credential to establish a deterministic binding between the physical credential and the resulting Margo Identity.
+Each flow shows how a device presents its bootstrap credential, how the MIS validates it, and how the **enrollment subject identifier** (as defined in [Section 5](#mis-validation-and-processing-logic)) is derived from that credential to establish a deterministic binding between the physical credential and the resulting identity.
 
 ##### Example: Factory Certificate Method (mTLS)
 
@@ -1652,7 +1677,7 @@ Implementations **SHOULD** rely on well-maintained TLS 1.3 libraries and follow 
 
 TLS forms the transport security layer beneath MIAF.
 
-- When authenticating via **mutual TLS (mTLS)**, the client certificate **MUST** be a valid **X.509 SVID** issued by the **Margo Identity Service** of the applicable **Margo Trust Domain**.
+- When authenticating via **mutual TLS (mTLS)**, the client certificate **MUST** be a valid **X.509 SVID** issued by the **Margo Identity Service** of the applicable **Trust Domain**.
 - When authenticating using a **JWT SVID**, the session **MUST** still be protected by HTTPS to preserve token confidentiality and integrity in transit.
 
 These requirements ensure that all MIAF operations - discovery, enrollment, renewal, JWT SVID exchange, and revocation - occur over authenticated and encrypted channels.
@@ -1724,7 +1749,7 @@ Primary objectives: protect private keys, preserve identity integrity, and minim
 
 ### 9. Future Work: WFM Client Identity Profile (Informative)
 
-The **Edge Compute Device Identity Profile** defined in this SUP establishes the authentication **foundation** for Edge Compute Devices within a Margo Trust Domain. However, the device SVID is **not itself** the credential used to authenticate to the WFM API.
+The **Edge Compute Device Identity Profile** defined in this SUP establishes the authentication **foundation** for Edge Compute Devices within a Trust Domain. However, the device SVID is **not itself** the credential used to authenticate to the WFM API.
 
 A device's Logical Device Identity proves that a specific physical or virtual platform is authentic and enrolled within the Trust Domain. A **WFM Client**, by contrast, is a software component that runs on one or more devices and interacts with a specific Workload Fleet Manager. These are fundamentally different principals:
 
@@ -1738,12 +1763,12 @@ A device's Logical Device Identity proves that a specific physical or virtual pl
   | Kubernetes Cluster | N devices : 1 WFM Client |
   | Device Gateway | 1 gateway device (+N non-Margo sub-devices) : 1 WFM Client |
 
-  In the cluster case, multiple devices share a single WFM Client relationship - the cluster's WFM Client identity must survive leader failover without being bound to any single device's SVID. In the gateway case, a single gateway device holds one WFM Client identity and mediates access to non-Margo sub-devices on their behalf; sub-device targeting is handled through payload-level routing fields (such as `deviceId`), not through separate Margo Identities.
+  In the cluster case, multiple devices share a single WFM Client relationship - the cluster's WFM Client identity must survive leader failover without being bound to any single device's SVID. In the gateway case, a single gateway device holds one WFM Client identity and mediates access to non-Margo sub-devices on their behalf; sub-device targeting is handled through payload-level routing fields (such as `deviceId`), not through separate identities.
 
 A dedicated **WFM Client Identity Profile** is expected to be defined in a subsequent SUP. That profile is anticipated to:
 
 - replace PR1's WFM-specific `client_id` model with a MIAF-defined WFM Client identity;
-- define the SPIFFE ID path format for WFM Client identities within the Margo Trust Domain;
+- define the SPIFFE ID path format for WFM Client identities within the Trust Domain;
 - define how device identities are used to bind WFM Client credentials for each supported deployment topology;
 - address the lifecycle requirements of each supported topology (standalone, cluster, gateway); and
 - inform the corresponding updates to the WFM API specification (for example, replacing `{clientId}` path parameters and PR1's RFC 9421 HTTP Message Signatures security scheme with MIAF-based authentication).
@@ -1765,7 +1790,7 @@ Each alternative was rejected for specific technical or operational reasons, alt
 
 #### Rationale for standardized `/api/v1/identities` endpoint
 
-The **Margo Identity Service (MIS)** exposes a unified, **SPIFFE-aligned enrollment API** that supports pluggable **bootstrap methods** and structured **SVID profile negotiation**.
+The **Margo Identity Service (MIS)** exposes a unified, **Margo-specific enrollment API built on SPIFFE primitives** that supports pluggable **bootstrap methods** and structured **SVID profile negotiation**.
 Unlike EST, SCEP, or ACME, this approach allows Margo to:
 
 - carry JSON-encoded credential proofs (for example, JWT assertions, FDO vouchers);
@@ -1831,13 +1856,13 @@ Unless a method states stricter requirements, the MIS **MUST** enforce the follo
 ### FIDO Device Onboard (FDO) Method
 
 This method enables **secure, hardware-rooted onboarding** using [FIDO Device Onboard (FDO)](https://fidoalliance.org/specs/FDO/).
-It supports automated, authenticated transfer of device ownership from factory to operator, allowing devices to join a Margo Trust Domain without prior configuration or manual provisioning.
+It supports automated, authenticated transfer of device ownership from factory to operator, allowing devices to join a Trust Domain without prior configuration or manual provisioning.
 
 **Bootstrap Method Identifier (URN):**
 `urn:margo:bootstrap:fdo:v1`
 
 **Purpose:**
-Use a hardware-rooted onboarding mechanism compatible with FDO to enable factory-provisioned devices to securely transfer ownership into an operational Margo Trust Domain.
+Use a hardware-rooted onboarding mechanism compatible with FDO to enable factory-provisioned devices to securely transfer ownership into an operational Trust Domain.
 
 **Enrollment Subject Identifier (ESI):**
 Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-encoded device leaf certificate** contained in the presented FDO Ownership Voucher.
@@ -2121,11 +2146,11 @@ All models treat the **Margo Identity Service (MIS)** as the authoritative ident
 | **2. Federated AS Validation** | The AS accepts X.509 or JWT SVIDs directly as client assertions per RFC 7523 / RFC 8705 and mints an access token with mapped claims. | Enterprise OAuth deployments using existing infrastructure but relying on MIAF identities for proof. |
 | **3. Gateway Policy Mapping**  | An API gateway validates SVIDs locally using the Trust Bundle and maps the SPIFFE ID to roles, scopes, or policies. | Deployments that prefer local verification without introducing an external AS. |
 
-All models rely on the same verification primitives defined in the normative specification-SVID validation against the Trust Bundle, and optional SPIFFE ID–to–policy mapping.
+All models rely on the same verification primitives defined in the normative specification: SVID validation against the Trust Bundle, and optional SPIFFE ID-to-policy mapping.
 
 #### Model 1 - Token Exchange Bridge
 
-In this model, the OAuth 2.0 AS exposes an [RFC 8693 **Token Exchange**](https://datatracker.ietf.org/doc/html/rfc8693) endpoint. An **Authorization Server (AS)** issues **OAuth 2.0 access tokens** based on a validated **Margo SVID** presented by a client.
+In this model, the OAuth 2.0 AS exposes an [RFC 8693 **Token Exchange**](https://datatracker.ietf.org/doc/html/rfc8693) endpoint. An **Authorization Server (AS)** issues **OAuth 2.0 access tokens** based on a validated **SVID** presented by a client.
 The **Margo Identity Service (MIS)** remains the trust root; the AS simply translates a verified SVID into a conventional OAuth 2.0 token for interoperability with existing gateways or services.
 
 ```mermaid
@@ -2137,21 +2162,21 @@ sequenceDiagram
 
     Device->>MIS: Obtain X.509 or JWT SVID
     Device->>AS: POST /token (grant_type=urn:ietf:params:oauth:grant-type:token-exchange)<br/>(subject_token=<SVID>, subject_token_type=<type>)
-    AS->>AS: Validate SVID using Margo Trust Bundle
+    AS->>AS: Validate SVID using Trust Bundle
     AS-->>Device: 200 OK (Access Token)
     Device->>RS: HTTPS request Authorization: Bearer <token>
     RS->>AS: Introspect / verify token (per RFC 7662 / JWT validation)
 ```
 
 > **Note:**
-> Deployments that bridge Margo Identity SVIDs into OAuth 2.0 tokens may define internal claim mappings as needed for their authorization infrastructure. Such mappings are **deployment-specific** and **out of scope** for this specification.
+> Deployments that bridge SVID-based identities into OAuth 2.0 tokens may define internal claim mappings as needed for their authorization infrastructure. Such mappings are **deployment-specific** and **out of scope** for this specification.
 
 ##### Token Exchange Request
 
 | Parameter | Required | Description |
 | :-------- | :------- | :-----------|
 | `grant_type` | Y | **MUST** be `urn:ietf:params:oauth:grant-type:token-exchange`. |
-| `subject_token` | Y | The encoded Margo Identity SVID representing the requester. |
+| `subject_token` | Y | The encoded SVID representing the requester. |
 | `subject_token_type` | Y | **MUST** identify the format:<br>- `urn:margo:token-type:x509-svid`: base64-encoded PEM chain<br>- `urn:margo:token-type:jwt-svid`: compact JWT SVID<br>Additional values MAY be registered later. |
 | `audience` | N | Target resource audience for the requested token. |
 | `scope` | N | Optional scopes; AS policy determines allowed values. |
@@ -2169,7 +2194,7 @@ The AS **MUST** reject requests with unknown or unsupported `subject_token_type`
 
 ##### Validation and Security Considerations
 
-- The AS **MUST** validate the SVID chain (for X.509) or signature (for JWT) against the **Margo Trust Bundle**.
+- The AS **MUST** validate the SVID chain (for X.509) or signature (for JWT) against the **Trust Bundle**.
 - The access token's `sub` claim **SHOULD** equal the SPIFFE ID of the validated SVID.
 - Access-token lifetime **MUST NOT** exceed the remaining validity of the SVID.
 - The AS **MUST** set `iss` to its own OAuth issuer identifier to avoid audience confusion.
@@ -2177,8 +2202,8 @@ The AS **MUST** reject requests with unknown or unsupported `subject_token_type`
 
 #### Model 2 - Federated AS Validation
 
-In this model, an **Authorization Server (AS)** directly accepts **Margo SVIDs** for client authentication using standard OAuth 2.0 mechanisms such as **JWT Client Assertion** ([RFC 7523](https://datatracker.ietf.org/doc/html/rfc7523)) or **Mutual-TLS Client Authentication** ([RFC 8705](https://datatracker.ietf.org/doc/html/rfc8705)).
-The AS validates the presented SVID against the **Trust Bundle** of the declared Margo Trust Domain before issuing an access token.
+In this model, an **Authorization Server (AS)** directly accepts **SVIDs** for client authentication using standard OAuth 2.0 mechanisms such as **JWT Client Assertion** ([RFC 7523](https://datatracker.ietf.org/doc/html/rfc7523)) or **Mutual-TLS Client Authentication** ([RFC 8705](https://datatracker.ietf.org/doc/html/rfc8705)).
+The AS validates the presented SVID against the **Trust Bundle** of the declared Trust Domain before issuing an access token.
 
 ```mermaid
 sequenceDiagram
@@ -2203,7 +2228,7 @@ sequenceDiagram
 
 #### Model 3 - Gateway Policy Mapping
 
-In this model, an **API Gateway** or **Reverse Proxy** validates **X.509 or JWT SVIDs** directly using the **Margo Trust Bundle**, without involving an Authorization Server.
+In this model, an **API Gateway** or **Reverse Proxy** validates **X.509 or JWT SVIDs** directly using the **Trust Bundle**, without involving an Authorization Server.
 After successful validation, the gateway maps the verified SPIFFE ID to local authorization constructs such as roles or scopes.
 
 ```mermaid
