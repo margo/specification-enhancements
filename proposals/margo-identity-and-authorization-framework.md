@@ -68,15 +68,10 @@
   - [Client Behavior Recommendations](#client-behavior-recommendations)
 - [Appendix C: OAuth2 and API Gateway Interoperability (Informative)](#appendix-c-oauth2-and-api-gateway-interoperability-informative)
   - [Purpose and Context](#purpose-and-context)
-  - [Integration Models](#integration-models)
-    - [Model 1 - Token Exchange Bridge](#model-1---token-exchange-bridge)
-      - [Token Exchange Request](#token-exchange-request)
-      - [Token Exchange Response](#token-exchange-response)
-      - [Validation and Security Considerations](#validation-and-security-considerations)
-    - [Model 2 - Federated AS Validation](#model-2---federated-as-validation)
-      - [Validation and Security Considerations](#validation-and-security-considerations-1)
-    - [Model 3 - Gateway Policy Mapping](#model-3---gateway-policy-mapping)
-      - [Validation and Security Considerations](#validation-and-security-considerations-2)
+  - [Token Exchange Bridge](#token-exchange-bridge)
+    - [Token Exchange Request](#token-exchange-request)
+    - [Token Exchange Response](#token-exchange-response)
+    - [Validation and Security Considerations](#validation-and-security-considerations)
 
 ## Owner
 
@@ -2143,26 +2138,12 @@ This appendix provides **informative guidance** for deployments that wish to int
 ### Purpose and Context
 
 While MIAF relies natively on **cryptographically verifiable identities** (SVIDs) for authentication and authorization, many enterprise environments already operate OAuth 2.0 Authorization Servers (AS) and API gateways for coarse-grained access control.
-This appendix outlines how a deployment can:
 
-1. **Map SVID-based identities** to OAuth 2.0 tokens for consumption by existing gateways or services.
-2. **Delegate authorization decisions** to an OAuth 2.0 AS while maintaining MIAF as the underlying trust and identity authority.
-3. **Provide interoperability** without requiring OAuth 2.0 to be implemented as part of the normative MIAF core.
+Because SVIDs are standard X.509 certificates and JWTs, they are inherently compatible with existing OAuth 2.0 client authentication mechanisms (e.g., [RFC 7523](https://datatracker.ietf.org/doc/html/rfc7523), [RFC 8705](https://datatracker.ietf.org/doc/html/rfc8705)) and with API gateways that validate client certificates against a trust store. Deployments that already have such infrastructure can consume SVIDs directly - no MIAF-specific integration is required on the gateway or AS side.
 
-### Integration Models
+For deployments that need to **translate** SVID-based identities into OAuth 2.0 access tokens - for example, to interoperate with downstream services or gateways that only accept bearer tokens - this appendix defines a **Token Exchange Bridge** model based on [RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693). This model preserves device-side interoperability: the device continues to interact only with the MIS, while the OAuth translation happens server-side.
 
-Three complementary integration models are recognized.
-All models treat the **Margo Identity Service (MIS)** as the authoritative identity provider, with the OAuth 2.0 AS acting as a consumer or translator.
-
-| Model | Description | Typical Use Case |
-| :---- | :---------- | :--------------- |
-| **1. Token Exchange Bridge** | The AS issues OAuth 2.0 access tokens based on a validated SVID or SPIFFE ID. MIS remains the root of trust. | Environments where API gateways or external services require OAuth 2.0 bearer tokens. |
-| **2. Federated AS Validation** | The AS accepts X.509 or JWT SVIDs directly as client assertions per RFC 7523 / RFC 8705 and mints an access token with mapped claims. | Enterprise OAuth deployments using existing infrastructure but relying on MIAF identities for proof. |
-| **3. Gateway Policy Mapping**  | An API gateway validates SVIDs locally using the Trust Bundle and maps the SPIFFE ID to roles, scopes, or policies. | Deployments that prefer local verification without introducing an external AS. |
-
-All models rely on the same verification primitives defined in the normative specification: SVID validation against the Trust Bundle, and optional SPIFFE ID-to-policy mapping.
-
-#### Model 1 - Token Exchange Bridge
+### Token Exchange Bridge
 
 In this model, the OAuth 2.0 AS exposes an [RFC 8693 **Token Exchange**](https://datatracker.ietf.org/doc/html/rfc8693) endpoint. An **Authorization Server (AS)** issues **OAuth 2.0 access tokens** based on a validated **SVID** presented by a client.
 The **Margo Identity Service (MIS)** remains the trust root; the AS simply translates a verified SVID into a conventional OAuth 2.0 token for interoperability with existing gateways or services.
@@ -2185,7 +2166,7 @@ sequenceDiagram
 > **Note:**
 > Deployments that bridge SVID-based identities into OAuth 2.0 tokens may define internal claim mappings as needed for their authorization infrastructure. Such mappings are **deployment-specific** and **out of scope** for this specification.
 
-##### Token Exchange Request
+#### Token Exchange Request
 
 | Parameter | Required | Description |
 | :-------- | :------- | :-----------|
@@ -2197,7 +2178,7 @@ sequenceDiagram
 
 The AS **MUST** reject requests with unknown or unsupported `subject_token_type`.
 
-##### Token Exchange Response
+#### Token Exchange Response
 
 | Field | Description |
 | :---- | :---------- |
@@ -2206,61 +2187,10 @@ The AS **MUST** reject requests with unknown or unsupported `subject_token_type`
 | `token_type` | `"Bearer"`. |
 | `expires_in` | Token lifetime in seconds; **SHOULD NOT** exceed the underlying SVID's validity. |
 
-##### Validation and Security Considerations
+#### Validation and Security Considerations
 
 - The AS **MUST** validate the SVID chain (for X.509) or signature (for JWT) against the **Trust Bundle**.
 - The access token's `sub` claim **SHOULD** equal the SPIFFE ID of the validated SVID.
 - Access-token lifetime **MUST NOT** exceed the remaining validity of the SVID.
 - The AS **MUST** set `iss` to its own OAuth issuer identifier to avoid audience confusion.
 - Token-exchange implementations **MUST NOT** bypass SVID validation or accept untrusted issuers.
-
-#### Model 2 - Federated AS Validation
-
-In this model, an **Authorization Server (AS)** directly accepts **SVIDs** for client authentication using standard OAuth 2.0 mechanisms such as **JWT Client Assertion** ([RFC 7523](https://datatracker.ietf.org/doc/html/rfc7523)) or **Mutual-TLS Client Authentication** ([RFC 8705](https://datatracker.ietf.org/doc/html/rfc8705)).
-The AS validates the presented SVID against the **Trust Bundle** of the declared Trust Domain before issuing an access token.
-
-```mermaid
-sequenceDiagram
-    participant Device
-    participant AS
-    participant RS as Resource Server / API Gateway
-
-    Device->>AS: POST /token (client_assertion=<JWT SVID> or mTLS client auth)
-    AS->>AS: Validate SVID chain or signature using Trust Bundle
-    AS-->>Device: 200 OK (Access Token)
-    Device->>RS: HTTPS request Authorization: Bearer <token>
-    RS->>AS: Introspect / verify token (per RFC 7662 or local JWT validation)
-```
-
-##### Validation and Security Considerations
-
-- The AS **MUST** validate the X.509 or JWT SVID using the corresponding Trust Bundle before issuing any OAuth token.
-- The access token's `sub` claim **SHOULD** contain the verified SPIFFE ID.
-- Access-token lifetime **MUST NOT** exceed the validity period of the SVID.
-- The AS **MUST** set `iss` to its own issuer identifier and MUST NOT reuse the MIS identifier.
-- Deployments **SHOULD** limit accepted issuers to known Trust Domains and log all SVID-based authentications.
-
-#### Model 3 - Gateway Policy Mapping
-
-In this model, an **API Gateway** or **Reverse Proxy** validates **X.509 or JWT SVIDs** directly using the **Trust Bundle**, without involving an Authorization Server.
-After successful validation, the gateway maps the verified SPIFFE ID to local authorization constructs such as roles or scopes.
-
-```mermaid
-sequenceDiagram
-    participant Device
-    participant Gateway
-    participant RS as Backend Service
-
-    Device->>Gateway: HTTPS request (mTLS or JWT SVID)
-    Gateway->>Gateway: Validate SVID against Trust Bundle
-    Gateway->>RS: Forward request with mapped authorization context
-    RS-->>Gateway: 200 OK
-    Gateway-->>Device: 200 OK
-```
-
-##### Validation and Security Considerations
-
-- Gateways **MUST** retrieve and cache the Trust Bundle from the MIS discovery document and refresh it regularly.
-- Incoming SVIDs **MUST** be validated against the bundle for signature and expiry.
-- Authorization mappings (e.g., SPIFFE ID → roles) **SHOULD** be deterministic and policy-driven.
-- Gateways **MUST** reject expired or untrusted SVIDs and **SHOULD** log validation failures for audit purposes.
