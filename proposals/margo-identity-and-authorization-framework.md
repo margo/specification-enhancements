@@ -231,7 +231,7 @@ This SUP supports Margo's core goals of **security**, **scalability**, **interop
 - The **pluggable bootstrap mechanism** supports multiple Physical Device Identity proofs (FIDO Device Onboard, IEEE 802.1AR DevID, factory certificates), ensuring wide hardware and supply-chain coverage.
 - All supported bootstrap methods converge to the same Logical Device Identity, allowing operators to:
 
-  - start with existing factory credentials, and
+  - start with existing factory-issued X.509 certificates, and
   - raise assurance levels over time (for example, mandate FDO or 802.1AR for production) without changing DFM or other consumers of the identity model.
 - Support for both mTLS-based and JWT-style identity representations (for example, JWT-SVID in proxy-rich environments) allows deployments to operate behind TLS-terminating infrastructure while keeping a single, consistent identity model.
 
