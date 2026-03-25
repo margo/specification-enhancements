@@ -1858,6 +1858,11 @@ Unless a method states stricter requirements, the MIS **MUST** enforce the follo
 
    - The MIS **MUST** derive the **Enrollment Subject Identifier** exactly as specified by the selected method and use it to locate or create the LDI binding (see [MIS Validation and Processing Logic](#mis-validation-and-processing-logic)).
 
+5. **Bootstrap trust anchor provisioning:**
+
+   - The MIS **MUST** be configured with the trust anchors (e.g., manufacturer or OEM root and intermediate CA certificates) needed to validate Bootstrap Credentials for each supported Bootstrap Method.
+   - The mechanism for provisioning these trust anchors is deployment-specific and outside the scope of this specification.
+
 ### FIDO Device Onboard (FDO) Method
 
 > **TODO:** This method is a draft outline. The FDO integration details (voucher handling, OOS interaction model, ESI derivation) need to be validated against the FDO specification and refined.
