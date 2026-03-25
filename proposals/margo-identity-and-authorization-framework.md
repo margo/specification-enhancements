@@ -310,7 +310,7 @@ Existing SPIFFE libraries and tooling can be used for SVID validation, Trust Bun
 The following terms define the common vocabulary for Margo's non-human identity and authorization model.
 Some are adopted directly from open standards such as [**SPIFFE**](https://spiffe.io/); others are Margo-specific concepts introduced by this SUP.
 
-This SUP concerns identities used by *non-human* **Margo components** — logical units of the Margo system such as the Device Fleet Manager (DFM), Workload Fleet Manager (WFM), their clients, and infrastructure services such as registries or observability collectors, as defined in the [Envisioned System Design](https://specification.margo.org/overview/envisioned-system-design/).
+This SUP concerns identities used by *non-human* **Margo components** - logical units of the Margo system such as the Device Fleet Manager (DFM), Workload Fleet Manager (WFM), their clients, and infrastructure services such as registries or observability collectors, as defined in the [Envisioned System Design](https://specification.margo.org/overview/envisioned-system-design/).
 
 The **WFM Client** is called out specifically because this SUP draws a sharp distinction between *device identity* and *client identity*. A WFM Client runs on an Edge Compute Device, but its identity represents the deployed **client instance**, not the device itself. The **Logical Device Identity** defined here provides the stable, hardware-bound identity of the device; a planned **WFM Client Identity Profile** will define how WFM Clients obtain their own distinct identities, building on the device identity as their authentication foundation. This separation is necessary because device identity and WFM Client identity have different lifecycles, authorization scopes, and cardinalities across topologies (standalone devices, Kubernetes clusters, device gateways).
 
@@ -333,7 +333,7 @@ This SUP adopts SPIFFE **X.509-SVID** and **JWT-SVID** by reference and defines 
 
 ##### Policy-Based Authorization <!-- omit from toc -->
 
-Authorization based on verified **SPIFFE IDs** and associated attributes, evaluated locally within the Trust Domain — not on external token scopes.
+Authorization based on verified **SPIFFE IDs** and associated attributes, evaluated locally within the Trust Domain - not on external token scopes.
 
 #### Terms introduced by this SUP <!-- omit from toc -->
 
@@ -400,6 +400,7 @@ MIAF prevents per-component identity silos by standardizing:
 Conceptually, the **Margo Identity and Authorization Framework (MIAF)** consists of four main elements that together define how trust is established and maintained across the Margo ecosystem:
 
 1. **Trust Domain**
+   
    The logical and administrative boundary within which identities are issued and mutually recognized - for example, an end-user's factory network or a managed service operated by a fleet-management vendor.
    A Trust Domain defines:
 
@@ -410,6 +411,7 @@ Conceptually, the **Margo Identity and Authorization Framework (MIAF)** consists
    Each issued SPIFFE ID is scoped to exactly one Trust Domain; verifiers **MAY** validate identities from multiple Trust Domains via configuration and/or federation.
 
 2. **Margo Identity Service (MIS)**
+   
    The identity authority of a Trust Domain.
    MIS is responsible for:
 
@@ -421,12 +423,14 @@ Conceptually, the **Margo Identity and Authorization Framework (MIAF)** consists
    This API design allows other components (e.g., WFM Clients or telemetry agents) to reuse the same trust foundation in future SUPs.
 
 3. **Margo components using MIAF**
+   
    Components such as DFMs, WFMs, their clients, and telemetry agents act as:
 
    - **SVID holders**, presenting their SVIDs during mTLS authentication or when requesting a short-lived **JWT SVID**; and
    - **verifiers**, validating peer SVIDs using the Trust Domain's **Trust Bundle**, then applying **policy-based authorization** based on verified **SPIFFE IDs** and attributes.
 
 4. **Trust Bundles**
+   
    Each Trust Domain publishes a **Trust Bundle** containing:
 
    - root and intermediate certificates used to validate X.509 SVID chains; and
@@ -802,7 +806,7 @@ This profile **refines and extends** the [Margo Device Requirements](https://spe
 
 Devices that already hold a valid X.509 SVID **MAY** obtain a short-lived **JWT SVID** for use behind TLS-terminating infrastructure via the **JWT SVID Exchange Endpoint** defined in [Section 5](#jwt-svid-exchange-endpoint). The following apply:
 
-- The exchange **MUST** authenticate the device with **proof of possession** of the private key corresponding to the device's current **LDI** (not the factory key), using either:
+- The exchange **MUST** authenticate the device with **proof of possession** of the private key corresponding to the device's current **LDI**, using either:
   - **Mutual TLS** with the current X.509 SVID as the TLS client certificate, or
   - a **Client Authentication Assertion** JWT signed with the current LDI private key.
 - JWT SVIDs **MUST** be short-lived and use algorithms permitted by [Cryptographic Requirements](#cryptographic-requirements).
@@ -1855,6 +1859,8 @@ Unless a method states stricter requirements, the MIS **MUST** enforce the follo
 
 ### FIDO Device Onboard (FDO) Method
 
+> **TODO:** This method is a draft outline. The FDO integration details (voucher handling, OOS interaction model, ESI derivation) need to be validated against the FDO specification and refined.
+
 This method enables **secure, hardware-rooted onboarding** using [FIDO Device Onboard (FDO)](https://fidoalliance.org/specs/FDO/).
 It supports automated, authenticated transfer of device ownership from factory to operator, allowing devices to join a Trust Domain without prior configuration or manual provisioning.
 
@@ -2001,6 +2007,8 @@ Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-
 > ```
 
 ### IEEE 802.1AR Method
+
+> **TODO:** This method is a placeholder. The required details have not yet been defined.
 
 This method enables **hardware-anchored onboarding** using an [IEEE 802.1AR](https://standards.ieee.org/standard/802_1AR-2018.html) **Device Identity (DevID)** embedded in the device's secure element. It supports **standards-based authentication and enrollment** across vendors, ensuring interoperable and verifiable device identity without requiring manufacturer-specific extensions or external onboarding services.
 
