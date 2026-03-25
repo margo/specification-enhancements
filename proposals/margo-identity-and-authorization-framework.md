@@ -784,7 +784,8 @@ The same LDI **MUST NOT** be active for multiple PDIs concurrently.
 Device enrollment uses the generic API defined in [Section 5](#enrollment-and-identity-issuance-endpoint) with the following constraints:
 
 - The only permitted `svid_profile_uri` for devices is `https://margo.org/profiles/spiffe/x509-svid/v1`. Attempts to enroll a device with `jwt-svid` **MUST** be rejected with `422` (`unsupported-svid-profile`).
-- Device enrollment **MUST** use one of the device bootstrap methods in [Appendix A](#appendix-a-bootstrap-methods-normative) (e.g., **FDO**, **IEEE 802.1AR DevID**, **factory certificate** via mTLS or JWT assertion).
+- Device enrollment **MUST** use one of the device bootstrap methods defined in [Appendix A](#appendix-a-bootstrap-methods-normative).
+- To ensure baseline interoperability, both the device and the MIS **MUST** implement the [Factory Certificate Method (mTLS)](#factory-certificate-method-mtls). Support for additional bootstrap methods is **OPTIONAL**.
 - MIS **MUST** verify the presented bootstrap credential against Trust Domain policy and derive the **ESI** per the selected method before issuance.
 - The enrollment request/response structure **MUST** conform to [Section 5](#enrollment-and-identity-issuance-endpoint).
 - MIS **MUST** return `201 Created` when a new LDI is provisioned and `200 OK` for re-enrollments that match an existing LDI via the ESI.
