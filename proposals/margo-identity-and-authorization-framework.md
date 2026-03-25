@@ -1495,10 +1495,12 @@ sequenceDiagram
         note over Device,RS: Authenticated Request (mTLS)
         Device->>RS: Establish TLS 1.3 (mutual TLS)<br/>(present X.509 SVID as client certificate)
         activate RS
-        RS->>RS: Validate SVID chain & SPIFFE ID with Trust Bundle
+        RS->>RS: Validate SVID chain & SPIFFE ID<br/>using Trust Bundle (retrieved from MIS discovery endpoint)
         RS-->>Device: 200 Success
         deactivate RS
     end
+
+    note right of RS: The Resource Server retrieves and caches<br/>the Trust Bundle from MIS via the discovery<br/>document (`trust_bundle_uri` in GET /.well-known/margo).
 ```
 
 #### Device SVID Renewal Flow
@@ -1572,11 +1574,13 @@ sequenceDiagram
         activate Proxy
         Proxy->>RS: HTTPS POST /api/v1/device-operation<br/>(Authorization: Bearer <jwt-svid>)
         activate RS
-        RS->>RS: Validate JWT SVID (signature, exp, aud)<br/>using Trust Bundle of Trust Domain
+        RS->>RS: Validate JWT SVID (signature, exp, aud)<br/>using Trust Bundle (retrieved from MIS discovery endpoint)
         RS-->>Proxy: 200/201 Success
         Proxy-->>Device: 200/201 Success
         deactivate RS
         deactivate Proxy
+
+    note right of RS: The Resource Server retrieves and caches<br/>the Trust Bundle from MIS via the discovery<br/>document (`trust_bundle_uri` in GET /.well-known/margo).
     end
 ```
 
