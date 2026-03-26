@@ -56,8 +56,10 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |Owner|Description|Stage|LINK|
 |-----|-----------|-----|----|
 |@julienduquesnay-se | Device gateway | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/gateway.md) |
-|@matlec | Margo Identity and Authorization Framework | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/38)
-|@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40)
+|@matlec | Margo Identity and Authorization Framework | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/38) |
+|@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40) |
+|@phil-abb | Add support for Helm V4 | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/46) |
+|@phil-abb | Limit Helm to feature not requiring direct Kubernetes API interactions | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/47) |
 
 ## SUP Owner SUP Checklist
 
