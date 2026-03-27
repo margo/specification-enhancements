@@ -72,7 +72,6 @@ valueFrom:
   device:
     key: margo.cluster.hostname
     required: true
-    fallback: null
 ```
 
 **Proposed semantics**
@@ -124,7 +123,7 @@ Before the device installs or updates an application, the device’s Workload Fl
 
 The resolved value MUST satisfy the schema referenced by the configuration setting exactly as if the value had been provided by the user. This keeps the current validation model unchanged. 
 
-If a referenced device key cannot be resolved: if a `fallback` is defined, use it; otherwise installation/update MUST fail with a clear validation/resolution error.
+If a referenced device key cannot be resolved, then the `value` is used as a fallback, if it is defined, otherwise installation/update MUST fail with a clear validation/resolution error.
 
 
 ```json
