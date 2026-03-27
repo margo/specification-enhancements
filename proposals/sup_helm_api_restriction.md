@@ -6,7 +6,7 @@
 
 ## Summary
 
-This SUP proposes that Margo-compliant applications MUST NOT use Helm v3 or v4 features that require interaction with the Kubernetes API during template rendering or deployment. Features such as Helm Lookup, Helm hooks, server-side apply (Helm 4), CRD management, "--wait" kstatus, and Helm tests are explicitly disallowed.
+This SUP proposes that Margo-compliant applications MUST NOT use Helm v3 or v4 features that require interaction with the Kubernetes API during template rendering or deployment. Features such as Helm Lookup, Helm hooks, `.Capabilities.APIVersions.Has`, server-side apply (Helm 4), CRD management, "--wait" kstatus, and Helm tests are explicitly disallowed.
 
 ## Reason for proposal
 
@@ -37,12 +37,14 @@ Margo-compliant applications MUST NOT depend on the use of the following Helm fe
 - ["--wait" and kstatus](https://helm.sh/community/hips/hip-0022/): The `--wait` flag and kstatus integration cause Helm to poll or watch the Kubernetes API to determine when resources (including custom resources) are fully reconciled and ready. This requires ongoing API access and additional RBAC permissions.
 - [Helm tests](https://helm.sh/docs/topics/chart_tests/): Helm tests are implemented as hooks that create and monitor test jobs in the cluster, requiring API access to create, observe, and clean up test resources.
 - Server-side apply (Helm 4): Server-side apply uses the Kubernetes API's server-side apply feature to manage resource changes, which requires direct API calls and may result in different behavior than client-side apply.
+- [`.Capabilities.APIVersions.Has`](https://helm.sh/docs/chart_template_guide/capabilities/#using-capabilitiesapiversionshas): The `.Capabilities.APIVersions.Has` template function queries the live API versions available in the target Kubernetes cluster at render time to determine if an API version or resource is available in the cluster.
 
 These features all require live communication with the Kubernetes API during rendering or deployment, which is incompatible with the requirements and security model of Margo-compliant applications.
 
 The [application description](https://docs.margo.org/specification/applications/application-description) page will be updated to indicate application vendors should not depend on these features in their helm charts.
 
 All references to using a Helm deployment will be updated with a footnote pointing to the information indicating the unsupported features.
+
 
 All Helm chart rendering MUST be able to be performed client-side, without requiring communication with the Kubernetes API. Application developers MUST ensure their charts are compatible with this restriction. Device vendors MAY implement Helm chart installation using any approach they choose, including but not limited to the examples listed above.
 
