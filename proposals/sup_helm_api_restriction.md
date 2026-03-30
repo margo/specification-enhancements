@@ -23,6 +23,8 @@ This flexibility enables vendors to choose the most appropriate tooling for thei
 
 Allowing Helm hooks also introduces additional security risks, as hooks can execute arbitrary operations during chart installation, upgrade, or deletion, potentially escalating privileges or interfering with the cluster in unintended ways. Furthermore, hooks can make it difficult for device vendors to reliably apply required updates to manifests, such as injecting security patches or [observability environment variables](https://docs.margo.org/specification/observability/collecting-workload-observability-data#connecting-to-the-opentelemetry-collector), because the hook logic may override or bypass these modifications. By disallowing hooks, this SUP ensures that device vendors retain full control over the manifest lifecycle and can enforce security and observability requirements consistently across all deployments.
 
+Additionally, if these features are allowed then it would not be possible to support [this proposal](https://github.com/margo/specification-enhancements/pull/40) for allowing the template rendering to be done by the workload fleet manager instead of the device.
+
 ## Requirements alignment acknowledgement
 
 This SUP addresses [feature 148](https://github.com/margo/specification/issues/148) and is related to [issue 103](https://github.com/margo/specification/issues/103). It aligns with Margo's vision of providing clear, interoperable rules for application deployment and management workflows. No new requirements outside the Margo scope are introduced.
@@ -44,7 +46,6 @@ These features all require live communication with the Kubernetes API during ren
 The [application description](https://docs.margo.org/specification/applications/application-description) page will be updated to indicate application vendors should not depend on these features in their helm charts.
 
 All references to using a Helm deployment will be updated with a footnote pointing to the information indicating the unsupported features.
-
 
 All Helm chart rendering MUST be able to be performed client-side, without requiring communication with the Kubernetes API. Application developers MUST ensure their charts are compatible with this restriction. Device vendors MAY implement Helm chart installation using any approach they choose, including but not limited to the examples listed above.
 
