@@ -43,7 +43,8 @@ In summary, Helm v4 is a drop-in replacement for v3 from a chart author and user
 
 ## Alternatives considered (optional)
 
-Supporting only Helm v3 was considered but rejected to ensure forward compatibility and leverage improvements in Helm v4.
+- Supporting only Helm v3 was considered but rejected to ensure forward compatibility and leverage improvements in Helm v4.
+- Updating the specification to indicate support for Chart API Version v2 instead of specific Helm versions was considered, but the Helm tooling provides valuable features (such as template rendering) application vendors regularly use that should to be supported.
 
 ## Rejection reason
 
