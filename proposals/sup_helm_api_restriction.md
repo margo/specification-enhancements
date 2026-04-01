@@ -37,9 +37,9 @@ Margo-compliant applications MUST NOT depend on the use of the following Helm fe
 - [Hooks](https://helm.sh/docs/topics/charts_hooks/): Hooks (pre/post install, upgrade, delete, rollback, test, etc.) execute additional Kubernetes resources or jobs at specific points in the release lifecycle. Helm waits for these resources to reach a ready state by monitoring them via the Kubernetes API, and the hooks themselves may perform privileged or arbitrary operations in the cluster.
 - [CRD management via helm](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/): Installing or managing Custom Resource Definitions (CRDs) with Helm requires checking for the presence of CRDs and registering new APIs with the cluster, which involves API calls and may require elevated permissions.
 - ["--wait" and kstatus](https://helm.sh/community/hips/hip-0022/): The `--wait` flag and kstatus integration cause Helm to poll or watch the Kubernetes API to determine when resources (including custom resources) are fully reconciled and ready. This requires ongoing API access and additional RBAC permissions.
-- [Helm tests](https://helm.sh/docs/topics/chart_tests/): Helm tests are implemented as hooks that create and monitor test jobs in the cluster, requiring API access to create, observe, and clean up test resources.
-- Server-side apply (Helm 4): Server-side apply uses the Kubernetes API's server-side apply feature to manage resource changes, which requires direct API calls and may result in different behavior than client-side apply.
 - [`.Capabilities.APIVersions.Has`](https://helm.sh/docs/chart_template_guide/capabilities/#using-capabilitiesapiversionshas): The `.Capabilities.APIVersions.Has` template function queries the live API versions available in the target Kubernetes cluster at render time to determine if an API version or resource is available in the cluster.
+- Server-side apply (Helm 4): Server-side apply uses the Kubernetes API's server-side apply feature to manage resource changes, which requires direct API calls and may result in different behavior than client-side apply.
+- [Helm tests](https://helm.sh/docs/topics/chart_tests/): Helm tests are implemented as hooks that create and monitor test jobs in the cluster, requiring API access to create, observe, and clean up test resources. This is just here for completeness, the device would not be running these test regardless of whether or not this SUP is approved.
 
 These features all require live communication with the Kubernetes API during rendering or deployment, which is incompatible with the requirements and security model of Margo-compliant applications.
 
@@ -52,6 +52,10 @@ All Helm chart rendering MUST be able to be performed client-side, without requi
 The [device requirements](https://docs.margo.org/specification/margo-devices/device-requirements) page will be updated to indicate device vendors have the freedom to choose how helm manifests are rendered and applied and do not need to support these features.
 
 The Margo compliance test suite for conformant applications will be updated to validate that disallowed Helm features indicated above are not present in submitted charts. Applications using these features will be flagged as using unsupported Helm features. This doesn't automatically indicate the application is not compliant because it is possible to have some of these items in the helm chart, but not rely on them to be used to install that application (e.g., you can have a lookup command only used when a specific parameter in the values.yaml is not specified).
+
+## Special Consideration for Voting
+
+If there are no alternative SUPs being voted on, and this SUP is not approved, then the opposite of this SUP should be considered approved meaning the specification should be updated to ensure it is clear these features MUST be supported when deploying helm charts. Currently the specification does not contain enough information to ensure the approach used to deploy helm charts on a device is done in a way to ensure these features work.
 
 ## Alternatives considered (optional)
 
