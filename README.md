@@ -60,6 +60,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40) |
 |@phil-abb | Add support for Helm V4 | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/46) |
 |@phil-abb | Limit Helm to feature not requiring direct Kubernetes API interactions | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/47) |
+|@slivanoc | Data model single source of truth with LinkML | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/48)
 
 ## SUP Owner SUP Checklist
 
