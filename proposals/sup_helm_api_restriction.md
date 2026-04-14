@@ -36,7 +36,6 @@ Margo-compliant applications MUST NOT depend on the use of the following Helm fe
 - [Lookup](https://helm.sh/docs/chart_template_guide/functions_and_pipelines#using-the-lookup-function): The `lookup` template function queries live resources in the target Kubernetes cluster at render time, for example to fetch ConfigMaps, Secrets, or other objects. This requires direct API access and cluster credentials during rendering.
 - [Hooks](https://helm.sh/docs/topics/charts_hooks/): Hooks (pre/post install, upgrade, delete, rollback, test, etc.) execute additional Kubernetes resources or jobs at specific points in the release lifecycle. Helm waits for these resources to reach a ready state by monitoring them via the Kubernetes API, and the hooks themselves may perform privileged or arbitrary operations in the cluster.
 - [CRD management via helm](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/): Installing or managing Custom Resource Definitions (CRDs) with Helm requires checking for the presence of CRDs and registering new APIs with the cluster, which involves API calls and may require elevated permissions.
-- [.Capabilities.APIVersions.Has](https://helm.sh/docs/chart_template_guide/function_list/#kubernetes-and-chart-functions): The .Capabilities.APIVersions.Has template function queries the live API versions available in the target Kubernetes cluster at render time to determine if an API version or resource is available in the cluster.
 - [Helm tests](https://helm.sh/docs/topics/chart_tests/): Helm tests are implemented as hooks that create and monitor test jobs in the cluster, requiring API access to create, observe, and clean up test resources. This is just here for completeness, the device would not be running these test regardless of whether or not this SUP is approved.
 
 These features all require live communication with the Kubernetes API during rendering or deployment, which is incompatible with the requirements and security model of Margo-compliant applications.
@@ -50,6 +49,18 @@ All Helm chart rendering MUST be able to be performed client-side, without requi
 The [device requirements](https://docs.margo.org/specification/margo-devices/device-requirements) page will be updated to indicate device vendors have the freedom to choose how helm manifests are rendered and applied and do not need to support these features.
 
 The Margo compliance test suite for conformant applications will be updated to validate that disallowed Helm features indicated above are not present in submitted charts. Applications using these features will be flagged as using unsupported Helm features. This doesn't automatically indicate the application is not compliant because it is possible to have some of these items in the helm chart, but not rely on them to be used to install that application (e.g., you can have a lookup command only used when a specific parameter in the values.yaml is not specified).
+
+### Capabilities.APIVersions.Has support
+
+- [.Capabilities.APIVersions.Has](https://helm.sh/docs/chart_template_guide/function_list/#kubernetes-and-chart-functions): The .Capabilities.APIVersions.Has template function queries the live API versions available in the target Kubernetes cluster at render time to determine if an API version or resource is available in the cluster.
+
+Currently, tools like the Helm client [Template command](https://helm.sh/docs/v3/helm/helm_template), [Helm go libraries](https://github.com/helm/helm/blob/1be395e7aa5793ad466ca7b67af5d77f736361f2/pkg/action/install.go#L122), [Kustomization](https://kubectl.docs.kubernetes.io/references/kustomize/builtins/#_helmchartinflationgenerator_) and [ArgoCD](https://github.com/argoproj/argo-cd/blob/master/pkg/apis/application/v1alpha1/types.go#L568) there is a way to provide the list of cluster API versions out-of-band so the templating does not need to interact with the Kubernetes APIs directly.
+
+Support for this function will be included in order to get feedback on whether or not any device vendor plan on implementing a Helm deployment method that does not allow this to work.
+
+This will be documented as probationary support in the device requirements and indicate device vendors need to provide the out-of-band list of APIs the device's Kubernetes cluster has if they are using a deployment approach that does not interact with the Kubernetes APIs.
+
+As part of this a "Feedback Requested" notice will be added to the page asking for feedback from an device vendor that is taking a deployment approach that cannot support this function.
 
 ## Special Consideration for Voting
 
