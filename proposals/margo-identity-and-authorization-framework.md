@@ -58,7 +58,7 @@
   - [FIDO Device Onboard (FDO) Method](#fido-device-onboard-fdo-method)
   - [Factory Certificate Method (mTLS)](#factory-certificate-method-mtls)
   - [Factory Certificate Method (JWT Assertion)](#factory-certificate-method-jwt-assertion)
-  - [IEEE 802.1AR Method](#ieee-8021ar-method)
+  - [Using IEEE 802.1AR DevIDs with Bootstrap Methods (Informative)](#using-ieee-8021ar-devids-with-bootstrap-methods-informative)
 - [Appendix B: Error Responses (Normative)](#appendix-b-error-responses-normative)
   - [Error Representation Format](#error-representation-format)
   - [Problem Details Object Schema](#problem-details-object-schema)
@@ -99,7 +99,7 @@ This proves that a Margo Management Interface can be secured, but it does **not*
 This SUP therefore does two things:
 
 1. **Defines MIAF** - a framework for non-human identity and authorization in Margo, based on cryptographically verifiable identities following open, widely adopted cloud-native standards. It aligns Margo with modern IT practices while remaining extensible to enterprise PKI and API gateway infrastructures where needed.
-2. **Applies MIAF to Edge Compute Devices** through the **Edge Compute Device Identity Profile**, which introduces a persistent, verifiable **device identity**, a defined lifecycle, and an **extensible bootstrap mechanism**. This model allows Margo to leverage standard onboarding methods (for example, **FIDO Device Onboard**, **IEEE 802.1AR DevID**, **factory certificates**) and to support **late binding** to a Trust Domain.
+2. **Applies MIAF to Edge Compute Devices** through the **Edge Compute Device Identity Profile**, which introduces a persistent, verifiable **device identity**, a defined lifecycle, and an **extensible bootstrap mechanism**. This model allows Margo to leverage standard onboarding methods (for example, **FIDO Device Onboard** and **factory certificates**, including **IEEE 802.1AR DevIDs**) and to support **late binding** to a Trust Domain.
 
 In short:
 
@@ -172,7 +172,7 @@ To address these limitations, this SUP **replaces PR1's device identity and onbo
 
    - a stable **device identity** for each edge node,
    - how that identity is represented in X.509 certificates, and
-   - lifecycle operations and **bootstrap methods** that map existing hardware credentials (for example, FDO, TPM, or IEEE 802.1AR) into the Margo identity model.
+   - lifecycle operations and **bootstrap methods** that map existing hardware credentials (for example, FDO vouchers, TPM-protected keys, or IEEE 802.1AR DevIDs) into the Margo identity model.
 
 Together, these establish the foundation for interoperable identity and trust across Margo components and vendors, replacing PR1's device onboarding and trust model with a unified, lifecycle-managed approach and providing the basis for future WFM Client identity changes.
 
@@ -228,11 +228,11 @@ This SUP supports Margo's core goals of **security**, **scalability**, **interop
 
 ### Flexibility and resilience <!-- omit from toc -->
 
-- The **pluggable bootstrap mechanism** supports multiple Physical Device Identity proofs (FIDO Device Onboard, IEEE 802.1AR DevID, factory certificates), ensuring wide hardware and supply-chain coverage.
+- The **pluggable bootstrap mechanism** supports multiple Physical Device Identity proofs (FIDO Device Onboard, factory certificates - including IEEE 802.1AR DevIDs), ensuring wide hardware and supply-chain coverage.
 - All supported bootstrap methods converge to the same Logical Device Identity, allowing operators to:
 
   - start with existing factory-issued X.509 certificates, and
-  - raise assurance levels over time (for example, mandate FDO or 802.1AR for production) without changing DFM or other consumers of the identity model.
+  - raise assurance levels over time (for example, mandate FDO or hardware-rooted credentials such as 802.1AR IDevIDs for production) without changing DFM or other consumers of the identity model.
 - Support for both mTLS-based and JWT-style identity representations (for example, JWT-SVID in proxy-rich environments) allows deployments to operate behind TLS-terminating infrastructure while keeping a single, consistent identity model.
 
 ### Alignment with Product Management Epics <!-- omit from toc -->
@@ -298,7 +298,7 @@ Existing SPIFFE libraries and tooling can be used for SVID validation, Trust Bun
 | Discovery document | Margo | Not part of SPIFFE. |
 | Enrollment / renewal / revocation / JWT exchange APIs | Margo | Remote HTTPS lifecycle interfaces, not the SPIFFE Workload API. |
 | LDI / PDI / ESI model | Margo | Device-specific concepts introduced by this SUP. |
-| Bootstrap methods | Margo + external standards | FDO, IEEE 802.1AR, and factory-certificate methods are integrated here. |
+| Bootstrap methods | Margo + external standards | FDO and factory-certificate methods are integrated here. IEEE 802.1AR DevIDs are usable as factory certificates within the existing methods. |
 
 ### 2. Terminology
 
@@ -363,7 +363,7 @@ For devices, it carries or references evidence of the **Physical Device Identity
 ##### Bootstrap Method <!-- omit from toc -->
 
 A pluggable, normative method by which a Margo component, or an authorized intermediary defined by the method, satisfies the MIAF bootstrap contract for enrollment.
-This SUP defines methods for Edge Compute Devices, including **FDO**, **factory certificate** (via mTLS or JWT assertion), and **IEEE 802.1AR DevID**. Future SUPs may introduce methods for other Margo components.
+This SUP defines methods for Edge Compute Devices, including **FDO** and **factory certificate** (via mTLS or JWT assertion). Future SUPs may introduce methods for other Margo components.
 
 ##### Enrollment Subject Identifier (ESI) <!-- omit from toc -->
 
@@ -1718,7 +1718,7 @@ At least one of the following mechanisms **MUST** be used:
 
 1. **Web PKI / enterprise PKI:** Validate the MIS server certificate chain to a configured set of trust anchors and validate the expected DNS name per [RFC 6125](https://datatracker.ietf.org/doc/html/rfc6125).
 2. **Pinned trust:** Validate the MIS server certificate chain or public key against operator-provisioned pins (for example, a pinned CA certificate).
-3. **Secure bootstrap delivery:** In bootstrap-channel-delivered scenarios (for example, FDO TO2), obtain, through the authenticated bootstrap channel, the discovery information defined by the selected bootstrap method — such as the absolute HTTPS URL of the MIAF discovery document — and any deployment-specific inputs needed to authenticate the first HTTPS retrieval of that document. This SUP does **not** define a common wire format for bootstrap-channel delivery of HTTPS trust anchors. The discovery document and the Trust Bundle retrieved over HTTPS remain the authoritative MIAF sources after bootstrap.
+3. **Secure bootstrap delivery:** In bootstrap-channel-delivered scenarios (for example, FDO TO2), obtain, through the authenticated bootstrap channel, the discovery information defined by the selected bootstrap method - such as the absolute HTTPS URL of the MIAF discovery document - and any deployment-specific inputs needed to authenticate the first HTTPS retrieval of that document. This SUP does **not** define a common wire format for bootstrap-channel delivery of HTTPS trust anchors. The discovery document and the Trust Bundle retrieved over HTTPS remain the authoritative MIAF sources after bootstrap.
 
 Clients **MUST NOT** treat the first retrieval of the discovery document or Trust Bundle as unauthenticated or "trust on first use".
 
@@ -2089,13 +2089,17 @@ Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-
 > SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c...
 > ```
 
-### IEEE 802.1AR Method
+### Using IEEE 802.1AR DevIDs with Bootstrap Methods (Informative)
 
-> **TODO:** This method is a placeholder. The required details have not yet been defined.
+Devices that carry an [IEEE 802.1AR](https://1.ieee802.org/security/802-1ar/) **Initial Device Identity (IDevID)** in their DevID module can use it as the manufacturer-issued X.509 certificate in any bootstrap method that accepts one.
 
-This method enables **hardware-anchored onboarding** using an [IEEE 802.1AR](https://standards.ieee.org/standard/802_1AR-2018.html) **Device Identity (DevID)** embedded in the device's secure element. It supports **standards-based authentication and enrollment** across vendors, ensuring interoperable and verifiable device identity without requiring manufacturer-specific extensions or external onboarding services.
+IEEE 802.1AR defines the credential format, hardware-binding requirements, and DevID module service interface for the IDevID, but it does not define an enrollment or onboarding protocol. The enrollment protocol is provided by the bootstrap methods defined in this appendix:
 
-All cryptographic operations and key usages defined by this method **MUST** comply with the [Cryptographic Requirements](#cryptographic-requirements).
+- **Factory Certificate Methods ([mTLS](#factory-certificate-method-mtls) / [JWT Assertion](#factory-certificate-method-jwt-assertion)):** The device presents its IDevID as the factory certificate - via the TLS client certificate in mTLS, or in the `x5c` header of the Bootstrap Assertion JWT. No protocol-level distinction is needed; the MIS validates the IDevID certificate chain against its configured trust anchors like any other manufacturer certificate. Operators that wish to enforce 802.1AR-specific properties (for example, the `HardwareModuleName` in the `subjectAltName` extension or IDevID subject field conventions) can do so through Trust Domain policy applied during certificate-chain validation.
+- **FIDO Device Onboard ([FDO](#fido-device-onboard-fdo-method)):** Devices whose FDO Ownership Voucher contains an IDevID-backed certificate chain in `OVDevCertChain` are supported without modification. The FDO method validates the device certificate chain per FDO and Trust Domain policy; the fact that this chain is rooted in an 802.1AR-compliant PKI is transparent to the bootstrap flow.
+
+> **Note - Cryptographic algorithm compatibility:**
+> IEEE 802.1AR-2018 defines signature suites including RSA-2048/SHA-256 (RSASSA-PKCS1-v1.5), ECDSAP-256/SHA-256, and ECDSAP-384/SHA-384. Of these, only the ECDSA suites are directly compatible with MIAF's [Cryptographic Requirements](#cryptographic-requirements), which require ECDSA P-256 or RSA-PSS >= 3072 bits and prohibit PKCS#1 v1.5 for MIAF-generated artifacts. However, IDevID certificates are part of the manufacturer PKI (an external bootstrap ecosystem), which [**MAY** use the algorithms permitted by its governing standard](#appendix-a-bootstrap-methods-normative) subject to Trust Domain policy. The device-generated SVID key and CSR submitted during enrollment **MUST** independently conform to MIAF's cryptographic requirements regardless of the IDevID's signature suite.
 
 ## Appendix B: Error Responses (Normative)
 
