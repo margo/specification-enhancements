@@ -39,7 +39,7 @@
     - [Bootstrap Method Flows](#bootstrap-method-flows)
       - [Example: Factory Certificate Method (mTLS)](#example-factory-certificate-method-mtls)
       - [Example: Factory Certificate Method (JWT Assertion)](#example-factory-certificate-method-jwt-assertion)
-      - [Example: FIDO Device Onboard (MIS-hosted OOS)](#example-fido-device-onboard-mis-hosted-oos)
+      - [Example: FIDO Device Onboard (MIS-integrated OOS)](#example-fido-device-onboard-mis-integrated-oos)
   - [7. Transport Layer Security (TLS) Requirements](#7-transport-layer-security-tls-requirements)
     - [Relationship to MIAF and Profiles](#relationship-to-miaf-and-profiles)
     - [Initial Trust Bootstrap](#initial-trust-bootstrap)
@@ -54,7 +54,7 @@
   - [OAuth 2.0 / Authorization Server Integration](#oauth-20--authorization-server-integration)
   - [Alternative Trust Frameworks](#alternative-trust-frameworks)
 - [Appendix A: Bootstrap Methods (Normative)](#appendix-a-bootstrap-methods-normative)
-  - [Common Validation Rules](#common-validation-rules)
+  - [Common Bootstrap Contract Requirements](#common-bootstrap-contract-requirements)
   - [FIDO Device Onboard (FDO) Method](#fido-device-onboard-fdo-method)
   - [Factory Certificate Method (mTLS)](#factory-certificate-method-mtls)
   - [Factory Certificate Method (JWT Assertion)](#factory-certificate-method-jwt-assertion)
@@ -353,26 +353,26 @@ The LDI remains stable across hardware replacement or firmware updates when poli
 
 ##### Physical Device Identity (PDI) <!-- omit from toc -->
 
-A hardware-rooted credential used during bootstrap, such as a factory X.509 certificate, a TPM-bound key, a **FIDO Device Onboard (FDO)** voucher, or an **IEEE 802.1AR DevID**. The MIS verifies the PDI and binds it to a **Logical Device Identity** during enrollment.
+A hardware-rooted credential or attested bootstrap identity source used during enrollment, such as a factory X.509 certificate, a TPM-/TEE-protected key, a certificate-backed **FIDO Device Onboard (FDO)** device attestation chain bound to a successful onboarding session, or an **IEEE 802.1AR DevID**. The MIS verifies the PDI, directly or through an authorized bootstrap intermediary defined by the selected method, and binds it to a **Logical Device Identity** during enrollment.
 
 ##### Bootstrap Credential <!-- omit from toc -->
 
-A cryptographic credential presented by a Margo component to prove authenticity during initial enrollment with the MIS.
-For devices, it conveys evidence of the **Physical Device Identity**. Each supported **Bootstrap Method** defines how this credential is formatted and verified.
+Evidence presented to the MIS, or conveyed through an authorized bootstrap intermediary, to prove authenticity during initial enrollment.
+For devices, it carries or references evidence of the **Physical Device Identity**. Each supported **Bootstrap Method** defines the authenticated actor, the proof format or validated bootstrap result, the ESI derivation rule, and the method-specific verification requirements.
 
 ##### Bootstrap Method <!-- omit from toc -->
 
-A pluggable, normative method by which a Margo component presents its **Bootstrap Credential** to the MIS for enrollment.
+A pluggable, normative method by which a Margo component, or an authorized intermediary defined by the method, satisfies the MIAF bootstrap contract for enrollment.
 This SUP defines methods for Edge Compute Devices, including **FDO**, **factory certificate** (via mTLS or JWT assertion), and **IEEE 802.1AR DevID**. Future SUPs may introduce methods for other Margo components.
 
 ##### Enrollment Subject Identifier (ESI) <!-- omit from toc -->
 
-A deterministic, globally unique identifier derived by the MIS from the presented **Bootstrap Credential** during enrollment.
+A deterministic, globally unique identifier derived by the MIS from the validated bootstrap proof material defined by the selected **Bootstrap Method** during enrollment.
 It is used to decide whether the presented bootstrap proof corresponds to an existing identity within the Trust Domain or a new one.
 
 The derivation is **method-specific** and defined by each **Bootstrap Method**.
 *Example (device profile):* from a verified PDI, the ESI may be the certificate fingerprint, or a hash derived from a device certificate contained in an FDO Ownership Voucher.
-ESIs **MUST** be stable and unique within the Trust Domain and **MUST NOT** be reversible to the original credential material.
+ESIs **MUST** be stable for repeated enrollments using the same physical credential state, **MUST** be unique within the Trust Domain, and **MUST NOT** be reversible to the original credential material.
 
 ##### JWT SVID Exchange <!-- omit from toc -->
 
@@ -776,12 +776,16 @@ The same LDI **MUST NOT** be active for multiple PDIs concurrently.
 
 #### Profile-specific Enrollment and Identity Issuance
 
-Device enrollment uses the generic API defined in [Section 5](#enrollment-and-identity-issuance-endpoint) with the following constraints:
+Device enrollment uses the generic API defined in [Section 5](#enrollment-and-identity-issuance-endpoint) with the following constraints. Within this profile, bootstrap methods are classified as follows:
+
+- **Direct methods**: the device authenticates directly to the MIS, and the MIS validates the bootstrap proof from the device or its transport session.
+- **Mediated methods**: an authorized bootstrap intermediary completes an external bootstrap protocol and conveys the validated bootstrap result defined by the selected method to the MIS.
 
 - The only permitted `svid_profile_uri` for devices is `https://margo.org/profiles/spiffe/x509-svid/v1`. Attempts to enroll a device with `jwt-svid` **MUST** be rejected with `422` (`unsupported-svid-profile`).
-- Device enrollment **MUST** use one of the device bootstrap methods defined in [Appendix A](#appendix-a-bootstrap-methods-normative).
-- To ensure baseline interoperability, both the device and the MIS **MUST** implement the [Factory Certificate Method (mTLS)](#factory-certificate-method-mtls). Support for additional bootstrap methods is **OPTIONAL**.
-- MIS **MUST** verify the presented bootstrap credential against Trust Domain policy and derive the **ESI** per the selected method before issuance.
+- Device enrollment **MUST** use one of the device bootstrap methods defined in [Appendix A](#appendix-a-bootstrap-methods-normative) and **MUST** follow the actor model defined by the selected method.
+- To ensure baseline interoperability, both the device and the MIS **MUST** implement the direct [Factory Certificate Method (mTLS)](#factory-certificate-method-mtls). Support for additional direct or mediated bootstrap methods defined in [Appendix A](#appendix-a-bootstrap-methods-normative) is **OPTIONAL**.
+- For mediated methods, the MIS **MUST** accept enrollment only from an intermediary authorized by Trust Domain policy to convey the validated bootstrap result defined by that method.
+- MIS **MUST** verify the validated bootstrap proof against Trust Domain policy and derive the **ESI** per the selected method before issuance.
 - The enrollment request/response structure **MUST** conform to [Section 5](#enrollment-and-identity-issuance-endpoint).
 - MIS **MUST** return `201 Created` when a new LDI is provisioned and `200 OK` for re-enrollments that match an existing LDI via the ESI.
 
@@ -951,15 +955,16 @@ Its location is given by the `trust_bundle_uri` field in the [Discovery Document
 
 #### Enrollment and Identity Issuance Endpoint
 
-This endpoint is used by a Margo component (for this SUP: an Edge Compute Device) or an authorized bootstrap intermediary acting on its behalf (for example, an FDO Owner Onboarding Service component of the MIS) to perform **initial enrollment** with the Margo Identity Service (MIS).
+This endpoint is used by a Margo component (for this SUP: an Edge Compute Device) or by an authorized bootstrap intermediary defined by the selected bootstrap method (for example, an FDO Owner Onboarding Service component of the MIS) to perform **initial enrollment** with the Margo Identity Service (MIS).
 
 During enrollment, the component authenticates using its **Bootstrap Credential** and requests issuance of a new identity, represented by an SVID.
 For Edge Compute Devices, this operation establishes the authoritative binding between the device's **Physical Device Identity** and **Logical Device Identity** within the Trust Domain.
+For direct methods, the device authenticates directly to the MIS. For mediated methods, the intermediary authenticates to the MIS according to Trust Domain policy and conveys the validated bootstrap result defined by the selected method.
 
 | Item | Value |
 | :--- | :---- |
 | **Endpoint** | `POST /api/v1/identities` |
-| **Authentication** | Defined by the selected [bootstrap method](#appendix-a-bootstrap-methods-normative) (e.g., mTLS or JWT assertion) |
+| **Authentication** | Defined by the selected [bootstrap method](#appendix-a-bootstrap-methods-normative) and its actor model (for example, device-held mTLS, device-held JWT assertion, or an authorized intermediary for mediated methods such as FDO) |
 | **Headers** | `Content-Type: application/json` |
 | **Body schema (request)** | See below |
 | **Body schema (response)** | See below |
@@ -971,21 +976,31 @@ For Edge Compute Devices, this operation establishes the authoritative binding b
 | Field | Type | Required | Description |
 | :---- | :--- | :------- | :---------- |
 | `svid_profile_uri` | string | Y | Absolute URI identifying the SVID profile requested. **MUST** match one of the URIs listed in `svid_profiles_supported` from the [discovery document](#discovery-document-endpoint). |
-| `svid_request` | object | Y | Profile-specific payload containing parameters required to issue an SVID. See [Profile-specific `svid_request` formats (request payload)](#profile-specific-svid_request-formats-request-payload) below. |
-| `bootstrapCredential` | object | Y | Credential and associated proof used to authenticate the component during enrollment. See [Bootstrap Methods](#appendix-a-bootstrap-methods-normative) for normative method definitions. |
+| `svid_request` | object | Y | Profile-specific payload containing parameters required to issue an SVID. See the profile-specific `svid_request` formats below. |
+| `bootstrapCredential` | object | Y | Credential and associated proof, or method-specific validated bootstrap inputs, used to authenticate the enrollment. See [Bootstrap Methods](#appendix-a-bootstrap-methods-normative) for normative method definitions. |
 | `bootstrapCredential.method` | string | Y | URN uniquely identifying the bootstrap method (e.g., `urn:margo:bootstrap:factory-cert-jwt:v1`). |
-| `bootstrapCredential.proof`  | object | N | Method-specific proof of possession (e.g., a signed JWT assertion or an mTLS client certificate chain). Present only if the bootstrap method requires explicit proof material. |
+| `bootstrapCredential.proof` | object | N | Method-specific proof of possession or validated bootstrap input material (for example, a signed JWT assertion or the method-defined inputs associated with a mediated bootstrap flow). Present only if the bootstrap method requires explicit proof material. |
 
 **Response body schema (`201 Created` or `200 OK`, `application/json`):**
 
 | Field | Type | Required | Description |
 | :---- | :--- | :------- | :---------- |
 | `svid_profile_uri` | string | Y | URI of the SVID profile used for issuance. Identifies the structure and semantics of the `svid` object returned. |
-| `svid` | object | Y | Profile-specific payload containing the issued SVID. See [Profile-specific `svid` formats (response payload)](#profile-specific-svid-formats-response-payload) below. |
+| `svid` | object | Y | Profile-specific payload containing the issued SVID. See the profile-specific `svid` formats below. |
 
 > **Informative:**
 > The MIS returns `201 Created` when it creates a new identity record and `200 OK` when it issues a new SVID for an existing identity as part of a re-enrollment or recovery flow.
 > Identity-profile-specific interpretations (for example, mapping Physical to Logical Device Identity for devices) are defined in the corresponding profile section.
+
+##### Device bootstrap method summary (normative) <!-- omit from toc -->
+
+For the **Edge Compute Device Identity Profile**, the selected bootstrap method determines the authenticated actor, the bootstrap proof accepted by the MIS, and the ESI source as follows:
+
+| Bootstrap method | Authenticated actor | Bootstrap proof accepted by the MIS | ESI source |
+| :--------------- | :------------------ | :---------------------------------- | :--------- |
+| `urn:margo:bootstrap:factory-cert-mtls:v1` | Device | Validated TLS client certificate chain from the mTLS session | SHA-256 fingerprint of the DER-encoded TLS leaf certificate |
+| `urn:margo:bootstrap:factory-cert-jwt:v1` | Device | Signed Bootstrap Assertion JWT with `x5c` certificate chain | SHA-256 fingerprint of `x5c[0]` |
+| `urn:margo:bootstrap:fdo:v1` | Authorized FDO Owner Onboarding Service (OOS) acting on behalf of the MIS | Validated successful TO2 outcome, Ownership Voucher, and CSR binding produced by the FDO method profile in [Appendix A](#fido-device-onboard-fdo-method) | SHA-256 fingerprint of the first certificate in `OwnershipVoucher.OVDevCertChain` |
 
 ##### Profile-specific `svid_request` formats (request payload) <!-- omit from toc -->
 
@@ -1120,15 +1135,16 @@ This logic ensures consistent handling of first-time enrollments, retried networ
 
 1. **Derive Enrollment Subject Identifier**
 
-   The MIS **MUST** derive a deterministic **[Enrollment Subject Identifier](#enrollment-subject-identifier-esi)** from the presented `bootstrapCredential`.
-   This identifier anchors the binding between the presented bootstrap material and the resulting identity (for devices: between the Physical Device Identity and the Logical Device Identity).
+  The MIS **MUST** derive a deterministic Enrollment Subject Identifier (ESI) from the validated bootstrap proof material defined by the selected `bootstrapCredential.method`.
+  This identifier anchors the binding between the presented bootstrap material and the resulting identity (for devices: between the Physical Device Identity and the Logical Device Identity).
 
 2. **Validate bootstrap proof**
 
    The MIS **MUST** verify the cryptographic proof included in the `bootstrapCredential` according to the verification rules defined by the selected bootstrap `method`.
 
-   - If proof validation fails, the MIS **MUST** reject the request with `401 Unauthorized` using a Problem Details object.
-   - Validation includes method-specific checks such as certificate chain verification (for mTLS), signature verification (for JWT-based methods), and temporal validity checks (`iat`, `exp`).
+  For **direct** methods, proof validation uses the credential conveyed by the device or its transport session. For **mediated** methods, proof validation **MUST** include verification that the intermediary is authorized to convey the validated bootstrap result defined by the selected method and that this result corresponds to a successfully completed external bootstrap protocol.
+
+  If proof validation fails, the MIS **MUST** reject the request with `401 Unauthorized` using a Problem Details object. Validation includes method-specific checks such as certificate chain verification (for mTLS), signature verification (for JWT-based methods), temporal validity checks (`iat`, `exp`), and validation of intermediary-conveyed bootstrap results for mediated methods.
 
 3. **Validate requested profile**
 
@@ -1594,7 +1610,13 @@ The `client_assertion` used at the exchange endpoint **MUST** use an algorithm p
 The following flows expand on [Enrollment and Identity Issuance](#enrollment-and-identity-issuance-endpoint) and illustrate selected bootstrap methods defined in [Appendix A: Bootstrap Methods (Normative)](#appendix-a-bootstrap-methods-normative).
 They are **informative only** and do not introduce additional normative requirements.
 
-Each flow shows how a device presents its bootstrap credential, how the MIS validates it, and how the **enrollment subject identifier** (as defined in [Section 5](#mis-validation-and-processing-logic)) is derived from that credential to establish a deterministic binding between the physical credential and the resulting identity.
+Each flow shows how a device presents its bootstrap credential, how the MIS validates it, and how the enrollment subject identifier defined by the MIS validation and processing logic in Section 5 is derived from that credential to establish a deterministic binding between the physical credential and the resulting identity.
+
+| Method | Class | Reference |
+| :----- | :---- | :-------- |
+| Factory Certificate Method (mTLS) | Direct | [Appendix A](#factory-certificate-method-mtls) |
+| Factory Certificate Method (JWT Assertion) | Direct | [Appendix A](#factory-certificate-method-jwt-assertion) |
+| FIDO Device Onboard (MIS-integrated OOS) | Mediated | [Appendix A](#fido-device-onboard-fdo-method) |
 
 ##### Example: Factory Certificate Method (mTLS)
 
@@ -1645,7 +1667,7 @@ sequenceDiagram
 > - `bootstrapCredential.proof.assertion` is a compact JWT signed with the factory private key.
 > - The **Enrollment Subject Identifier (ESI)** is the **SHA-256 fingerprint** of the DER-encoded **leaf** certificate in `x5c[0]`.
 
-##### Example: FIDO Device Onboard (MIS-hosted OOS)
+##### Example: FIDO Device Onboard (MIS-integrated OOS)
 
 ```mermaid
 sequenceDiagram
@@ -1654,20 +1676,20 @@ sequenceDiagram
 
     Device->>MIS: Execute FDO TO2 protocol<br/>(ServiceInfo includes CSR)
     activate MIS
-    MIS->>MIS: Validate FDO proof<br/>(ownership voucher chain)
-    MIS->>MIS: Invoke enrollment logic<br/>(svid_profile_uri, CSR, bootstrapCredential.method = FDO)
+    MIS->>MIS: Validate FDO proof<br/>(successful TO2 outcome, voucher chain,<br/>device attestation, CSR binding)
+    MIS->>MIS: Invoke enrollment logic during TO2<br/>(svid_profile_uri, CSR, bootstrapCredential.method = FDO)
     MIS->>MIS: Derive enrollment subject identifier = SHA-256 fingerprint of DER-encoded voucher device leaf certificate
     MIS->>MIS: Apply policy, bind Physical to Logical Identity
-    MIS-->>Device: Deliver SVID and Trust Bundle (via TO2 ServiceInfo)
+    MIS-->>Device: Deliver leaf SVID, CA certs, and discovery URL<br/>(via TO2 ServiceInfo)
     deactivate MIS
 ```
 
 > **Alignment with [Appendix A](#appendix-a-bootstrap-methods-normative):**
 >
 > - `bootstrapCredential.method` = `urn:margo:bootstrap:fdo:v1`.
-> - `bootstrapCredential.proof` includes the FDO Ownership Voucher.
-> - The **Enrollment Subject Identifier (ESI)** is derived from the **device leaf certificate** contained in the Ownership Voucher.
-> - The **Owner Onboarding Service (OOS)** is implemented as a component of the MIS and acts on behalf of the device.
+> - The MIS uses the FDO Ownership Voucher together with validated TO2 session state for the same device; this profile does **not** define a separate interoperable external handoff object, and that state is consumed internally within the MIS implementation.
+> - The **Enrollment Subject Identifier (ESI)** is derived from the first certificate in `OwnershipVoucher.OVDevCertChain`.
+> - The **Owner Onboarding Service (OOS)** is part of the MIS implementation and acts on behalf of the MIS as the FDO Owner-side management service.
 
 ### 7. Transport Layer Security (TLS) Requirements
 
@@ -1696,7 +1718,7 @@ At least one of the following mechanisms **MUST** be used:
 
 1. **Web PKI / enterprise PKI:** Validate the MIS server certificate chain to a configured set of trust anchors and validate the expected DNS name per [RFC 6125](https://datatracker.ietf.org/doc/html/rfc6125).
 2. **Pinned trust:** Validate the MIS server certificate chain or public key against operator-provisioned pins (for example, a pinned CA certificate).
-3. **Secure bootstrap delivery:** In bootstrap-channel-delivered scenarios (for example, FDO TO2), obtain the initial Trust Bundle and MIS endpoint metadata through the authenticated bootstrap channel and treat it as authoritative.
+3. **Secure bootstrap delivery:** In bootstrap-channel-delivered scenarios (for example, FDO TO2), obtain, through the authenticated bootstrap channel, the discovery information defined by the selected bootstrap method — such as the absolute HTTPS URL of the MIAF discovery document — and any deployment-specific inputs needed to authenticate the first HTTPS retrieval of that document. This SUP does **not** define a common wire format for bootstrap-channel delivery of HTTPS trust anchors. The discovery document and the Trust Bundle retrieved over HTTPS remain the authoritative MIAF sources after bootstrap.
 
 Clients **MUST NOT** treat the first retrieval of the discovery document or Trust Bundle as unauthenticated or "trust on first use".
 
@@ -1832,42 +1854,49 @@ Deployments that require interoperability with existing enterprise access contro
 
 ## Appendix A: Bootstrap Methods (Normative)
 
-This appendix defines the registered **bootstrap methods** supported by this specification, including their identifiers, object schemas, derivation of the **Enrollment Subject Identifier (ESI)**, and validation requirements. Each method describes how an Edge Compute Device proves its initial authenticity to the **Margo Identity Service (MIS)** before receiving an **X.509 SVID representing the device's Logical Device Identity (LDI)**.
+This appendix defines the MIAF bootstrap contract and the registered **bootstrap methods** supported by this specification. Each method defines the authenticated actor, the bootstrap proof accepted by the MIS, the derivation of the **Enrollment Subject Identifier (ESI)**, and the validation requirements needed before the MIS issues an **X.509 SVID representing the device's Logical Device Identity (LDI)**.
 
-All cryptographic algorithms, key sizes, and signatures referenced in this appendix **MUST** comply with [Cryptographic Requirements](#cryptographic-requirements).
+Bootstrap methods in this appendix fall into two classes:
 
-### Common Validation Rules
+- **Direct methods**: the device authenticates directly to the MIS.
+- **Mediated methods**: an authorized bootstrap intermediary completes an external bootstrap protocol and conveys the validated bootstrap result defined by the selected method to the MIS.
+
+Unless a method states otherwise, [Cryptographic Requirements](#cryptographic-requirements) apply to MIAF-generated identity artifacts, device-generated SVID keys and CSRs, and any MIAF-defined signed assertions in this appendix. External bootstrap ecosystems referenced by a method (for example, manufacturer certificate PKI or FDO voucher and attestation material) **MAY** use the algorithms permitted by their governing standard, subject to Trust Domain policy and any narrower constraints imposed by the method profile.
+
+### Common Bootstrap Contract Requirements
+
+This section defines the universal bootstrap contract that every method in this appendix **MUST** satisfy. Each method below then profiles these requirements for its own actor model, proof format, and ESI derivation rule.
 
 Unless a method states stricter requirements, the MIS **MUST** enforce the following for all device bootstrap requests:
 
-1. **Freshness and replay protection:**
+1. **ESI derivation:** The MIS **MUST** derive the Enrollment Subject Identifier exactly as specified by the selected method and use it to locate or create the LDI binding, as described in the MIS validation and processing logic in Section 5.
 
-   - Any signed assertion **MUST** include `iat`/`exp` with `exp - iat <= 300 seconds`.
-   - Assertions **MUST** include a unique `jti`; the MIS **MUST** reject replays of a previously seen `jti`.
+1. **Bootstrap proof validation:** The MIS **MUST** validate the bootstrap proof according to the selected method before issuing an identity. For mediated methods, the MIS **MUST** validate both the method-defined bootstrap result and the intermediary's authorization to convey it.
 
-2. **Audience binding:**
+1. **Certificate-chain validation:** Any certificate chain that a selected method requires the MIS to validate **MUST** chain to a trust anchor authorized by Trust Domain policy. Where revocation information is available and relevant to the method, the MIS **SHOULD** evaluate it according to Trust Domain policy and the selected method profile.
 
-   - Where a JWT/JWS is used, `aud` **MUST** equal the exact enrollment endpoint URL advertised by the MIS.
+1. **Bootstrap trust anchor provisioning:** The MIS **MUST** be configured with the trust anchors (e.g., manufacturer or OEM root and intermediate CA certificates) needed to validate Bootstrap Credentials for each supported Bootstrap Method. The mechanism for provisioning these trust anchors is deployment-specific and outside the scope of this specification.
 
-3. **Chain validation:**
+1. **Auditability:** The MIS **SHOULD** record the selected bootstrap method, relevant trust anchor or bootstrap authority, and the resulting ESI for auditability.
 
-   - Any certificate chain presented (mTLS or `x5c`) **MUST** validate to a manufacturer/OEM trust anchor authorized by Trust Domain policy.
+#### Additional requirements for signed-assertion methods <!-- omit from toc -->
 
-4. **ESI derivation:**
+Where a method uses a signed assertion format such as JWT/JWS, the MIS **MUST** additionally enforce the following unless that method defines stricter requirements:
 
-   - The MIS **MUST** derive the **Enrollment Subject Identifier** exactly as specified by the selected method and use it to locate or create the LDI binding (see [MIS Validation and Processing Logic](#mis-validation-and-processing-logic)).
+1. **Freshness and replay protection:** Any signed assertion **MUST** include `iat`/`exp` with `exp - iat <= 300 seconds`. Assertions **MUST** include a unique `jti`; the MIS **MUST** reject replays of a previously seen `jti`.
 
-5. **Bootstrap trust anchor provisioning:**
-
-   - The MIS **MUST** be configured with the trust anchors (e.g., manufacturer or OEM root and intermediate CA certificates) needed to validate Bootstrap Credentials for each supported Bootstrap Method.
-   - The mechanism for provisioning these trust anchors is deployment-specific and outside the scope of this specification.
+1. **Audience binding:** Where a JWT/JWS is used, `aud` **MUST** equal the exact enrollment endpoint URL advertised by the MIS.
 
 ### FIDO Device Onboard (FDO) Method
 
-> **TODO:** This method is a draft outline. The FDO integration details (voucher handling, OOS interaction model, ESI derivation) need to be validated against the FDO specification and refined.
-
 This method enables **secure, hardware-rooted onboarding** using [FIDO Device Onboard (FDO)](https://fidoalliance.org/specs/FDO/).
 It supports automated, authenticated transfer of device ownership from factory to operator, allowing devices to join a Trust Domain without prior configuration or manual provisioning.
+
+#### FDO actor model and mediation <!-- omit from toc -->
+
+This is a **mediated** bootstrap method.
+The device authenticates to an FDO **Owner Onboarding Service (OOS)**, and the OOS acts on behalf of the MIS (the FDO "Owner").
+For this profile, the OOS **MUST** be part of the MIS implementation. Implementations **MAY** decompose the MIS internally for scaling or deployment reasons, but this specification does **not** define an interoperable external OOS-to-MIS handoff format; any validated TO2 state is consumed internally within the MIS implementation. This constraint applies throughout this method profile; later subsections reference but do not restate it.
 
 **Bootstrap Method Identifier (URN):**
 `urn:margo:bootstrap:fdo:v1`
@@ -1875,52 +1904,84 @@ It supports automated, authenticated transfer of device ownership from factory t
 **Purpose:**
 Use a hardware-rooted onboarding mechanism compatible with FDO to enable factory-provisioned devices to securely transfer ownership into an operational Trust Domain.
 
-**Enrollment Subject Identifier (ESI):**
-Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-encoded device leaf certificate** contained in the presented FDO Ownership Voucher.
+#### Scope and supported devices (normative) <!-- omit from toc -->
+
+- This method **MUST** be used only for certificate-backed FDO devices whose `OwnershipVoucher.OVDevCertChain` is non-null (that is, the voucher contains a device certificate chain).
+- Devices using Intel EPID attestation without an X.509 device certificate chain are **not supported** by this bootstrap method.
+- Conformant production implementations of this profile **MUST NOT** use the FDO Credential Reuse Protocol.
+
+#### Enrollment Subject Identifier (ESI) (normative) <!-- omit from toc -->
+
+Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-encoded device leaf certificate**, specifically the first certificate in `OwnershipVoucher.OVDevCertChain`.
 The resulting SHA-256 digest **MUST** be encoded as lowercase hexadecimal.
 
-**`bootstrapCredential` object schema (`application/json`):**
+#### `bootstrapCredential` logical representation (normative) <!-- omit from toc -->
+
+> This section defines the logical FDO inputs consumed within the MIS implementation for this profile (see [FDO actor model and mediation](#fdo-actor-model-and-mediation) for the rationale).
 
 | Field | Type | Required | Description |
 | :---- | :--- | :------- | :---------- |
 | `method` | string | Y | **MUST** be `urn:margo:bootstrap:fdo:v1`. |
-| `proof` | object | Y | **MUST** contain `ownershipVoucher`. |
-| `proof.ownershipVoucher` | string | Y | Base64url-encoded (no padding) CBOR bytes of the FDO **Ownership Voucher**. The MIS **MUST** validate the voucher chain per FDO before issuing an identity. |
+| `proof` | object | Y | **MUST** contain `ownershipVoucher`. Successful TO2 completion with the same device **MUST** be established by the OOS within the authenticated TO2 session; this profile does **not** define a separate interoperable field for that state. |
+| `proof.ownershipVoucher` | string | Y | Base64url-encoded (no padding) CBOR bytes of the FDO **Ownership Voucher**. The Ownership Voucher is a required input to this method, but it is **not sufficient proof on its own**. |
 
-**Submission and authentication:**
+#### Validation and enrollment binding requirements (normative) <!-- omit from toc -->
 
-- The MIS **MUST** provide an FDO **Owner Onboarding Service (OOS)** endpoint that acts as the TO2 Owner Onboarding Service for this Trust Domain.
-- Devices enrolling via this method **MUST** perform FDO TO2 directly with the MIS-provided OOS endpoint.
-- After TO2 completes, the MIS OOS component **MUST** submit the CSR and the FDO proof to the MIS enrollment logic on behalf of the device (conceptually, `POST /api/v1/identities`).
-
-> **Deployment note (informative):**
-> The OOS is commonly deployed as a component of the MIS (consistent with the FDO definition of OOS as a component of the management service). In such deployments, `POST /api/v1/identities` may be an internal interface rather than a public API. If the OOS is separated from the main MIS enrollment service, the OOS **MUST** authenticate to the enrollment service using mutual TLS with an **X.509 SVID** whose SPIFFE ID is authorized by Trust Domain policy to perform FDO-backed enrollment.
-
-**Voucher validation:**
-
-- The MIS **MUST** validate the Ownership Voucher chain per the FDO specification and Trust Domain policy (including verifying that the voucher is rooted in an authorized manufacturer/OEM trust anchor).
-- The MIS **MUST** treat the device leaf certificate contained in the voucher as non-secret and use it only for ESI derivation and authorization decisions.
-
-**CSR handling:**
-
-- The OOS **MUST** obtain the CSR from the device over the authenticated TO2 channel (for example, via ServiceInfo using the `fdo.csr` module) and **MUST** ensure the CSR corresponds to the device that completed TO2.
+- The MIS **MUST** provide an FDO **Owner Onboarding Service (OOS)** endpoint as part of the MIS implementation for this Trust Domain.
+- Devices enrolling via this method **MUST** perform FDO TO2 directly with that OOS endpoint.
+- The bootstrap proof for this method is **successful completion of FDO TO2 with the device**. Presentation of an Ownership Voucher without a validated TO2 outcome **MUST NOT** be accepted as sufficient proof.
+- The transition from successful TO2 to MIS enrollment is internal to the MIS implementation for this profile (see [FDO actor model and mediation](#fdo-actor-model-and-mediation)).
+- If TO2 does **not** complete successfully, the MIS **MUST NOT** treat the enrollment as successful and **MUST** discard or invalidate any provisional issuance artifacts created during that attempt.
+- During TO2, after the authentication phase completes and before TO2 finishes, the OOS component of the MIS **MUST** invoke the MIS enrollment logic with the CSR and the validated FDO state.
+- The OOS **MUST** obtain the CSR from the device over the authenticated TO2 channel and **MUST** ensure that the CSR corresponds to the same device that completed TO2.
 - The MIS **MUST** validate that the submitted CSR is well-formed and that its signature verifies (proof of possession).
+- The MIS **MUST** validate the Ownership Voucher chain per the FDO specification and Trust Domain policy, including verifying that the voucher is rooted in an authorized manufacturer/OEM trust anchor.
+- The MIS **MUST** validate the device certificate chain in `OwnershipVoucher.OVDevCertChain` against Trust Domain policy before deriving or accepting the ESI.
+- The MIS **MUST** treat the device leaf certificate contained in the voucher as non-secret and use it only for ESI derivation, authorization, and validation decisions.
 
-> **Reference (informative):**
-> The `fdo.csr` ServiceInfo Module (FSIM) is specified in the FIDO Alliance FDO SIM repository: <https://github.com/fido-alliance/fdo-sim/blob/FSIM_v1.0_20230209/fsim-repository/fdo.csr.md>
+#### TO2 ServiceInfo binding (normative) <!-- omit from toc -->
 
-**Process Summary (informative):**
+- The OOS **MUST** use the `fdo.csr` ServiceInfo Module's `simpleenroll-*` exchange to convey the device CSR and return the issued leaf certificate representing the device's X.509 SVID.
+- The OOS **MUST** use the `fdo.csr` ServiceInfo Module's `cacerts-*` exchange to return the CA certificates needed to validate the issued SVID chain.
+- The certificates returned via `fdo.csr:cacerts-*` are defined in this profile only for validation of the issued SVID chain. A deployment **MAY** also use them as initial HTTPS trust anchors for discovery if the same PKI is used, but this specification does **not** require or assume that.
+- The OOS **MUST** use the `margo.discovery` ServiceInfo Module defined below to provide, over the authenticated TO2 channel, the absolute HTTPS URL of the MIAF discovery document (`GET /.well-known/margo`).
+- After bootstrap, the device **MUST** retrieve the MIAF discovery document and the SPIFFE Trust Bundle over HTTPS using an initial trust basis established in accordance with [Initial Trust Bootstrap](#initial-trust-bootstrap).
+- The discovery document and the Trust Bundle retrieved over HTTPS are the authoritative post-bootstrap sources of endpoint metadata and trust configuration for this specification.
 
-1. The device executes **FDO TO2** with the MIS-hosted **Owner Onboarding Service (OOS)** and submits a CSR via TO2 **ServiceInfo** (commonly using the `fdo.csr` ServiceInfo Module).
-2. The MIS OOS validates the Ownership Voucher and device credentials per FDO.
-3. The MIS validates the Ownership Voucher chain against authorized trust anchors and applies Trust Domain policy.
-4. MIS derives **ESI = SHA-256 fingerprint of the DER-encoded voucher device leaf certificate (encoded as lowercase hex)**, enforces policy/rate limits, and issues an **X.509 SVID (LDI)**.
-5. The MIS OOS securely delivers the SVID and Trust Bundle to the device via the authenticated TO2 channel.
+##### `margo.discovery` ServiceInfo Module (normative) <!-- omit from toc -->
+
+This specification defines the `margo.discovery` ServiceInfo Module for conveying the MIAF discovery URL over the authenticated TO2 channel.
+The module uses the following key-value pairs:
+
+- `margo.discovery:active` (`bool`): instructs the device to activate or deactivate the module.
+- `margo.discovery:url` (`tstr`): absolute HTTPS URL of the MIAF discovery document (`GET /.well-known/margo`).
+
+- Devices and OOS implementations conformant to the `urn:margo:bootstrap:fdo:v1` method **MUST** implement the `margo.discovery` module.
+- The `margo.discovery:url` value **MUST** be an absolute `https` URL for the discovery document defined by this specification.
+- The OOS **MUST** send exactly one `margo.discovery:url` value for a successful onboarding attempt.
+- If the module is unavailable or the URL value is missing or malformed, the onboarding attempt **MUST NOT** be treated as conformant to this profile.
+
+**References (informative):**
+
+- The `fdo.csr` ServiceInfo Module (FSIM) is specified in the FIDO Alliance FDO SIM repository: <https://github.com/fido-alliance/fdo-sim/blob/FSIM_v1.0_20230209/fsim-repository/fdo.csr.md>
+- The `margo.discovery` ServiceInfo Module is defined by this specification.
+
+#### Deployment and lifecycle notes (informative) <!-- omit from toc -->
+
+- For this profile, the OOS is part of the MIS implementation (see [FDO actor model and mediation](#fdo-actor-model-and-mediation)).
+- How the device discovers the OOS endpoint (for example, via TO0/TO1 rendezvous or RVBypass-style deployment choices allowed by FDO) is outside the scope of this specification.
+- The OOS **MUST** send valid replacement credentials during `TO2.SetupDevice`. Whether the operator preserves the resulting Owner2 material and replacement HMAC for future resale or re-provisioning is a deployment decision outside the scope of this specification.
+- Operators that do not intend to support FDO resale **SHOULD** securely discard the Owner2 private key and replacement HMAC after successful onboarding.
 
 ### Factory Certificate Method (mTLS)
 
 This method enables **certificate-based onboarding** using a **manufacturer-issued X.509 certificate** presented via **mutual TLS**.
 It provides a **direct, low-latency** path for environments with end-to-end TLS.
+
+#### Factory mTLS actor model <!-- omit from toc -->
+
+This is a **direct** bootstrap method.
+The device authenticates directly to the MIS using mutual TLS, and the TLS session itself carries the bootstrap credential.
 
 **Bootstrap Method Identifier (URN):**
 `urn:margo:bootstrap:factory-cert-mtls:v1`
@@ -1935,8 +1996,14 @@ Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-
 
 | Field | Type | Required | Description |
 | :---- | :--- | :------- | :---------- |
-| `method`| string | Y | **MUST** be `urn:margo:bootstrap:factory-cert-mtls:v1`. |
+| `method` | string | Y | **MUST** be `urn:margo:bootstrap:factory-cert-mtls:v1`. |
 | `proof` | object or null | N | **MUST** be omitted (`null` or absent); the credential is conveyed by the mTLS client certificate. |
+
+#### Factory mTLS validation requirements (normative) <!-- omit from toc -->
+
+- The device **MUST** authenticate directly to the MIS using TLS 1.3 mutual TLS with the manufacturer-issued client certificate.
+- The MIS **MUST** validate the presented certificate chain against Trust Domain policy before deriving or accepting the ESI.
+- Where revocation information is available, the MIS **SHOULD** evaluate revocation status according to Trust Domain policy.
 
 **Process Summary (informative):**
 
@@ -1949,6 +2016,11 @@ Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-
 ### Factory Certificate Method (JWT Assertion)
 
 This method enables **application-layer onboarding** using a **JWT assertion signed with the factory private key**, suitable when **end-to-end mTLS is not feasible** (for example, due to TLS-terminating proxies).
+
+#### Factory JWT actor model <!-- omit from toc -->
+
+This is a **direct** bootstrap method.
+The device authenticates directly to the MIS by presenting a signed Bootstrap Assertion JWT in the enrollment request.
 
 **Bootstrap Method Identifier (URN):**
 `urn:margo:bootstrap:factory-cert-jwt:v1`
@@ -1970,7 +2042,13 @@ Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-
 | `proof` | object | Y | **MUST** contain `assertion`. |
 | `proof.assertion` | string | Y | Compact **JWT** per [RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519), signed with the factory private key. The signing algorithm **MUST** conform to [Cryptographic Requirements](#cryptographic-requirements). The JWS header **MUST** include `x5c` with the full certificate chain ([RFC 7517 §4.7](https://datatracker.ietf.org/doc/html/rfc7517#section-4.7)). |
 
-#### JWT Assertion Structure <!-- omit from toc -->
+#### Factory JWT validation requirements (normative) <!-- omit from toc -->
+
+- The MIS **MUST** validate the Bootstrap Assertion signature, certificate chain, and required claims before deriving or accepting the ESI.
+- The MIS **MUST** validate the full `x5c` chain against Trust Domain policy.
+- The Bootstrap Assertion defined in this method is for **initial enrollment only**. It is distinct from the **Client Authentication Assertion** used in the [JWT SVID Exchange Endpoint](#jwt-svid-exchange-endpoint).
+
+#### Factory Bootstrap Assertion JWT Structure <!-- omit from toc -->
 
 - The assertion **MUST** be a JWT ([RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519)) using **JWS Compact Serialization** (RFC 7515 §3.1).
 - The signature **MUST** use `ES256` (ECDSA P-256) or `PS256` (RSA-PSS 3072), per [Cryptographic Requirements](#cryptographic-requirements).
@@ -1978,7 +2056,7 @@ Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-
 
 **Header fields:**
 
-| Header Parameter | Required | Description  |
+| Header Parameter | Required | Description |
 | :--------------- | :------- | :----------- |
 | `alg` | Y | **MUST** match the key type of the factory certificate (`ES256` for ECDSA P-256 or `PS256` for RSA-PSS 3072). Algorithms **MUST** conform to [Cryptographic Algorithm Requirements](#cryptographic-requirements). |
 | `x5c` | Y | **MUST** contain the complete certificate chain, with the factory leaf certificate as the first entry, per [RFC 7517 §4.7](https://datatracker.ietf.org/doc/html/rfc7517#section-4.7). |
