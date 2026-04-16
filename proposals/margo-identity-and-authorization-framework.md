@@ -40,6 +40,7 @@
       - [Example: Factory Certificate Method (mTLS)](#example-factory-certificate-method-mtls)
       - [Example: Factory Certificate Method (JWT Assertion)](#example-factory-certificate-method-jwt-assertion)
       - [Example: FIDO Device Onboard (MIS-integrated OOS)](#example-fido-device-onboard-mis-integrated-oos)
+      - [Example: Enrollment Token Method](#example-enrollment-token-method)
   - [7. Transport Layer Security (TLS) Requirements](#7-transport-layer-security-tls-requirements)
     - [Relationship to MIAF and Profiles](#relationship-to-miaf-and-profiles)
     - [Initial Trust Bootstrap](#initial-trust-bootstrap)
@@ -58,6 +59,7 @@
   - [FIDO Device Onboard (FDO) Method](#fido-device-onboard-fdo-method)
   - [Factory Certificate Method (mTLS)](#factory-certificate-method-mtls)
   - [Factory Certificate Method (JWT Assertion)](#factory-certificate-method-jwt-assertion)
+  - [Enrollment Token Method](#enrollment-token-method)
   - [Using IEEE 802.1AR DevIDs with Bootstrap Methods (Informative)](#using-ieee-8021ar-devids-with-bootstrap-methods-informative)
 - [Appendix B: Error Responses (Normative)](#appendix-b-error-responses-normative)
   - [Error Representation Format](#error-representation-format)
@@ -65,6 +67,7 @@
   - [Error Type Conventions](#error-type-conventions)
   - [Error Handling for Specific APIs](#error-handling-for-specific-apis)
   - [Example - Unsupported Bootstrap Method](#example---unsupported-bootstrap-method)
+  - [Example - Invalid Enrollment Token](#example---invalid-enrollment-token)
   - [Client Behavior Recommendations](#client-behavior-recommendations)
 - [Appendix C: OAuth2 and API Gateway Interoperability (Informative)](#appendix-c-oauth2-and-api-gateway-interoperability-informative)
   - [Purpose and Context](#purpose-and-context)
@@ -156,9 +159,9 @@ This proposal addresses these gaps by clearly separating two concepts:
 - a **Device Identity**, representing the physical or virtual platform itself, and
 - a **Client or Workload Identity**, representing the software components that operate on that platform (such as the WFM Client).
 
-The new device-level identity defined in this SUP establishes a **trusted foundation** for the platform - a verifiable, hardware-bound identity that proves the authenticity of the device within a Trust Domain.
+The new device-level identity defined in this SUP establishes a **trusted foundation** for the platform - a verifiable identity for the device within a Trust Domain, with assurance derived from the selected bootstrap method and the platform's key-protection capabilities.
 Once this trusted base exists, additional software components running on the device (for example, WFM Clients or managed workloads) can securely obtain their **own, distinct identities** in future extensions of the framework.
-This layered model ensures that hardware trust and software trust are managed independently, enabling secure, auditable, and interoperable relationships across the Margo ecosystem.
+This layered model ensures that platform trust and software trust are managed independently, enabling secure, auditable, and interoperable relationships across the Margo ecosystem.
 
 ### What this SUP introduces <!-- omit from toc -->
 
@@ -167,12 +170,12 @@ To address these limitations, this SUP **replaces PR1's device identity and onbo
 1. **The Margo Identity and Authorization Framework (MIAF):** A shared framework for all Margo components, based on cryptographically verifiable identities and a unified trust-domain model.
    It enables authentication and authorization decisions to be made directly using verifiable identities.
 
-2. **The Edge Compute Device Identity Profile:** The first concrete application of MIAF, providing a consistent, hardware-bound identity model for Edge Compute Devices.
+2. **The Edge Compute Device Identity Profile:** The first concrete application of MIAF, providing a consistent device identity model for Edge Compute Devices.
    This profile defines:
 
    - a stable **device identity** for each edge node,
    - how that identity is represented in X.509 certificates, and
-   - lifecycle operations and **bootstrap methods** that map existing hardware credentials (for example, FDO vouchers, TPM-protected keys, or IEEE 802.1AR DevIDs) into the Margo identity model.
+  - lifecycle operations and **bootstrap methods** that map device bootstrap credentials - including hardware credentials (for example, FDO vouchers, TPM-protected keys, or IEEE 802.1AR DevIDs) and operator-issued enrollment tokens - into the Margo identity model.
 
 Together, these establish the foundation for interoperable identity and trust across Margo components and vendors, replacing PR1's device onboarding and trust model with a unified, lifecycle-managed approach and providing the basis for future WFM Client identity changes.
 
@@ -183,7 +186,7 @@ MIAF replaces core elements of the device identity, trust, and onboarding model 
 **Directly replaced by this SUP:**
 
 - **Device identity foundation:** PR1's device-facing identity and per-WFM trust model are replaced by Trust Domain-scoped device identities issued by the Margo Identity Service (MIS). The device's identity is no longer WFM-specific but portable across all Margo components within the Trust Domain.
-- **Onboarding:** PR1's WFM-centric onboarding flow (`POST /api/v1/onboarding`) is replaced by MIAF's bootstrap and enrollment mechanism (`POST /api/v1/identities`), which binds a device's Physical Device Identity to a Logical Device Identity within the Trust Domain.
+- **Onboarding:** PR1's WFM-centric onboarding flow (`POST /api/v1/onboarding`) is replaced by MIAF's bootstrap and enrollment mechanism (`POST /api/v1/identities`), which binds validated device bootstrap material, represented by a method-derived Enrollment Subject Identifier (ESI), to a Logical Device Identity within the Trust Domain. For PDI-based methods, that binding is rooted in validated Physical Device Identity evidence.
 - **Trust anchor distribution:** PR1's per-WFM root CA endpoint (`GET /api/v1/onboarding/certificate`) is replaced by the SPIFFE Trust Bundle, retrieved from a standardized Trust Bundle endpoint and distributed in the SPIFFE Bundle Map format.
 - **Cryptographic requirements:** PR1's permitted signature algorithms are superseded by MIAF's cryptographic requirements.
 - **Device security requirements:** PR1's informational references to hardware key protection (TPM, secure boot, attestation) become normative requirements under MIAF's [Device Key Protection](#device-key-protection) section.
@@ -228,7 +231,7 @@ This SUP supports Margo's core goals of **security**, **scalability**, **interop
 
 ### Flexibility and resilience <!-- omit from toc -->
 
-- The **pluggable bootstrap mechanism** supports multiple Physical Device Identity proofs (FIDO Device Onboard, factory certificates - including IEEE 802.1AR DevIDs), ensuring wide hardware and supply-chain coverage.
+- The **pluggable bootstrap mechanism** supports multiple device bootstrap methods, including PDI-based proofs (FIDO Device Onboard, factory certificates - including IEEE 802.1AR DevIDs) and operator-issued enrollment tokens, ensuring wide hardware and deployment coverage.
 - All supported bootstrap methods converge to the same Logical Device Identity, allowing operators to:
 
   - start with existing factory-issued X.509 certificates, and
@@ -298,7 +301,7 @@ Existing SPIFFE libraries and tooling can be used for SVID validation, Trust Bun
 | Discovery document | Margo | Not part of SPIFFE. |
 | Enrollment / renewal / revocation / JWT exchange APIs | Margo | Remote HTTPS lifecycle interfaces, not the SPIFFE Workload API. |
 | LDI / PDI / ESI model | Margo | Device-specific concepts introduced by this SUP. |
-| Bootstrap methods | Margo + external standards | FDO and factory-certificate methods are integrated here. IEEE 802.1AR DevIDs are usable as factory certificates within the existing methods. |
+| Bootstrap methods | Margo + external standards | FDO, factory-certificate, and enrollment-token methods are integrated here. IEEE 802.1AR DevIDs are usable as factory certificates within the existing methods. |
 
 ### 2. Terminology
 
@@ -307,7 +310,7 @@ Some are adopted directly from open standards such as [**SPIFFE**](https://spiff
 
 This SUP concerns identities used by *non-human* **Margo components** - logical units of the Margo system such as the Device Fleet Manager (DFM), Workload Fleet Manager (WFM), their clients, and infrastructure services such as registries or observability collectors, as defined in the [Envisioned System Design](https://specification.margo.org/overview/envisioned-system-design/).
 
-The **WFM Client** is called out specifically because this SUP draws a sharp distinction between *device identity* and *client identity*. A WFM Client runs on an Edge Compute Device, but its identity represents the deployed **client instance**, not the device itself. The **Logical Device Identity** defined here provides the stable, hardware-bound identity of the device; a planned **WFM Client Identity Profile** will define how WFM Clients obtain their own distinct identities, building on the device identity as their authentication foundation. This separation is necessary because device identity and WFM Client identity have different lifecycles, authorization scopes, and cardinalities across topologies (standalone devices, Kubernetes clusters, device gateways).
+The **WFM Client** is called out specifically because this SUP draws a sharp distinction between *device identity* and *client identity*. A WFM Client runs on an Edge Compute Device, but its identity represents the deployed **client instance**, not the device itself. The **Logical Device Identity** defined here provides the stable, lifecycle-managed identity of the device; a planned **WFM Client Identity Profile** will define how WFM Clients obtain their own distinct identities, building on the device identity as their authentication foundation. This separation is necessary because device identity and WFM Client identity have different lifecycles, authorization scopes, and cardinalities across topologies (standalone devices, Kubernetes clusters, device gateways).
 
 #### Terms adopted from SPIFFE <!-- omit from toc -->
 
@@ -337,7 +340,7 @@ The following terms are defined by this SUP. They represent Margo-specific conce
 ##### Margo Identity Service (MIS) <!-- omit from toc -->
 
 A role that each Margo deployment must fill: the identity service within a Margo deployment that issues, renews, and revokes identities for components in a Trust Domain.
-The MIS validates **Bootstrap Credentials**, enforces Trust Domain policy, and binds a component's physical or cryptographic root of trust to a stable identity within the Trust Domain. For this SUP, MIS issues **device identities** under the Edge Compute Device Identity Profile. Future SUPs may extend MIS to issue identities for other components such as WFM Clients or workloads.
+The MIS validates **Bootstrap Credentials**, enforces Trust Domain policy, and binds validated bootstrap material, represented by a method-derived **Enrollment Subject Identifier (ESI)**, to a stable identity within the Trust Domain. For PDI-based or hardware-attested methods, that binding may be anchored in device-bound evidence. For this SUP, MIS issues **device identities** under the Edge Compute Device Identity Profile. Future SUPs may extend MIS to issue identities for other components such as WFM Clients or workloads.
 The MIS is **not** a centrally provided Margo implementation; vendors, operators, or deployment tooling provide the actual service.
 
 ##### Logical Device Identity (LDI) <!-- omit from toc -->
@@ -358,12 +361,12 @@ A hardware-rooted credential or attested bootstrap identity source used during e
 ##### Bootstrap Credential <!-- omit from toc -->
 
 Evidence presented to the MIS, or conveyed through an authorized bootstrap intermediary, to prove authenticity during initial enrollment.
-For devices, it carries or references evidence of the **Physical Device Identity**. Each supported **Bootstrap Method** defines the authenticated actor, the proof format or validated bootstrap result, the ESI derivation rule, and the method-specific verification requirements.
+For devices, it typically carries or references evidence of the **Physical Device Identity**. For methods that do not rely on a PDI (such as enrollment tokens), it carries operator-issued enrollment credentials. Each supported **Bootstrap Method** defines the authenticated actor, the proof format or validated bootstrap result, the ESI derivation rule, and the method-specific verification requirements.
 
 ##### Bootstrap Method <!-- omit from toc -->
 
 A pluggable, normative method by which a Margo component, or an authorized intermediary defined by the method, satisfies the MIAF bootstrap contract for enrollment.
-This SUP defines methods for Edge Compute Devices, including **FDO** and **factory certificate** (via mTLS or JWT assertion). Future SUPs may introduce methods for other Margo components.
+This SUP defines methods for Edge Compute Devices, including **FDO**, **factory certificate** (via mTLS or JWT assertion), and **enrollment token**. Future SUPs may introduce methods for other Margo components.
 
 ##### Enrollment Subject Identifier (ESI) <!-- omit from toc -->
 
@@ -371,8 +374,8 @@ A deterministic, globally unique identifier derived by the MIS from the validate
 It is used to decide whether the presented bootstrap proof corresponds to an existing identity within the Trust Domain or a new one.
 
 The derivation is **method-specific** and defined by each **Bootstrap Method**.
-*Example (device profile):* from a verified PDI, the ESI may be the certificate fingerprint, or a hash derived from a device certificate contained in an FDO Ownership Voucher.
-ESIs **MUST** be stable for repeated enrollments using the same physical credential state, **MUST** be unique within the Trust Domain, and **MUST NOT** be reversible to the original credential material.
+*Example (device profile):* from a verified PDI, the ESI may be the certificate fingerprint, a hash derived from a device certificate contained in an FDO Ownership Voucher, or (for token-based methods) a hash of an operator-issued token identifier.
+ESIs **MUST** be stable for repeated enrollments using the same bootstrap credential state, **MUST** be unique within the Trust Domain, and **MUST NOT** be reversible to the original credential material.
 
 ##### JWT SVID Exchange <!-- omit from toc -->
 
@@ -412,7 +415,7 @@ Conceptually, the **Margo Identity and Authorization Framework (MIAF)** consists
 
    - validating **Bootstrap Credentials** presented by components during enrollment;
    - issuing, renewing, and revoking **SVIDs** for identities in the Trust Domain; and
-   - maintaining the binding between **Physical Device Identities (PDIs)** and **Logical Device Identities (LDIs)** for devices covered by this SUP.
+  - maintaining the authoritative binding between method-derived **Enrollment Subject Identifiers (ESIs)** and **Logical Device Identities (LDIs)** for devices covered by this SUP.
 
    MIS exposes a consistent set of APIs - **discovery**, **enrollment**, **renewal**, **revocation**, and **JWT SVID exchange** - that all identity profiles build upon.
    This API design allows other components (e.g., WFM Clients or telemetry agents) to reuse the same trust foundation in future SUPs.
@@ -653,7 +656,7 @@ This profile specifies the normative representation of device identities (X.509 
 
 This profile applies to all Edge Compute Devices that participate in a Margo deployment. It defines:
 
-- the relationship between a device's **Physical Device Identity (PDI)** and its **Logical Device Identity (LDI)**;
+- the relationship between the validated **Bootstrap Credential** used during enrollment and the device's **Logical Device Identity (LDI)**, including **PDI-based** methods that bind device-bound evidence to that identity;
 - the lifecycle of that identity (enrollment, renewal, revocation, replacement, termination);
 - the **X.509 SVID profile** constraints for representing LDIs;
 - requirements for **hardware-bound key protection**; and
@@ -684,10 +687,10 @@ The LDI follows the **standard identity lifecycle** defined in [Identity model](
 
 | Lifecycle Phase | Description |
 | :---- | :---------- |
-| **Enrollment** | The device (or its operator) presents a **Bootstrap Credential** proving **PDI**. MIS validates it, derives an **Enrollment Subject Identifier (ESI)** per the method in use, and issues an initial **X.509 SVID** representing a new (or matched) LDI. |
+| **Enrollment** | The device (or its operator) presents a **Bootstrap Credential**. MIS validates it according to the selected method, derives an **Enrollment Subject Identifier (ESI)**, and issues an initial **X.509 SVID** representing a new (or matched) LDI. For **PDI-based** methods, the bootstrap credential proves the device's **Physical Device Identity**. |
 | **Active** | The device uses its valid SVID to authenticate to Margo components within the Trust Domain. |
 | **Renewal** | Before expiry, the device renews its SVID via an authenticated request (e.g., mTLS with the current SVID). Renewal semantics, including rate-limiting and backoff, are defined in [SVID Renewal Endpoint](#svid-renewal-endpoint). |
-| **Replacement** | When hardware changes but the logical identity must persist, MIS binds the **new** PDI-derived ESI to the existing LDI and retires the previously active ESI, per operator policy. |
+| **Replacement** | When the logical identity must persist across hardware replacement or another operator-authorized rebinding, MIS binds a **new** method-derived ESI to the existing LDI and retires the previously active ESI, per operator policy. |
 | **Revocation / Termination** | MIS invalidates the LDI when keys are compromised, the device is decommissioned, or policy mandates retirement. Once revoked/terminated, an LDI **MUST NOT** be re-issued. |
 
 The MIS **MUST** maintain an authoritative mapping of ESI to LDI within the Trust Domain and **MUST NOT** allow duplicate or conflicting bindings.
@@ -697,16 +700,16 @@ The MIS **MUST** maintain an authoritative mapping of ESI to LDI within the Trus
 > ```mermaid
 > flowchart TD
 >   subgraph MIS["**Managed by MIS**"]
->     ENR["**Enrollment**<br/>Bind PDI to LDI (via ESI)"]
+>     ENR["**Enrollment**<br/>Validate Bootstrap Credential<br/>Bind ESI to LDI"]
 >     ACT["**Active**<br/>Valid X.509 SVID represents LDI"]
 >     REN["**Renewal**<br/>Refresh SVID before expiry"]
->     REP["**Replacement**<br/>Rebind LDI to new hardware (PDI)"]
+>     REP["**Replacement**<br/>Rebind LDI to new ESI"]
 >     REV["**Revocation / Termination**<br/>Invalidate and retire LDI"]
 >   end
 >   ENR -->|SVID issued| ACT
 >   ACT -->|Before expiry| REN
 >   REN -->|SVID renewed| ACT
->   ACT -->|Hardware change| REP
+>   ACT -->|Hardware change / authorized rebinding| REP
 >   REP -->|Rebinding complete| ACT
 >   ACT -->|Compromise / Decommission / Retirement| REV
 >   REV -->|Identity retired| END([End of Lifecycle])
@@ -797,8 +800,9 @@ Private keys associated with device identities are critical assets and **MUST** 
 
 - Keys **MUST** be generated and stored in secure hardware (TPM, Secure Element, or TEE) where available and **MUST NOT** be exportable.
 - Where only software storage is possible, implementations **MUST** provide at-rest encryption, integrity protection, and OS/process isolation (e.g., dedicated key service with strict ACLs).
+- Where neither hardware key storage nor software isolation is feasible (for example, on constrained devices), implementations **SHOULD** apply the strongest key protection available on the platform. Operators **SHOULD** assess the risk posture of such devices and **MAY** apply differentiated MIS issuance or deployment policies (for example, shorter SVID lifetimes or tighter authorization controls).
 - Keys **SHOULD** be regenerated upon re-enrollment or hardware replacement.
-- Implementations **MAY** support attestation evidence of key provenance (e.g., TPM quotes or TEE reports) where platform capabilities exist. Attestation formats and verification semantics are out of scope for this SUP and **MAY** be defined in future specifications / SUPs.
+- Implementations **MAY** support attestation evidence of key provenance (e.g., TPM quotes or TEE reports) where platform capabilities exist. A future SUP is expected to define key protection classification, attestation formats, and verification semantics to enable verifiable, policy-driven key protection requirements.
 
 This profile **refines and extends** the [Margo Device Requirements](https://specification.margo.org/specification/margo-devices/device-requirements/) by making hardware-backed key protection the expected norm for compliant devices.
 
@@ -903,8 +907,10 @@ Accept: application/json
   "trust_bundle_uri": "https://mis.northstar-ida.com/.well-known/spiffe/bundle.json",
   "margo_identity_service_base_uri": "https://mis.northstar-ida.com",
   "supported_bootstrap_methods": [
+    "urn:margo:bootstrap:factory-cert-mtls:v1",
     "urn:margo:bootstrap:factory-cert-jwt:v1",
-    "urn:margo:bootstrap:fdo:v1"
+    "urn:margo:bootstrap:fdo:v1",
+    "urn:margo:bootstrap:enrollment-token:v1"
   ],
   "svid_profiles_supported": [
     {
@@ -958,7 +964,7 @@ Its location is given by the `trust_bundle_uri` field in the [Discovery Document
 This endpoint is used by a Margo component (for this SUP: an Edge Compute Device) or by an authorized bootstrap intermediary defined by the selected bootstrap method (for example, an FDO Owner Onboarding Service component of the MIS) to perform **initial enrollment** with the Margo Identity Service (MIS).
 
 During enrollment, the component authenticates using its **Bootstrap Credential** and requests issuance of a new identity, represented by an SVID.
-For Edge Compute Devices, this operation establishes the authoritative binding between the device's **Physical Device Identity** and **Logical Device Identity** within the Trust Domain.
+For Edge Compute Devices, this operation establishes the authoritative binding between a method-derived **Enrollment Subject Identifier (ESI)** and the device's **Logical Device Identity** within the Trust Domain. For **PDI-based** methods, that binding is anchored in validated **Physical Device Identity** evidence.
 For direct methods, the device authenticates directly to the MIS. For mediated methods, the intermediary authenticates to the MIS according to Trust Domain policy and conveys the validated bootstrap result defined by the selected method.
 
 | Item | Value |
@@ -979,7 +985,7 @@ For direct methods, the device authenticates directly to the MIS. For mediated m
 | `svid_request` | object | Y | Profile-specific payload containing parameters required to issue an SVID. See the profile-specific `svid_request` formats below. |
 | `bootstrapCredential` | object | Y | Credential and associated proof, or method-specific validated bootstrap inputs, used to authenticate the enrollment. See [Bootstrap Methods](#appendix-a-bootstrap-methods-normative) for normative method definitions. |
 | `bootstrapCredential.method` | string | Y | URN uniquely identifying the bootstrap method (e.g., `urn:margo:bootstrap:factory-cert-jwt:v1`). |
-| `bootstrapCredential.proof` | object | N | Method-specific proof of possession or validated bootstrap input material (for example, a signed JWT assertion or the method-defined inputs associated with a mediated bootstrap flow). Present only if the bootstrap method requires explicit proof material. |
+| `bootstrapCredential.proof` | object | N | Method-specific proof of possession or validated bootstrap input material (for example, a signed JWT assertion, an enrollment token, or the method-defined inputs associated with a mediated bootstrap flow). Present only if the bootstrap method requires explicit proof material. |
 
 **Response body schema (`201 Created` or `200 OK`, `application/json`):**
 
@@ -990,7 +996,8 @@ For direct methods, the device authenticates directly to the MIS. For mediated m
 
 > **Informative:**
 > The MIS returns `201 Created` when it creates a new identity record and `200 OK` when it issues a new SVID for an existing identity as part of a re-enrollment or recovery flow.
-> Identity-profile-specific interpretations (for example, mapping Physical to Logical Device Identity for devices) are defined in the corresponding profile section.
+> A bootstrap method that explicitly defines idempotent retry handling for a previously successful enrollment operation may replay that original successful enrollment outcome without reclassifying the request as a different lifecycle event.
+> Identity-profile-specific interpretations (for example, how device bootstrap methods bind method-derived ESIs to Logical Device Identities) are defined in the corresponding profile section.
 
 ##### Device bootstrap method summary (normative) <!-- omit from toc -->
 
@@ -1001,6 +1008,7 @@ For the **Edge Compute Device Identity Profile**, the selected bootstrap method 
 | `urn:margo:bootstrap:factory-cert-mtls:v1` | Device | Validated TLS client certificate chain from the mTLS session | SHA-256 fingerprint of the DER-encoded TLS leaf certificate |
 | `urn:margo:bootstrap:factory-cert-jwt:v1` | Device | Signed Bootstrap Assertion JWT with `x5c` certificate chain | SHA-256 fingerprint of `x5c[0]` |
 | `urn:margo:bootstrap:fdo:v1` | Authorized FDO Owner Onboarding Service (OOS) acting on behalf of the MIS | Validated successful TO2 outcome, Ownership Voucher, and CSR binding produced by the FDO method profile in [Appendix A](#fido-device-onboard-fdo-method) | SHA-256 fingerprint of the first certificate in `OwnershipVoucher.OVDevCertChain` |
+| `urn:margo:bootstrap:enrollment-token:v1` | Device | Single-use enrollment token presented as `bootstrapCredential.proof.token` over server-authenticated HTTPS | SHA-256 digest of the MIS-assigned token identifier (`token_id`), encoded as lowercase hexadecimal |
 
 ##### Profile-specific `svid_request` formats (request payload) <!-- omit from toc -->
 
@@ -1128,23 +1136,63 @@ Content-Type: application/json
 }
 ```
 
+##### Example: Enrollment via Enrollment Token <!-- omit from toc -->
+
+**Example request (device with enrollment token):**
+
+```http
+POST /api/v1/identities
+Content-Type: application/json
+```
+
+```jsonc
+{
+  "svid_profile_uri": "https://margo.org/profiles/spiffe/x509-svid/v1",
+  "svid_request": {
+    "csr": "MIICVzCCAT8CAQAwEjEQMA4GA1UEAwwHbWFyZ28tZGUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATKxRZ8YtMUVcgG9l7oY7OqDyy0kchPr0ET6lm3MKbkT2vSzr6X0Spbz4cPmgqK4pYpFV4lLhl9pKUx3Cdd5L0YoycwJQYJKoZIhvcNAQkOMRYwFDASBgNVHRETCzAJggdtYXJnby1kZTAKBggqhkjOPQQDAgNHADBEAiB5VsvzqBhw+L4i6V60oU5gN1jKMmGfdyR2PqQ8q5RdjQIgQdBBQLehRzCwH8ApVfP1PZAfV1qTLp1vR7m1LcwTnXs="
+  },
+  "bootstrapCredential": {
+    "method": "urn:margo:bootstrap:enrollment-token:v1",
+    "proof": {
+      "token": "margo-et-v1.dGhpcyBpcyBhIGhpZ2gtZW50cm9weSB0b2tlbg..."
+    }
+  }
+}
+```
+
+> **Note:** This method uses server-authenticated HTTPS only (no mTLS). The enrollment token in `bootstrapCredential.proof.token` authenticates the request at the application layer.
+
+**Example response (`201 Created`):**
+
+```jsonc
+{
+  "svid_profile_uri": "https://margo.org/profiles/spiffe/x509-svid/v1",
+  "svid": {
+    "certificate_chain_pem": [
+      "-----BEGIN CERTIFICATE-----\nMIIC4TCCAcigAwIBAgIUFsO2...\n-----END CERTIFICATE-----",
+      "-----BEGIN CERTIFICATE-----\nMIIDdTCCAl2gAwIBAgIURv7O...\n-----END CERTIFICATE-----"
+    ]
+  }
+}
+```
+
 ##### MIS Validation and Processing Logic <!-- omit from toc -->
 
 Upon receiving an enrollment request, the Margo Identity Service (MIS) **MUST** perform the following sequence of validation and issuance steps.
-This logic ensures consistent handling of first-time enrollments, retried network submissions, and re-enrollments or recoveries across all Margo components.
+This logic ensures consistent handling of first-time enrollments, re-enrollments or recoveries, and retried network submissions where the selected bootstrap method permits them. Methods that rely on single-use bootstrap credentials define additional retry behavior in their method profiles.
 
-1. **Derive Enrollment Subject Identifier**
-
-  The MIS **MUST** derive a deterministic Enrollment Subject Identifier (ESI) from the validated bootstrap proof material defined by the selected `bootstrapCredential.method`.
-  This identifier anchors the binding between the presented bootstrap material and the resulting identity (for devices: between the Physical Device Identity and the Logical Device Identity).
-
-2. **Validate bootstrap proof**
+1. **Validate bootstrap proof**
 
    The MIS **MUST** verify the cryptographic proof included in the `bootstrapCredential` according to the verification rules defined by the selected bootstrap `method`.
 
   For **direct** methods, proof validation uses the credential conveyed by the device or its transport session. For **mediated** methods, proof validation **MUST** include verification that the intermediary is authorized to convey the validated bootstrap result defined by the selected method and that this result corresponds to a successfully completed external bootstrap protocol.
 
-  If proof validation fails, the MIS **MUST** reject the request with `401 Unauthorized` using a Problem Details object. Validation includes method-specific checks such as certificate chain verification (for mTLS), signature verification (for JWT-based methods), temporal validity checks (`iat`, `exp`), and validation of intermediary-conveyed bootstrap results for mediated methods.
+  If proof validation fails, the MIS **MUST** reject the request with `401 Unauthorized` using a Problem Details object. Validation includes method-specific checks such as certificate chain verification (for mTLS), signature verification (for JWT-based methods), temporal validity checks (`iat`, `exp`), token validity verification (for token-based methods: known, unexpired, and either unused or eligible for method-defined idempotent retry handling), and validation of intermediary-conveyed bootstrap results for mediated methods.
+
+2. **Derive Enrollment Subject Identifier**
+
+  The MIS **MUST** derive a deterministic Enrollment Subject Identifier (ESI) from the validated bootstrap proof material defined by the selected `bootstrapCredential.method`.
+  This identifier anchors the binding between the presented bootstrap material and the resulting identity (for devices: between the validated bootstrap material and the Logical Device Identity). For **PDI-based** methods, this corresponds to binding the **Physical Device Identity** to the LDI. Where the selected bootstrap method defines a stable method-assigned identifier (for example, an enrollment-token `token_id`), the MIS **MUST** derive the ESI from that validated identifier rather than from the opaque secret presented by the device.
 
 3. **Validate requested profile**
 
@@ -1178,8 +1226,8 @@ This logic ensures consistent handling of first-time enrollments, retried networ
    The MIS **SHOULD** record enrollment metadata (bootstrap method, time, and trust anchor) for auditability and traceability.
 
 > **Informative:**
-> This deterministic workflow ensures idempotent enrollment behavior across retries and consistent lifecycle semantics between new and returning Margo components.
-> The Edge Compute Device Identity Profile specializes this generic behavior by defining how the enrollment subject identifier is derived from PDIs and how it is bound to LDIs.
+> This deterministic workflow ensures consistent lifecycle semantics between new and returning Margo components and supports idempotent enrollment behavior where the selected bootstrap method defines retry-safe semantics.
+> The Edge Compute Device Identity Profile specializes this generic behavior by defining how the enrollment subject identifier is derived from device bootstrap methods, including **PDI-based** methods, and how it is bound to LDIs.
 
 #### SVID Renewal Endpoint
 
@@ -1332,7 +1380,7 @@ The JWT **MUST** be digitally signed using the private key associated with the c
 - The MIS **SHOULD** limit the issued JWT SVID's lifetime to **no more than one hour** by default, unless a shorter or longer duration is explicitly authorized by Trust-Domain policy.
 
 > **Relationship to MIAF (informative):**
-> This endpoint is a *profile-specific realization* of the JWT SVID Profile for identities that already hold an X.509 SVID. It allows a long-lived, hardware-bound X.509 SVID (for example, a device Logical Device Identity) to be *exchanged* for a short-lived JWT SVID suitable for bearer-style authentication in non-mTLS environments. Other identity profiles may use direct issuance of JWT SVIDs via the enrollment endpoint instead of this exchange pattern.
+> This endpoint is a *profile-specific realization* of the JWT SVID Profile for identities that already hold an X.509 SVID. It allows a long-lived X.509 SVID representing an already-enrolled identity (for example, a device Logical Device Identity) to be *exchanged* for a short-lived JWT SVID suitable for bearer-style authentication in non-mTLS environments. Other identity profiles may use direct issuance of JWT SVIDs via the enrollment endpoint instead of this exchange pattern.
 
 ##### Example: JWT SVID Exchange <!-- omit from toc -->
 
@@ -1502,7 +1550,7 @@ sequenceDiagram
         Device->>Device: Generate SVID key pair + CSR
         Device->>MIS: POST /api/v1/identities<br/>(bootstrapCredential, svid_profile_uri, svid_request)
         activate MIS
-        MIS->>MIS: Validate bootstrap credential & policy<br/>Derive Enrollment Subject Identifier (ESI)<br/>Bind Physical to Logical Device Identity (LDI)
+      MIS->>MIS: Validate bootstrap credential & policy<br/>Derive Enrollment Subject Identifier (ESI)<br/>Bind method-derived ESI to Logical Device Identity (LDI)
         MIS-->>Device: 201 Created (X.509 SVID)
         deactivate MIS
     end
@@ -1610,13 +1658,14 @@ The `client_assertion` used at the exchange endpoint **MUST** use an algorithm p
 The following flows expand on [Enrollment and Identity Issuance](#enrollment-and-identity-issuance-endpoint) and illustrate selected bootstrap methods defined in [Appendix A: Bootstrap Methods (Normative)](#appendix-a-bootstrap-methods-normative).
 They are **informative only** and do not introduce additional normative requirements.
 
-Each flow shows how a device presents its bootstrap credential, how the MIS validates it, and how the enrollment subject identifier defined by the MIS validation and processing logic in Section 5 is derived from that credential to establish a deterministic binding between the physical credential and the resulting identity.
+Each flow shows how a device presents its bootstrap credential, how the MIS validates it, and how the enrollment subject identifier defined by the MIS validation and processing logic in Section 5 is derived from that credential to establish a deterministic binding between the validated bootstrap credential, represented by its method-derived ESI, and the resulting identity.
 
 | Method | Class | Reference |
 | :----- | :---- | :-------- |
 | Factory Certificate Method (mTLS) | Direct | [Appendix A](#factory-certificate-method-mtls) |
 | Factory Certificate Method (JWT Assertion) | Direct | [Appendix A](#factory-certificate-method-jwt-assertion) |
 | FIDO Device Onboard (MIS-integrated OOS) | Mediated | [Appendix A](#fido-device-onboard-fdo-method) |
+| Enrollment Token Method | Direct | [Appendix A](#enrollment-token-method) |
 
 ##### Example: Factory Certificate Method (mTLS)
 
@@ -1691,6 +1740,42 @@ sequenceDiagram
 > - The **Enrollment Subject Identifier (ESI)** is derived from the first certificate in `OwnershipVoucher.OVDevCertChain`.
 > - The **Owner Onboarding Service (OOS)** is part of the MIS implementation and acts on behalf of the MIS as the FDO Owner-side management service.
 
+##### Example: Enrollment Token Method
+
+```mermaid
+sequenceDiagram
+    participant Operator
+    participant MIS
+    participant Device
+
+    Operator->>MIS: Generate enrollment token<br/>(via MIS admin tooling)
+    activate MIS
+    MIS->>MIS: Create token record<br/>(token_id, token_secret, expiry, single-use)
+    MIS-->>Operator: Enrollment token + discovery URL
+    deactivate MIS
+    Operator->>Device: Provision token + discovery URL<br/>(out-of-band, deployment-specific)
+
+    Device->>Device: Generate SVID key pair + CSR
+    Device->>MIS: GET /.well-known/margo (server-authenticated HTTPS)
+    MIS-->>Device: Discovery document
+    Device->>MIS: POST /api/v1/identities<br/>(svid_profile_uri, CSR, bootstrapCredential.method,<br/>bootstrapCredential.proof.token)
+    activate MIS
+    MIS->>MIS: Validate token<br/>(known, unexpired,<br/>unused or retry-eligible)
+    MIS->>MIS: If first successful use,<br/>mark token as consumed
+    MIS->>MIS: Derive ESI = SHA-256(token_id)
+    MIS->>MIS: Apply policy, create Logical Device Identity
+    MIS-->>Device: 201 Created<br/>(X.509 SVID)
+    deactivate MIS
+```
+
+> **Alignment with [Appendix A](#appendix-a-bootstrap-methods-normative):**
+>
+> - `bootstrapCredential.method` = `urn:margo:bootstrap:enrollment-token:v1`.
+> - `bootstrapCredential.proof.token` carries the enrollment token.
+> - The **Enrollment Subject Identifier (ESI)** is the **SHA-256 digest** of the MIS-assigned `token_id` (not the token secret), encoded as lowercase hexadecimal.
+> - The device authenticates over **server-authenticated HTTPS** (no mTLS required); the enrollment token provides application-layer authentication.
+> - After enrollment, the device holds a standard X.509 SVID and uses the same renewal, JWT SVID exchange, and peer-authentication flows as devices enrolled via other methods.
+
 ### 7. Transport Layer Security (TLS) Requirements
 
 All communication between **Margo components** - including **Edge Compute Devices**, the **Margo Identity Service (MIS)**, and **Resource Servers** - **MUST** occur over **HTTPS secured with TLS**.
@@ -1764,7 +1849,7 @@ Primary objectives: protect private keys, preserve identity integrity, and minim
 
 | Threat | Description | Mitigation  |
 | :----- | :---------- | :---------- |
-| **Unauthorized Enrollment** | An attacker attempts to enroll without valid bootstrap credentials. | MIS **MUST** cryptographically validate all bootstrap proofs as defined by the selected bootstrap method. Each method **MUST** use manufacturer-verified or hardware-rooted credentials. |
+| **Unauthorized Enrollment** | An attacker attempts to enroll without valid bootstrap credentials. | MIS **MUST** validate all bootstrap proofs as defined by the selected bootstrap method. Methods based on manufacturer certificates or hardware attestation provide cryptographic proof of device authenticity. Token-based methods rely on operator-issued, single-use, time-bounded credentials; operators **SHOULD** apply differentiated MIS enrollment, issuance, or rebinding policies based on the bootstrap method used. |
 | **Replay or Theft of SVIDs / Tokens** | An intercepted X.509 SVID or JWT SVID is reused outside its intended context. | All SVIDs **MUST** be short-lived. Resource Servers **MUST** verify signature, expiry, and audience. JWT SVIDs **MUST** be bound to specific audiences and limited lifetimes (<= 5 minutes recommended). |
 | **Private Key Compromise** | An attacker exfiltrates a device's private key. | Keys **MUST** be stored in secure hardware (TPM, TEE, SE) where available; where only software storage is possible, implementations **MUST** provide at-rest encryption, integrity protection, and OS/process isolation (see [Device Key Protection](#device-key-protection)). MIS renewal **MUST** require fresh proof of possession (via CSR or bootstrap credential) before issuing a replacement SVID. |
 | **Certificate Revocation Lag** | Revocation events are not propagated promptly. | MIS **SHOULD** maintain and publish a [JSON-based revocation list](#revocation-list-endpoint) within its Trust Domain. Clients and servers **SHOULD** poll or cache this list periodically to maintain fresh state. |
@@ -1772,15 +1857,17 @@ Primary objectives: protect private keys, preserve identity integrity, and minim
 | **Service Impersonation / MITM** | An adversary attempts to impersonate MIS or another service. | All endpoints **MUST** use HTTPS with TLS 1.3 and strict certificate validation. Clients **MUST** verify that peer certificates are valid SVIDs issued under the expected Trust Domain and signed by anchors in the Trust Bundle. |
 | **Replay of Bootstrap Assertions** | A factory JWT assertion or bootstrap credential is captured and re-submitted. | MIS **MUST** reject any assertion with duplicate `jti` values and **MUST** enforce tight time windows (`exp` <= 5 minutes). |
 | **Cross-Domain Trust Confusion** | Components accept identities from unintended Trust Domains. | Verifiers **MUST** determine the Trust Domain from the SPIFFE ID and **MUST NOT** trust SVIDs unless the domain is explicitly configured or federated. |
+| **Enrollment Token Theft or Leakage** | An attacker obtains an enrollment token before the legitimate device uses it. | Tokens **MUST** be high-entropy (>= 128 bits), single-use, and time-bounded. MIS **MUST** reject expired tokens and, except for method-defined idempotent retry handling, consumed tokens. Operators **SHOULD** minimize the time window between token generation and device provisioning. Tokens **MUST** be transmitted to the device over a secure out-of-band channel. |
+| **Enrollment Token Brute Force** | An attacker attempts to guess valid enrollment tokens. | Tokens **MUST** have >= 128 bits of entropy. MIS **MUST** rate-limit enrollment attempts and return `429 Too Many Requests` with `Retry-After` when limits are exceeded. MIS **SHOULD** monitor for patterns of failed token validation attempts. |
 
 ### 9. Future Work: WFM Client Identity Profile (Informative)
 
 The **Edge Compute Device Identity Profile** defined in this SUP establishes the authentication **foundation** for Edge Compute Devices within a Trust Domain. However, the device SVID is **not itself** the credential used to authenticate to the WFM API.
 
-A device's Logical Device Identity proves that a specific physical or virtual platform is authentic and enrolled within the Trust Domain. A **WFM Client**, by contrast, is a software component that runs on one or more devices and interacts with a specific Workload Fleet Manager. These are fundamentally different principals:
+A device's Logical Device Identity proves that a specific physical or virtual platform has been enrolled and authenticated within the Trust Domain according to one of this SUP's bootstrap methods. The level of platform assurance depends on the selected bootstrap method and the platform's key-protection capabilities. A **WFM Client**, by contrast, is a software component that runs on one or more devices and interacts with a specific Workload Fleet Manager. These are fundamentally different principals:
 
 - **Different lifecycles.** A device identity is established at bootstrap and persists across software updates. A WFM Client identity is established when a client registers with a WFM and ceases when the binding is removed - independently of the device's continued existence.
-- **Different authorization scopes.** A device identity asserts *"this device is authentic."* A WFM Client identity asserts *"this client is authorized to retrieve deployments from and report status to WFM X."*
+- **Different authorization scopes.** A device identity asserts *"this platform has a valid device identity within the Trust Domain."* A WFM Client identity asserts *"this client is authorized to retrieve deployments from and report status to WFM X."*
 - **Different cardinalities across topologies.** Margo supports multiple device topologies, each with a distinct mapping between devices and WFM Clients:
 
   | Topology | Device : WFM Client |
@@ -1875,7 +1962,7 @@ Unless a method states stricter requirements, the MIS **MUST** enforce the follo
 
 1. **Certificate-chain validation:** Any certificate chain that a selected method requires the MIS to validate **MUST** chain to a trust anchor authorized by Trust Domain policy. Where revocation information is available and relevant to the method, the MIS **SHOULD** evaluate it according to Trust Domain policy and the selected method profile.
 
-1. **Bootstrap trust anchor provisioning:** The MIS **MUST** be configured with the trust anchors (e.g., manufacturer or OEM root and intermediate CA certificates) needed to validate Bootstrap Credentials for each supported Bootstrap Method. The mechanism for provisioning these trust anchors is deployment-specific and outside the scope of this specification.
+1. **Bootstrap trust anchor provisioning:** For methods that rely on certificate-based credentials, the MIS **MUST** be configured with the trust anchors (e.g., manufacturer or OEM root and intermediate CA certificates) needed to validate Bootstrap Credentials. For methods that use operator-issued credentials (such as enrollment tokens), the MIS **MUST** be configured with the necessary verification material (e.g., the token database or validation service). The mechanism for provisioning trust anchors or verification material is deployment-specific and outside the scope of this specification.
 
 1. **Auditability:** The MIS **SHOULD** record the selected bootstrap method, relevant trust anchor or bootstrap authority, and the resulting ESI for auditability.
 
@@ -2089,6 +2176,85 @@ Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-
 > SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c...
 > ```
 
+### Enrollment Token Method
+
+This method enables **operator-authorized onboarding** for devices that do **not** possess a manufacturer-issued X.509 certificate. It is designed for **brownfield**, **constrained**, or **low-cost** devices that cannot be provisioned with factory credentials.
+
+An operator generates a single-use, time-bounded, high-entropy enrollment token using MIS administration tooling and provisions it on the device through a deployment-specific out-of-band channel. The device uses the token to authenticate its enrollment request and obtain an X.509 SVID.
+
+#### Enrollment Token actor model <!-- omit from toc -->
+
+This is a **direct** bootstrap method.
+The device authenticates directly to the MIS by presenting the enrollment token in the enrollment request body. The request is made over **server-authenticated HTTPS**; mutual TLS is **not** required for this method.
+
+**Bootstrap Method Identifier (URN):**
+`urn:margo:bootstrap:enrollment-token:v1`
+
+**Purpose:**
+Enable enrollment for devices without manufacturer-issued certificates, using an operator-generated, single-use, time-bounded token as the bootstrap credential.
+
+**Enrollment Subject Identifier (ESI):**
+Implementations **MUST** derive the ESI as the **SHA-256 digest of the MIS-assigned token identifier** (`token_id`), encoded as lowercase hexadecimal. The ESI **MUST NOT** be derived from the token secret itself.
+
+> **Informative:**
+> Because each enrollment token has a unique `token_id`, the ESI is unique per token. Re-enrollment or recovery therefore uses a **new** token and an operator-authorized rebinding of the new token-derived ESI to an existing LDI, rather than matching the original token-derived ESI. Retried submissions after a previously successful enrollment follow the method-specific retry handling defined below.
+
+#### Token requirements (normative) <!-- omit from toc -->
+
+Enrollment tokens **MUST** satisfy the following requirements:
+
+1. **Entropy:** Tokens **MUST** have at least **128 bits** of cryptographic randomness.
+2. **Single use:** Each token **MUST** be usable for exactly **one** successful enrollment. The MIS **MUST** mark a token as consumed upon successful enrollment. After a successful enrollment, the MIS **MUST** reject any subsequent use of the same token unless it is handling an idempotent retry as defined below.
+3. **Time-bounded:** Each token **MUST** have an expiration time set at generation. The MIS **MUST** reject expired tokens.
+4. **Unique identifier:** Each token **MUST** have a unique `token_id` assigned by the MIS at generation time. The `token_id` **MUST** be unique within the Trust Domain.
+5. **Non-reversibility:** The `token_id` **MUST NOT** be derivable from the token secret, and the token secret **MUST NOT** be derivable from the `token_id`.
+
+The format and structure of the enrollment token are defined by the MIS implementation. This specification does **not** mandate a specific token encoding, but the token **MUST** be opaque to the device - the device treats it as an opaque string and presents it unchanged to the MIS.
+
+**`bootstrapCredential` object schema (`application/json`):**
+
+| Field | Type | Required | Description |
+| :---- | :--- | :------- | :---------- |
+| `method` | string | Y | **MUST** be `urn:margo:bootstrap:enrollment-token:v1`. |
+| `proof` | object | Y | **MUST** contain `token`. |
+| `proof.token` | string | Y | The enrollment token, as provisioned on the device. The device **MUST** present the token value unchanged. |
+
+#### Enrollment Token validation requirements (normative) <!-- omit from toc -->
+
+- The MIS **MUST** validate the enrollment token by verifying that it is **known** and **unexpired** before accepting the enrollment request.
+- If the token is unknown or expired, the MIS **MUST** reject the request with `401 Unauthorized` using the `https://margo.org/docs/errors/invalid-enrollment-token` error type (see [Appendix B](#appendix-b-error-responses-normative)).
+- If the token is already consumed, the MIS **MUST** reject the request with `401 Unauthorized` using the `https://margo.org/docs/errors/invalid-enrollment-token` error type unless it can unambiguously determine that the request is an idempotent retry of a previously successful enrollment operation under this method, as described below.
+- Upon successful validation of an unused token, the MIS **MUST** atomically mark the token as consumed, record the resulting LDI binding, and prevent concurrent reuse.
+- If a consumed token is replayed after a previously successful enrollment operation and the MIS can unambiguously determine that the request is a retried submission of that same successful enrollment operation - using the same bootstrap method, token, requested SVID profile, and CSR public key, with no material change to the request payload - the MIS **SHOULD** treat the request as an idempotent retry by returning the same successful enrollment outcome as the original operation (for example, `201 Created` when the original operation created a new identity record, or `200 OK` when it completed a policy-authorized rebinding to an existing identity) instead of `invalid-enrollment-token`.
+- When handling such an idempotent retry, the MIS **MUST NOT** create a new identity, issue a different SVID, or alter the established ESI-to-LDI binding.
+- This idempotent retry handling is intended only for transport retries or other ambiguity about delivery of the original successful enrollment response. It **MUST NOT** be used as a general recovery path after revocation, expiry, or loss of the MIS state needed to safely recognize and replay the original successful enrollment outcome.
+- The MIS **MUST** validate that the submitted CSR is well-formed and that its signature verifies (proof of possession of the corresponding private key).
+- The MIS **MUST** derive the ESI from the token's `token_id` as specified above when first binding the token to an LDI, and **MUST** use that recorded binding when handling an idempotent retry.
+
+
+#### Deployment and provisioning notes (informative) <!-- omit from toc -->
+
+- Token generation is performed through MIS administration tooling. The mechanism for token generation is deployment-specific and outside the scope of this specification.
+- The operator **SHOULD** provision both the enrollment token and the **discovery URL** (`GET /.well-known/margo`) on the device. Without the discovery URL, the device cannot locate the MIS.
+- The mechanism for provisioning the token and discovery URL on the device is deployment-specific (for example, USB provisioning, QR code, secure configuration management, or manual entry).
+- Operators **SHOULD** minimize the time window between token generation and device provisioning to reduce the risk of token leakage.
+- After successful enrollment, the device holds a standard X.509 SVID and uses the same renewal, JWT SVID exchange, and peer-authentication flows as devices enrolled via other bootstrap methods. The bootstrap method remains relevant for MIS-side audit, enrollment policy, and rebinding policy even though the enrollment token is no longer presented after enrollment.
+- The enrollment token **MUST NOT** be stored on the device after successful enrollment. Devices **SHOULD** securely erase the token from local storage once the SVID has been received and verified.
+
+#### Re-enrollment considerations (informative) <!-- omit from toc -->
+
+If a device enrolled via an enrollment token needs to re-enroll (for example, after key loss or factory reset), a **new** enrollment token must be generated and provisioned. The MIS can associate the new token's ESI with the existing LDI through the replacement binding mechanism defined in [Device replacement: binding rules](#device-replacement-binding-rules), subject to the operator-authorized replacement policy defined for that Trust Domain.
+
+**Process Summary (informative):**
+
+1. Operator generates an enrollment token via MIS admin tooling (receives `token_id` + token secret).
+2. Operator provisions the token and discovery URL on the device out-of-band.
+3. Device generates SVID key pair and CSR.
+4. Device retrieves the discovery document from the provisioned URL over server-authenticated HTTPS.
+5. Device calls `POST /api/v1/identities` with CSR, `bootstrapCredential.method`, and `bootstrapCredential.proof.token`.
+6. MIS validates the token (known, unexpired, and either unused or eligible for idempotent retry handling). On first successful use, it marks the token as consumed.
+7. MIS derives **ESI = SHA-256(token_id)**, applies policy, and issues an **X.509 SVID (LDI)**.
+
 ### Using IEEE 802.1AR DevIDs with Bootstrap Methods (Informative)
 
 Devices that carry an [IEEE 802.1AR](https://1.ieee802.org/security/802-1ar/) **Initial Device Identity (IDevID)** in their DevID module can use it as the manufacturer-issued X.509 certificate in any bootstrap method that accepts one.
@@ -2166,6 +2332,7 @@ Error `type` URIs fall into two categories.
    | Unsupported bootstrap method | 422 | `https://margo.org/docs/errors/unsupported-method` | Unsupported Bootstrap Method  |
    | Unsupported SVID profile | 422 | `https://margo.org/docs/errors/unsupported-svid-profile` | Unsupported SVID Profile |
    | Enrollment or renewal rate limit exceeded | 429 | `https://margo.org/docs/errors/too-many-requests` | Too Many Requests |
+   | Invalid enrollment token | 401 | `https://margo.org/docs/errors/invalid-enrollment-token` | Invalid Enrollment Token |
    | Invalid revocation list format | 500 | `https://margo.org/docs/errors/revocation-format`| Revocation List Parsing Error |
 
 ### Error Handling for Specific APIs
@@ -2178,6 +2345,7 @@ The following table summarizes normative mappings.
 | `POST /api/v1/identities` | Unknown `bootstrapCredential.method` | 422 | `unsupported-method` | Client **MUST** retry only with a supported method. |
 | `POST /api/v1/identities` | Invalid or missing CSR | 400 | `about:blank` | Client **MAY** resubmit with a corrected CSR. |
 | `POST /api/v1/identities` | Malformed JWT assertion or proof | 401 | `about:blank` | Client **MUST** regenerate a valid assertion. |
+| `POST /api/v1/identities` | Invalid, expired, or already-consumed enrollment token | 401 | `invalid-enrollment-token` | Client **MUST** obtain a new enrollment token from the operator. |
 | `POST /api/v1/identities/{spiffeIdEncoded}/renewals` | Unsupported SVID profile | 422 | `unsupported-svid-profile` | Client **MUST** retry with a supported profile. |
 | `POST /api/v1/identities/{spiffeIdEncoded}/jwt-svid` | Audience or assertion invalid | 400 | `about:blank` | Client **MUST** correct request and retry. |
 | Any endpoint | Authorization failed (credential invalid or expired) | 401 | `about:blank` | Client **MUST** re-authenticate and retry. |
@@ -2195,6 +2363,20 @@ Content-Type: application/problem+json
   "title": "Unsupported Bootstrap Method",
   "status": 422,
   "detail": "The bootstrap method 'urn:margo:bootstrap:custom-legacy:v1' is not supported by this server."
+}
+```
+
+### Example - Invalid Enrollment Token
+
+```http
+HTTP/1.1 401 Unauthorized
+Content-Type: application/problem+json
+
+{
+  "type": "https://margo.org/docs/errors/invalid-enrollment-token",
+  "title": "Invalid Enrollment Token",
+  "status": 401,
+  "detail": "The provided enrollment token is expired or has already been consumed."
 }
 ```
 
