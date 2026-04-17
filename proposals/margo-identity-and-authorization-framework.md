@@ -737,32 +737,34 @@ If an ESI is not currently bound to an LDI, the MIS **MUST NOT** bind it to an e
 
 Replacement authorization is **policy-controlled** and **SHOULD** be auditable.
 
-##### Device replacement: how it is authorized (informative) <!-- omit from toc -->
+##### Device replacement: authorization conveyance <!-- omit from toc -->
 
-Replacement is a **policy-controlled** operation: a replacement device will typically present a **different** Physical Device Identity (and therefore a different ESI) than the prior device, but the operator may still require that the Logical Device Identity (LDI) remains stable.
-To prevent unauthorized rebinding, MIS implementations will usually require explicit authorization before binding a **new** ESI to an **existing** LDI.
+A request that attempts replacement / rebinding to an existing identity **MUST** convey the replacement authorization to the MIS in the enrollment request body using a `replacementAuthorization` object.
 
-Common approaches include:
+For baseline interoperability, this SUP defines one replacement-authorization method:
 
-1. **Planned replacement: handover signed by the existing LDI**
+**Replacement Authorization Method Identifier (URN):**
+`urn:margo:replacement-auth:operator-ticket:v1`
 
-   - While the existing device is still operational, it produces a one-time replacement authorization signed by its current LDI private key.
-   - The authorization identifies the target LDI and binds the incoming device's bootstrap subject (for example, the incoming ESI or a stable, non-reversible identifier derived from its PDI).
-   - MIS validates the signature and freshness (e.g., `exp`, one-time `jti`) and, if allowed by policy, performs the replacement binding.
+**`replacementAuthorization` object schema (`application/json`):**
 
-2. **Operator-issued replacement ticket (fleet tooling / MIS admin)**
+| Field | Type | Required | Description |
+| :---- | :--- | :------- | :---------- |
+| `method` | string | Y | **MUST** be `urn:margo:replacement-auth:operator-ticket:v1`. |
+| `proof` | object | Y | **MUST** contain `ticket`. |
+| `proof.ticket` | string | Y | Opaque, single-use, time-bounded replacement ticket issued by operator tooling or another Trust Domain authority authorized by policy. The replacement device, or an authorized bootstrap intermediary acting for it, **MUST** present this value unchanged. |
 
-   - An operator initiates replacement for an existing LDI through deployment tooling.
-   - The tooling issues a one-time ticket that authorizes binding the next eligible enrollment (identified by ESI or other enrollment metadata) to the specified LDI.
+**Validation requirements:**
 
-3. **Human-in-the-loop approval using enrollment metadata**
+- The MIS **MUST** validate the ticket before performing replacement / rebinding to an existing identity.
+- A valid ticket **MUST** authorize binding the enrollment request's derived ESI to a specific existing LDI.
+- The ticket **MUST** be single-use and time-bounded; the MIS **MUST** reject expired or replayed tickets.
+- The ticket **MUST** be auditable and **MAY** additionally bind the expected ESI or other non-secret enrollment metadata extracted from the request.
+- The exact encoding of the ticket is deployment-specific and opaque to the device; interoperability is achieved through the standard `replacementAuthorization` field, method identifier, and validation semantics defined here.
+- If a replacement / rebinding request omits `replacementAuthorization`, uses an unsupported replacement authorization method, or presents a ticket that does not authorize the requested rebinding, the MIS **MUST** reject the request.
 
-   - If the original device is unavailable, MIS (or fleet tooling) can present pending enrollments with non-secret metadata extracted from the bootstrap method (for example, manufacturer chain identity, model, voucher metadata, time, and the derived ESI).
-   - An operator approves the binding of that pending enrollment to a selected existing LDI.
-
-The exact approval workflow, token/ticket formats, and UI/automation are deployment-specific and may be standardized in a future revision.
-
-This SUP does not yet standardize how such authorization evidence is conveyed to the MIS on the wire. Deployments may implement this out of band (for example, through MIS administration APIs) or through vendor extensions until a future revision profiles a common workflow.
+> **Informative:**
+> The workflow by which an operator or an existing device obtains a valid replacement ticket remains deployment-specific. Deployments may realize this through planned handover, fleet tooling, or human-in-the-loop approval, but the on-the-wire conveyance to the MIS is standardized by this section.
 
 #### Profile-specific Constraints on the X.509 SVID Profile
 
@@ -789,6 +791,7 @@ Device enrollment uses the generic API defined in [Section 5](#enrollment-and-id
 - To ensure baseline interoperability, both the device and the MIS **MUST** implement the direct [Factory Certificate Method (mTLS)](#factory-certificate-method-mtls). Support for additional direct or mediated bootstrap methods defined in [Appendix A](#appendix-a-bootstrap-methods-normative) is **OPTIONAL**.
 - For mediated methods, the MIS **MUST** follow the actor model and validation semantics defined by the selected method. Where the method defines an external intermediary handoff, the MIS **MUST** accept enrollment only from an intermediary authorized by Trust Domain policy to convey that method-defined validated bootstrap result.
 - MIS **MUST** verify the validated bootstrap proof against Trust Domain policy and derive the **ESI** per the selected method before issuance.
+- A request that seeks replacement / rebinding **MUST** include `replacementAuthorization` as defined in the device replacement authorization conveyance section. Where replacement is enabled by Trust Domain policy, the MIS **MUST** support `urn:margo:replacement-auth:operator-ticket:v1`.
 - The enrollment request/response structure **MUST** conform to [Section 5](#enrollment-and-identity-issuance-endpoint).
 - MIS **MUST** return `201 Created` when a new LDI is provisioned and `200 OK` for re-enrollments that match an existing LDI via the ESI.
 
@@ -974,7 +977,7 @@ For direct methods, the device authenticates directly to the MIS. For mediated m
 | **Headers** | `Content-Type: application/json` |
 | **Body schema (request)** | See below |
 | **Body schema (response)** | See below |
-| **Responses** | `201 Created` (initial enrollment)<br>`200 OK` (re-enrollment)<br>`401`, `422`, `429` - per RFC 9457 |
+| **Responses** | `201 Created` (initial enrollment)<br>`200 OK` (re-enrollment or authorized replacement)<br>`400`, `401`, `403`, `409`, `422`, `429` - per RFC 9457 |
 | **Errors** | RFC 9457 Problem Details as per [Appendix B](#appendix-b-error-responses-normative) |
 
 **Request body schema (`application/json`):**
@@ -986,6 +989,9 @@ For direct methods, the device authenticates directly to the MIS. For mediated m
 | `bootstrapCredential` | object | Y | Credential and associated proof, or method-specific validated bootstrap inputs, used to authenticate the enrollment. See [Bootstrap Methods](#appendix-a-bootstrap-methods-normative) for normative method definitions. |
 | `bootstrapCredential.method` | string | Y | URN uniquely identifying the bootstrap method (e.g., `urn:margo:bootstrap:factory-cert-jwt:v1`). |
 | `bootstrapCredential.proof` | object | N | Method-specific proof of possession or validated bootstrap input material (for example, a signed JWT assertion, an enrollment token, or the method-defined inputs associated with a mediated bootstrap flow). Present only if the bootstrap method requires explicit proof material. |
+| `replacementAuthorization` | object | N | Policy-controlled replacement authorization used only for replacement / rebinding to an existing identity. It **MUST** be absent for initial enrollment and ordinary re-enrollment. |
+| `replacementAuthorization.method` | string | Y | URN uniquely identifying the replacement-authorization method. This SUP defines `urn:margo:replacement-auth:operator-ticket:v1`. |
+| `replacementAuthorization.proof` | object | Y | Method-specific proof material. For `urn:margo:replacement-auth:operator-ticket:v1`, it **MUST** contain `ticket`. |
 
 **Response body schema (`201 Created` or `200 OK`, `application/json`):**
 
@@ -997,7 +1003,7 @@ For direct methods, the device authenticates directly to the MIS. For mediated m
 > **Informative:**
 > The MIS returns `201 Created` when it creates a new identity record and `200 OK` when it issues a new SVID for an existing identity as part of a re-enrollment or recovery flow.
 > A bootstrap method that explicitly defines idempotent retry handling for a previously successful enrollment operation may replay that original successful enrollment outcome without reclassifying the request as a different lifecycle event.
-> Identity-profile-specific interpretations (for example, how device bootstrap methods bind method-derived ESIs to Logical Device Identities) are defined in the corresponding profile section.
+> Identity-profile-specific interpretations (for example, how device bootstrap methods bind method-derived ESIs to Logical Device Identities, and how replacement authorization is conveyed) are defined in the corresponding profile section.
 
 ##### Device bootstrap method summary (normative) <!-- omit from toc -->
 
@@ -1189,12 +1195,12 @@ This logic ensures consistent handling of first-time enrollments, re-enrollments
 
   If proof validation fails, the MIS **MUST** reject the request with `401 Unauthorized` using a Problem Details object. Validation includes method-specific checks such as certificate chain verification (for mTLS), signature verification (for JWT-based methods), temporal validity checks (`iat`, `exp`), token validity verification (for token-based methods: known, unexpired, and either unused or eligible for method-defined idempotent retry handling), and validation of intermediary-conveyed bootstrap results for mediated methods.
 
-2. **Derive Enrollment Subject Identifier**
+1. **Derive Enrollment Subject Identifier**
 
-  The MIS **MUST** derive a deterministic Enrollment Subject Identifier (ESI) from the validated bootstrap proof material defined by the selected `bootstrapCredential.method`.
-  This identifier anchors the binding between the presented bootstrap material and the resulting identity (for devices: between the validated bootstrap material and the Logical Device Identity). For **PDI-based** methods, this corresponds to binding the **Physical Device Identity** to the LDI. Where the selected bootstrap method defines a stable method-assigned identifier (for example, an enrollment-token `token_id`), the MIS **MUST** derive the ESI from that validated identifier rather than from the opaque secret presented by the device.
+   The MIS **MUST** derive a deterministic Enrollment Subject Identifier (ESI) from the validated bootstrap proof material defined by the selected `bootstrapCredential.method`.
+   This identifier anchors the binding between the presented bootstrap material and the resulting identity (for devices: between the validated bootstrap material and the Logical Device Identity). For **PDI-based** methods, this corresponds to binding the **Physical Device Identity** to the LDI. Where the selected bootstrap method defines a stable method-assigned identifier (for example, an enrollment-token `token_id`), the MIS **MUST** derive the ESI from that validated identifier rather than from the opaque secret presented by the device.
 
-3. **Validate requested profile**
+1. **Validate requested profile**
 
    The MIS **MUST** verify that the `svid_profile_uri` appears within its `svid_profiles_supported.versions` list as published in the discovery document.
    Validation semantics, including the structure and verification rules for `svid_request`, are defined by the selected SVID profile.
@@ -1202,28 +1208,36 @@ This logic ensures consistent handling of first-time enrollments, re-enrollments
    - If unsupported, the MIS **MUST** return `422 Unprocessable Entity` with an `unsupported-svid-profile` error type (see [Appendix B](#appendix-b-error-responses-normative)).
    - If the provided `svid_request` fails profile-specific validation (for example, malformed CSR under the X.509 profile), the MIS **MUST** return `400 Bad Request`.
 
-4. **Check for existing identity binding**
+1. **Validate replacement authorization when present**
 
-   - **Case A - No binding exists (initial enrollment)**
+  If the request includes `replacementAuthorization`, the MIS **MUST** validate it according to the selected replacement-authorization method before attempting replacement / rebinding to an existing identity.
+
+   - If the method is unsupported, the MIS **MUST** return `422 Unprocessable Entity` with an `unsupported-replacement-authorization-method` error type.
+   - If the authorization is invalid, expired, replayed, or does not authorize binding the request's derived ESI to the target existing identity, the MIS **MUST** return `403 Forbidden` with a `replacement-not-authorized` error type.
+
+1. **Check for existing identity binding**
+
+  - **No binding exists (initial enrollment)**
 
       - The MIS applies operator-defined Trust Domain policy to determine whether new identities may be created.
       - Upon approval, the MIS **MUST** create a new identity (for devices: a UUIDv4 Logical Device Identity) and persist a mapping between the enrollment subject identifier and that identity.
       - The MIS then issues an SVID according to the selected `svid_profile_uri` and returns `201 Created` with the profile-conformant response body.
 
-   - **Case B - Binding exists (re-enrollment / recovery)**
+  - **Binding exists (re-enrollment / recovery)**
 
       - The MIS **MUST** retrieve the existing identity bound to the enrollment subject identifier.
       - If the CSR contains a **new** public key, the MIS **MUST** apply operator policy to decide if **key rotation** (same identity, new key) is permitted. If not permitted, return `409 Conflict`. If permitted, issue a new SVID and invalidate the prior SVID.
       - The MIS then issues a new SVID for the same identity and returns `200 OK`.
 
-   - **Case C - Replacement / rebinding to an existing identity (policy-controlled)**
+  - **Replacement / rebinding to an existing identity (policy-controlled)**
 
-      - If the presented enrollment subject identifier is not currently bound to an identity but Trust Domain policy explicitly authorizes binding it to an existing identity (for example, as part of a device replacement workflow), the MIS **MAY** bind the ESI to the authorized existing identity and issue an SVID for that identity.
-      - Replacement authorization evidence and approval workflows are policy-controlled (see [Device replacement: how it is authorized](#device-replacement-how-it-is-authorized-informative)).
+      - If the presented enrollment subject identifier is not currently bound to an identity, and a valid `replacementAuthorization` explicitly authorizes binding it to an existing identity, the MIS **MAY** bind the ESI to the authorized existing identity and issue an SVID for that identity.
+      - On successful replacement, the MIS **MUST** return `200 OK`, because the logical identity already exists and only the active bootstrap subject binding changes.
+      - Replacement approval workflows that lead to issuance of a valid replacement ticket remain deployment-specific, but the on-the-wire conveyance to the MIS is defined by the device replacement authorization conveyance section.
 
-5. **Finalize and audit**
+1. **Finalize and audit**
 
-   The MIS **SHOULD** record enrollment metadata (bootstrap method, time, and trust anchor) for auditability and traceability.
+     The MIS **SHOULD** record enrollment metadata (bootstrap method, time, and trust anchor) for auditability and traceability.
 
 > **Informative:**
 > This deterministic workflow ensures consistent lifecycle semantics between new and returning Margo components and supports idempotent enrollment behavior where the selected bootstrap method defines retry-safe semantics.
@@ -2329,13 +2343,16 @@ Error `type` URIs fall into two categories.
    - Use absolute URIs under the Margo namespace (`https://margo.org/docs/errors/<error-code>`).
    - These identify standardized error classes across MIS implementations.
 
-   | Condition | HTTP Status | `type` URI | `title` |
-   | :-------- | :---------- | :--------- | :------ |
-   | Unsupported bootstrap method | 422 | `https://margo.org/docs/errors/unsupported-method` | Unsupported Bootstrap Method  |
-   | Unsupported SVID profile | 422 | `https://margo.org/docs/errors/unsupported-svid-profile` | Unsupported SVID Profile |
-   | Enrollment or renewal rate limit exceeded | 429 | `https://margo.org/docs/errors/too-many-requests` | Too Many Requests |
-   | Invalid enrollment token | 401 | `https://margo.org/docs/errors/invalid-enrollment-token` | Invalid Enrollment Token |
-   | Invalid revocation list format | 500 | `https://margo.org/docs/errors/revocation-format`| Revocation List Parsing Error |
+  | Condition | HTTP Status | `type` URI | `title` |
+  | :-------- | :---------- | :--------- | :------ |
+  | Unsupported bootstrap method | 422 | `https://margo.org/docs/errors/unsupported-method` | Unsupported Bootstrap Method |
+  | Unsupported replacement authorization method | 422 | `https://margo.org/docs/errors/unsupported-replacement-authorization-method` | Unsupported Replacement Authorization Method |
+  | Unsupported SVID profile | 422 | `https://margo.org/docs/errors/unsupported-svid-profile` | Unsupported SVID Profile |
+  | Replacement not authorized | 403 | `https://margo.org/docs/errors/replacement-not-authorized` | Replacement Not Authorized |
+  | Key rotation not permitted | 409 | `https://margo.org/docs/errors/key-rotation-not-permitted` | Key Rotation Not Permitted |
+  | Enrollment or renewal rate limit exceeded | 429 | `https://margo.org/docs/errors/too-many-requests` | Too Many Requests |
+  | Invalid enrollment token | 401 | `https://margo.org/docs/errors/invalid-enrollment-token` | Invalid Enrollment Token |
+  | Invalid revocation list format | 500 | `https://margo.org/docs/errors/revocation-format` | Revocation List Parsing Error |
 
 ### Error Handling for Specific APIs
 
@@ -2348,6 +2365,9 @@ The following table summarizes normative mappings.
 | `POST /api/v1/identities` | Invalid or missing CSR | 400 | `about:blank` | Client **MAY** resubmit with a corrected CSR. |
 | `POST /api/v1/identities` | Malformed JWT assertion or proof | 401 | `about:blank` | Client **MUST** regenerate a valid assertion. |
 | `POST /api/v1/identities` | Invalid, expired, or already-consumed enrollment token | 401 | `invalid-enrollment-token` | Client **MUST** obtain a new enrollment token from the operator. |
+| `POST /api/v1/identities` | Unsupported `replacementAuthorization.method` | 422 | `unsupported-replacement-authorization-method` | Client **MUST** retry only with a supported replacement authorization method, or omit the field for non-replacement enrollment. |
+| `POST /api/v1/identities` | Replacement ticket invalid, expired, replayed, or not authorized for the requested rebinding | 403 | `replacement-not-authorized` | Client **MUST** obtain valid replacement authorization before retrying. |
+| `POST /api/v1/identities` | Requested key rotation not permitted by policy | 409 | `key-rotation-not-permitted` | Client **MUST** retry with the existing key or obtain operator approval before rotating keys. |
 | `POST /api/v1/identities/{spiffeIdEncoded}/renewals` | Unsupported SVID profile | 422 | `unsupported-svid-profile` | Client **MUST** retry with a supported profile. |
 | `POST /api/v1/identities/{spiffeIdEncoded}/jwt-svid` | Audience or assertion invalid | 400 | `about:blank` | Client **MUST** correct request and retry. |
 | Any endpoint | Authorization failed (credential invalid or expired) | 401 | `about:blank` | Client **MUST** re-authenticate and retry. |
