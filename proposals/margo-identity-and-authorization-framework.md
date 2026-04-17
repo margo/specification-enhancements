@@ -782,12 +782,12 @@ The same LDI **MUST NOT** be active for multiple PDIs concurrently.
 Device enrollment uses the generic API defined in [Section 5](#enrollment-and-identity-issuance-endpoint) with the following constraints. Within this profile, bootstrap methods are classified as follows:
 
 - **Direct methods**: the device authenticates directly to the MIS, and the MIS validates the bootstrap proof from the device or its transport session.
-- **Mediated methods**: an authorized bootstrap intermediary completes an external bootstrap protocol and conveys the validated bootstrap result defined by the selected method to the MIS.
+- **Mediated methods**: a method-defined actor completes an external bootstrap protocol and establishes the validated bootstrap result consumed by the MIS enrollment logic. Unless the selected method defines an interoperable on-wire handoff, the transition from that validated method state to MIS enrollment **MAY** be internal to the MIS implementation.
 
 - The only permitted `svid_profile_uri` for devices is `https://margo.org/profiles/spiffe/x509-svid/v1`. Attempts to enroll a device with `jwt-svid` **MUST** be rejected with `422` (`unsupported-svid-profile`).
 - Device enrollment **MUST** use one of the device bootstrap methods defined in [Appendix A](#appendix-a-bootstrap-methods-normative) and **MUST** follow the actor model defined by the selected method.
 - To ensure baseline interoperability, both the device and the MIS **MUST** implement the direct [Factory Certificate Method (mTLS)](#factory-certificate-method-mtls). Support for additional direct or mediated bootstrap methods defined in [Appendix A](#appendix-a-bootstrap-methods-normative) is **OPTIONAL**.
-- For mediated methods, the MIS **MUST** accept enrollment only from an intermediary authorized by Trust Domain policy to convey the validated bootstrap result defined by that method.
+- For mediated methods, the MIS **MUST** follow the actor model and validation semantics defined by the selected method. Where the method defines an external intermediary handoff, the MIS **MUST** accept enrollment only from an intermediary authorized by Trust Domain policy to convey that method-defined validated bootstrap result.
 - MIS **MUST** verify the validated bootstrap proof against Trust Domain policy and derive the **ESI** per the selected method before issuance.
 - The enrollment request/response structure **MUST** conform to [Section 5](#enrollment-and-identity-issuance-endpoint).
 - MIS **MUST** return `201 Created` when a new LDI is provisioned and `200 OK` for re-enrollments that match an existing LDI via the ESI.
