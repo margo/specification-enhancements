@@ -2102,6 +2102,9 @@ Authenticate the device during enrollment by presenting a manufacturer-issued X.
 **Enrollment Subject Identifier (ESI):**
 Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-encoded leaf certificate** presented during the TLS handshake.
 
+> **Operational note (informative):**
+> Manufacturer-driven rotation of the factory leaf certificate changes the derived ESI. If the deployment wants the device to continue using the same LDI after such a rotation, it must be handled as replacement / rebinding under policy rather than as ordinary re-enrollment matching by the previous ESI.
+
 **`bootstrapCredential` object schema (`application/json`):**
 
 | Field | Type | Required | Description |
@@ -2147,6 +2150,9 @@ This method uses a **Bootstrap Assertion** - a JWT signed with the device's **fa
 
 **Enrollment Subject Identifier (ESI):**
 Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-encoded leaf certificate** contained in the JWT `x5c` header (`x5c[0]`).
+
+> **Operational note (informative):**
+> Manufacturer-driven rotation of the factory leaf certificate in `x5c[0]` changes the derived ESI. If the deployment wants the device to continue using the same LDI after such a rotation, it must be handled as replacement / rebinding under policy rather than as ordinary re-enrollment matching by the previous ESI.
 
 **`bootstrapCredential` object schema (`application/json`):**
 
