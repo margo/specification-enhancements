@@ -588,7 +588,7 @@ Validation (per SPIFFE JWT-SVID):
 #### Trust Bundles and Distribution
 
 This SUP adopts the SPIFFE **Trust Domain and Bundle / Bundle Map** model by reference.
-The following requirements describe how MIAF deployments publish, retrieve, and use Trust Bundles.
+The following requirements describe how MIAF deployments publish and use Trust Bundles, and how clients retrieve them through SPIFFE Bundle Maps.
 
 > **Informative summary:**
 > A Trust Bundle contains the cryptographic material needed to validate SVIDs for exactly one Trust Domain. Trust Bundles from different Trust Domains must remain distinct and bound to the Trust Domain they represent.
@@ -610,7 +610,7 @@ Bundles:
 Validation process:
 
 1. Determine the peer's Trust Domain from its SPIFFE ID.
-2. Retrieve the corresponding Trust Bundle (via the [discovery document](#discovery-document-endpoint) or from cache).
+2. Retrieve the SPIFFE Bundle Map (via the [discovery document](#discovery-document-endpoint)'s `trust_bundle_uri` or from cache) and select the corresponding Trust Bundle.
 3. Validate the SVID chain or JWT signature using that Trust Bundle.
 4. If validation succeeds and local policy allows, apply **policy-based authorization**.
 
@@ -860,7 +860,7 @@ All endpoints using `{spiffeIdEncoded}` **MUST** follow this same encoding rule.
 
 The discovery document serves as the **entry point** to a Trust Domain. Before any enrollment, renewal, or JWT SVID exchange operation, a client **MUST** retrieve this document to discover MIS location, supported bootstrap methods, and compatible SVID profiles. It provides the foundational metadata required to interact with all subsequent APIs defined in this specification.
 
-This document is **Margo-specific metadata**. It advertises Margo endpoints and bootstrap capabilities and points clients to the standard SPIFFE Trust Bundle resource published for the Trust Domain.
+This document is **Margo-specific metadata**. It advertises Margo endpoints and bootstrap capabilities and points clients to the standard SPIFFE Bundle Map resource published for the Trust Domain, whose entry for `trust_domain` is the authoritative local Trust Bundle.
 
 | Item | Value |
 | :--- | :---- |
@@ -881,7 +881,7 @@ This document is **Margo-specific metadata**. It advertises Margo endpoints and 
 | Field | Type | Required | Description |
 | :---- | :--- | :------- | :---------- |
 | `trust_domain` | string | Y  | Identifier of the Trust Domain (e.g., `factory.example`). All SPIFFE IDs issued by the MIS **MUST** belong to this trust domain. |
-| `trust_bundle_uri` | string | Y | Absolute HTTPS URL to the **SPIFFE Bundle Map** for this Trust Domain. The resource **MUST** conform to the [SPIFFE Trust Domain and Bundle Map specification](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md#5-spiffe-bundle-map) and **MUST** contain the Trust Bundle for the domain identified by `trust_domain`. The resource **SHOULD** expose caching headers (`ETag`, `Last-Modified`). Clients **MUST** authenticate the HTTPS connection used to retrieve this resource per [Initial Trust Bootstrap](#initial-trust-bootstrap). |
+| `trust_bundle_uri` | string | Y | Absolute HTTPS URL to the **SPIFFE Bundle Map** resource for this Trust Domain. The resource **MUST** conform to the [SPIFFE Trust Domain and Bundle Map specification](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md#5-spiffe-bundle-map) and **MUST** contain an entry for the domain identified by `trust_domain`; that entry is the authoritative local Trust Bundle for this specification. The resource **SHOULD** expose caching headers (`ETag`, `Last-Modified`). Clients **MUST** authenticate the HTTPS connection used to retrieve this resource per [Initial Trust Bootstrap](#initial-trust-bootstrap). |
 | `margo_identity_service_base_uri` | string | Y | Absolute HTTPS base URL of the Margo Identity Service (MIS). All MIS endpoints defined in this section are derived from this base URI. Clients **MUST** authenticate the HTTPS connection to this host per [Initial Trust Bootstrap](#initial-trust-bootstrap). |
 | `supported_bootstrap_methods` | array of string | Y | URNs of supported bootstrap methods. Each URN **MUST** reference a method defined in [Appendix A](#appendix-a-bootstrap-methods-normative) or a registered vendor extension (`urn:margo:bootstrap:<method>:<version>`). Custom methods **SHOULD** use an organization-scoped namespace (e.g., `urn:margo:bootstrap:acme-factory:v1`). Servers **MUST NOT** advertise a method without a corresponding verification configuration in MIS. |
 | `svid_profiles_supported` | array of object | Y | List of supported SVID profile descriptors, used by clients to negotiate compatible identity formats. |
@@ -945,8 +945,8 @@ During enrollment, the client **MUST** include the selected `svid_profile_uri` i
 
 #### Trust Bundle Retrieval Endpoint
 
-The Trust Bundle endpoint provides the authoritative set of public trust anchors for a Trust Domain.
-Its location is given by the `trust_bundle_uri` field in the [Discovery Document](#discovery-document-endpoint).
+The resource identified by `trust_bundle_uri` returns a SPIFFE Bundle Map.
+The entry keyed by the local `trust_domain` contains the authoritative set of public trust anchors for that Trust Domain.
 
 | Item | Value |
 | :--- | :---- |
@@ -954,12 +954,12 @@ Its location is given by the `trust_bundle_uri` field in the [Discovery Document
 | **Authentication** | None (public resource, HTTPS required) |
 | **Media type** | `application/json` |
 | **Body schema (response)** | The response **MUST** conform to the [SPIFFE Bundle Map format](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md#5-spiffe-bundle-map). |
-| **Responses** | `200 OK` - bundle retrieved<br>`304 Not Modified` - cached copy still valid<br>`404 Not Found` - bundle unavailable |
+| **Responses** | `200 OK` - Bundle Map retrieved<br>`304 Not Modified` - cached copy still valid<br>`404 Not Found` - bundle unavailable |
 | **Caching** | The endpoint **SHOULD** support HTTP caching headers (`ETag`, `Last-Modified`). |
 
 > **Informative:**
-> Clients **MUST** retrieve and validate this bundle before validating any SVIDs issued within the Trust Domain.
-> The HTTPS connection used to retrieve the Trust Bundle **MUST** be authenticated using an initial trust mechanism as defined in [Initial Trust Bootstrap](#initial-trust-bootstrap).
+> Clients **MUST** retrieve and validate this Bundle Map, select the Trust Bundle for `trust_domain`, and use that Trust Bundle before validating any SVIDs issued within the Trust Domain.
+> The HTTPS connection used to retrieve the Bundle Map at `trust_bundle_uri` **MUST** be authenticated using an initial trust mechanism as defined in [Initial Trust Bootstrap](#initial-trust-bootstrap).
 > The SPIFFE Bundle Map format supports inclusion of bundles for multiple Trust Domains, which can serve as a basis for cross-domain trust. Full federation lifecycle semantics, as defined by SPIFFE Federation, are out of scope for this SUP.
 
 #### Enrollment and Identity Issuance Endpoint
@@ -1560,7 +1560,7 @@ sequenceDiagram
         Device->>MIS: GET /.well-known/margo
         MIS-->>Device: 200 OK (Discovery Document)
         Device->>MIS: GET trust_bundle_uri
-        MIS-->>Device: 200 OK (SPIFFE Bundle Map / Trust Bundle)
+        MIS-->>Device: 200 OK (SPIFFE Bundle Map containing local Trust Bundle)
     end
 
     rect rgb(235,235,235)
@@ -1577,12 +1577,12 @@ sequenceDiagram
         note over Device,RS: Authenticated Request (mTLS)
         Device->>RS: Establish TLS 1.3 (mutual TLS)<br/>(present X.509 SVID as client certificate)
         activate RS
-        RS->>RS: Validate SVID chain & SPIFFE ID<br/>using Trust Bundle (retrieved from MIS discovery endpoint)
+        RS->>RS: Validate SVID chain & SPIFFE ID<br/>using Trust Bundle selected from Bundle Map<br/>(retrieved from MIS discovery endpoint)
         RS-->>Device: 200 Success
         deactivate RS
     end
 
-    note right of RS: The Resource Server retrieves and caches<br/>the Trust Bundle from MIS via the discovery<br/>document (`trust_bundle_uri` in GET /.well-known/margo).
+      note right of RS: The Resource Server retrieves and caches<br/>the SPIFFE Bundle Map from MIS via the discovery<br/>document (`trust_bundle_uri` in GET /.well-known/margo)<br/>and selects the local Trust Bundle by `trust_domain`.
 ```
 
 #### Device SVID Renewal Flow
@@ -1656,13 +1656,13 @@ sequenceDiagram
         activate Proxy
         Proxy->>RS: HTTPS POST /api/v1/device-operation<br/>(Authorization: Bearer <jwt-svid>)
         activate RS
-        RS->>RS: Validate JWT SVID (signature, exp, aud)<br/>using Trust Bundle (retrieved from MIS discovery endpoint)
+        RS->>RS: Validate JWT SVID (signature, exp, aud)<br/>using Trust Bundle selected from Bundle Map<br/>(retrieved from MIS discovery endpoint)
         RS-->>Proxy: 200/201 Success
         Proxy-->>Device: 200/201 Success
         deactivate RS
         deactivate Proxy
 
-    note right of RS: The Resource Server retrieves and caches<br/>the Trust Bundle from MIS via the discovery<br/>document (`trust_bundle_uri` in GET /.well-known/margo).
+      note right of RS: The Resource Server retrieves and caches<br/>the SPIFFE Bundle Map from MIS via the discovery<br/>document (`trust_bundle_uri` in GET /.well-known/margo)<br/>and selects the local Trust Bundle by `trust_domain`.
     end
 ```
 
@@ -1814,16 +1814,16 @@ These requirements ensure that all MIAF operations - discovery, enrollment, rene
 #### Initial Trust Bootstrap
 
 All MIAF trust semantics ultimately depend on an initial root of trust for reaching the MIS in the first place.
-In particular, a new client cannot validate MIS-issued SVIDs using the Trust Bundle until it has retrieved that Trust Bundle.
+In particular, a new client cannot validate MIS-issued SVIDs using the Trust Bundle until it has retrieved the SPIFFE Bundle Map at `trust_bundle_uri` and selected the Trust Bundle for the relevant Trust Domain.
 
-Therefore, clients **MUST** authenticate the HTTPS connection used to retrieve the discovery document (`GET /.well-known/margo`) and the Trust Bundle (`trust_bundle_uri`) using an **initial trust mechanism** that exists prior to this protocol.
+Therefore, clients **MUST** authenticate the HTTPS connection used to retrieve the discovery document (`GET /.well-known/margo`) and the SPIFFE Bundle Map resource referenced by `trust_bundle_uri` using an **initial trust mechanism** that exists prior to this protocol.
 At least one of the following mechanisms **MUST** be used:
 
 1. **Web PKI / enterprise PKI:** Validate the MIS server certificate chain to a configured set of trust anchors and validate the expected DNS name per [RFC 6125](https://datatracker.ietf.org/doc/html/rfc6125).
 2. **Pinned trust:** Validate the MIS server certificate chain or public key against operator-provisioned pins (for example, a pinned CA certificate).
-3. **Secure bootstrap delivery:** In bootstrap-channel-delivered scenarios (for example, FDO TO2), obtain, through the authenticated bootstrap channel, the discovery information defined by the selected bootstrap method - such as the absolute HTTPS URL of the MIAF discovery document - and any deployment-specific inputs needed to authenticate the first HTTPS retrieval of that document. This SUP does **not** define a common wire format for bootstrap-channel delivery of HTTPS trust anchors. The discovery document and the Trust Bundle retrieved over HTTPS remain the authoritative MIAF sources after bootstrap.
+3. **Secure bootstrap delivery:** In bootstrap-channel-delivered scenarios (for example, FDO TO2), obtain, through the authenticated bootstrap channel, the discovery information defined by the selected bootstrap method - such as the absolute HTTPS URL of the MIAF discovery document - and any deployment-specific inputs needed to authenticate the first HTTPS retrieval of that document. This SUP does **not** define a common wire format for bootstrap-channel delivery of HTTPS trust anchors. The discovery document and the SPIFFE Bundle Map retrieved over HTTPS, including the selected Trust Bundle for the relevant Trust Domain, remain the authoritative MIAF sources after bootstrap.
 
-Clients **MUST NOT** treat the first retrieval of the discovery document or Trust Bundle as unauthenticated or "trust on first use".
+Clients **MUST NOT** treat the first retrieval of the discovery document or the SPIFFE Bundle Map at `trust_bundle_uri` as unauthenticated or "trust on first use".
 
 #### Minimum TLS Baseline
 
@@ -2050,8 +2050,8 @@ The resulting SHA-256 digest **MUST** be encoded as lowercase hexadecimal.
 - The OOS **MUST** use the `fdo.csr` ServiceInfo Module's `cacerts-*` exchange to return the CA certificates needed to validate the issued SVID chain.
 - The certificates returned via `fdo.csr:cacerts-*` are defined in this profile only for validation of the issued SVID chain. A deployment **MAY** also use them as initial HTTPS trust anchors for discovery if the same PKI is used, but this specification does **not** require or assume that.
 - The OOS **MUST** use the `margo.discovery` ServiceInfo Module defined below to provide, over the authenticated TO2 channel, the absolute HTTPS URL of the MIAF discovery document (`GET /.well-known/margo`).
-- After bootstrap, the device **MUST** retrieve the MIAF discovery document and the SPIFFE Trust Bundle over HTTPS using an initial trust basis established in accordance with [Initial Trust Bootstrap](#initial-trust-bootstrap).
-- The discovery document and the Trust Bundle retrieved over HTTPS are the authoritative post-bootstrap sources of endpoint metadata and trust configuration for this specification.
+- After bootstrap, the device **MUST** retrieve the MIAF discovery document and the SPIFFE Bundle Map at `trust_bundle_uri` over HTTPS using an initial trust basis established in accordance with [Initial Trust Bootstrap](#initial-trust-bootstrap), and then select the Trust Bundle for the discovered `trust_domain`.
+- The discovery document and the SPIFFE Bundle Map retrieved over HTTPS, including the selected Trust Bundle for the discovered `trust_domain`, are the authoritative post-bootstrap sources of endpoint metadata and trust configuration for this specification.
 
 ##### `margo.discovery` ServiceInfo Module (normative) <!-- omit from toc -->
 
