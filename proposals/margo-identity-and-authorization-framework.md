@@ -2048,8 +2048,13 @@ The resulting SHA-256 digest **MUST** be encoded as lowercase hexadecimal.
 
 - The OOS **MUST** use the `fdo.csr` ServiceInfo Module's `simpleenroll-*` exchange to convey the device CSR and return the issued leaf certificate representing the device's X.509 SVID.
 - The OOS **MUST** use the `fdo.csr` ServiceInfo Module's `cacerts-*` exchange to return the CA certificates needed to validate the issued SVID chain.
-- The certificates returned via `fdo.csr:cacerts-*` are defined in this profile only for validation of the issued SVID chain. A deployment **MAY** also use them as initial HTTPS trust anchors for discovery if the same PKI is used, but this specification does **not** require or assume that.
 - The OOS **MUST** use the `margo.discovery` ServiceInfo Module defined below to provide, over the authenticated TO2 channel, the absolute HTTPS URL of the MIAF discovery document (`GET /.well-known/margo`).
+
+#### Initial trust bootstrap for FDO (normative) <!-- omit from toc -->
+
+- The certificates returned via `fdo.csr:cacerts-*` are defined in this profile only for validation of the issued SVID chain. A deployment **MAY** also use them as initial HTTPS trust anchors for discovery if the same PKI is used, but this specification does **not** require or assume that.
+- For this method, the authenticated TO2 channel is the method-specific **secure bootstrap delivery** mechanism referenced in [Initial Trust Bootstrap](#initial-trust-bootstrap).
+- The `margo.discovery:url` value alone is **not sufficient** to authenticate HTTPS; before retrieving the discovery document and Bundle Map, the device **MUST** also have an initial trust basis established through TO2-delivered inputs or another mechanism permitted by [Initial Trust Bootstrap](#initial-trust-bootstrap).
 - After bootstrap, the device **MUST** retrieve the MIAF discovery document and the SPIFFE Bundle Map at `trust_bundle_uri` over HTTPS using an initial trust basis established in accordance with [Initial Trust Bootstrap](#initial-trust-bootstrap), and then select the Trust Bundle for the discovered `trust_domain`.
 - The discovery document and the SPIFFE Bundle Map retrieved over HTTPS, including the selected Trust Bundle for the discovered `trust_domain`, are the authoritative post-bootstrap sources of endpoint metadata and trust configuration for this specification.
 
@@ -2110,6 +2115,10 @@ Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-
 - The MIS **MUST** validate the presented certificate chain against Trust Domain policy before deriving or accepting the ESI.
 - Where revocation information is available, the MIS **SHOULD** evaluate revocation status according to Trust Domain policy.
 
+#### Initial trust bootstrap for Factory mTLS (normative) <!-- omit from toc -->
+
+The manufacturer-issued client certificate presented for enrollment authenticates the device to the MIS during mutual TLS, but it does **not** establish the initial trust basis for the first HTTPS retrieval of the MIAF discovery document or the SPIFFE Bundle Map at `trust_bundle_uri`; [Initial Trust Bootstrap](#initial-trust-bootstrap) applies.
+
 **Process Summary (informative):**
 
 1. The device holds a manufacturer X.509 certificate and private key (ideally hardware-protected).
@@ -2152,6 +2161,10 @@ Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-
 - The MIS **MUST** validate the Bootstrap Assertion signature, certificate chain, and required claims before deriving or accepting the ESI.
 - The MIS **MUST** validate the full `x5c` chain against Trust Domain policy.
 - The Bootstrap Assertion defined in this method is for **initial enrollment only**. It is distinct from the **Client Authentication Assertion** used in the [JWT SVID Exchange Endpoint](#jwt-svid-exchange-endpoint).
+
+#### Initial trust bootstrap for Factory JWT (normative) <!-- omit from toc -->
+
+The Bootstrap Assertion JWT authenticates the enrollment request after the HTTPS connection is established, but it does **not** establish the initial trust basis for the first HTTPS retrieval of the MIAF discovery document or the SPIFFE Bundle Map at `trust_bundle_uri`; [Initial Trust Bootstrap](#initial-trust-bootstrap) applies.
 
 #### Factory Bootstrap Assertion JWT Structure <!-- omit from toc -->
 
@@ -2248,6 +2261,11 @@ The format and structure of the enrollment token are defined by the MIS implemen
 - This idempotent retry handling is intended only for transport retries or other ambiguity about delivery of the original successful enrollment response. It **MUST NOT** be used as a general recovery path after revocation, expiry, or loss of the MIS state needed to safely recognize and replay the original successful enrollment outcome.
 - The MIS **MUST** validate that the submitted CSR is well-formed and that its signature verifies (proof of possession of the corresponding private key).
 - The MIS **MUST** derive the ESI from the token's `token_id` as specified above when first binding the token to an LDI, and **MUST** use that recorded binding when handling an idempotent retry.
+
+#### Initial trust bootstrap for Enrollment Token (normative) <!-- omit from toc -->
+
+- The enrollment token authenticates only the `POST /api/v1/identities` request and **MUST NOT** be treated as sufficient to authenticate `GET /.well-known/margo` or retrieval of the SPIFFE Bundle Map at `trust_bundle_uri`; [Initial Trust Bootstrap](#initial-trust-bootstrap) applies.
+- The deployment-specific provisioning flow for this method **MUST** ensure that the device has the discovery URL and any trust anchors or pins required for the chosen initial trust mechanism, unless those inputs are already preconfigured on the device.
 
 
 #### Deployment and provisioning notes (informative) <!-- omit from toc -->
