@@ -288,9 +288,9 @@ In particular, this SUP:
 - **profiles or constrains** some of those standards where Margo needs device-specific rules; and
 - **defines new Margo-specific behavior** for device bootstrap, lifecycle management, discovery, enrollment, renewal, revocation, and profile-specific authorization behavior.
 
-This SUP does **not** adopt the **SPIFFE Workload API** or **SPIFFE Workload Endpoint** model. Those specifications define a local gRPC-based interface for workload identity delivery. The APIs defined here are **remote HTTPS lifecycle interfaces** designed for the device bootstrap and management problem.
+This SUP does **not** use the **SPIFFE Workload API** or **SPIFFE Workload Endpoint** as the normative interface for the device bootstrap and lifecycle APIs defined here. Those specifications define a local gRPC-based interface for workload identity delivery. The APIs defined here are **remote HTTPS lifecycle interfaces** designed for the device bootstrap and management problem.
 
-Existing SPIFFE libraries and tooling can be used for SVID validation, Trust Bundle handling, and SPIFFE ID processing. A Margo-conformant deployment additionally requires the bootstrap methods, device identity lifecycle, discovery, and remote APIs defined in this SUP.
+Existing SPIFFE libraries and tooling can be used for SVID validation, Trust Bundle handling, and SPIFFE ID processing. A Margo-conformant deployment additionally requires the bootstrap methods, device identity lifecycle, discovery, and remote APIs defined in this SUP. A conformant implementation **MAY** also expose a local SPIFFE Workload API / Workload Endpoint as an implementation mechanism for local identity delivery or future profiles, provided this does not replace or alter the normative Margo bootstrap methods, discovery, device identity lifecycle, or remote APIs defined here.
 
 | Topic | Source | Notes |
 | :---- | :----- | :---- |
@@ -299,7 +299,7 @@ Existing SPIFFE libraries and tooling can be used for SVID validation, Trust Bun
 | JWT-SVID baseline semantics | SPIFFE, adopted by reference + constrained | This SUP defines device-profile usage and exchange behavior. |
 | Trust Bundle / Bundle Map | SPIFFE, adopted by reference | This SUP defines discovery and retrieval conventions around it. |
 | Discovery document | Margo | Not part of SPIFFE. |
-| Enrollment / renewal / revocation-state publication / JWT exchange APIs | Margo | Remote HTTPS lifecycle interfaces, not the SPIFFE Workload API. |
+| Enrollment / renewal / revocation-state publication / JWT exchange APIs | Margo | Remote HTTPS lifecycle interfaces; a deployment may additionally expose local SPIFFE Workload API / Workload Endpoint interfaces without changing these normative Margo APIs. |
 | LDI / PDI / ESI model | Margo | Device-specific concepts introduced by this SUP. |
 | Bootstrap methods | Margo + external standards | FDO, factory-certificate, and enrollment-token methods are integrated here. IEEE 802.1AR DevIDs are usable as factory certificates within the existing methods. |
 
@@ -822,7 +822,7 @@ The Margo Identity and Authorization APIs define the network interfaces through 
 This SUP normatively defines how these APIs apply to **Edge Compute Devices** via the Edge Compute Device Identity Profile, but the same endpoints and semantics are intended to be reusable by future profiles for other Margo components.
 
 These APIs implement the operational behaviors described in previous sections - including identity issuance, renewal, publication of revocation state, and JWT SVID exchange - using RESTful patterns over HTTPS.
-They are **Margo-specific lifecycle APIs**. They do **not** adopt the SPIFFE Workload API or SPIFFE Workload Endpoint specifications, which define a local gRPC-based interface for workload identity delivery.
+They are **Margo-specific lifecycle APIs**. The endpoints defined in this section are the normative remote interfaces for device bootstrap and lifecycle management; they are not replaced by the SPIFFE Workload API or SPIFFE Workload Endpoint specifications, which define a local gRPC-based interface for workload identity delivery. Implementations **MAY** additionally expose those local SPIFFE interfaces, so long as the behavior and remote interfaces defined in this SUP remain unchanged.
 
 All APIs in this section are **normative**.
 They **MUST** use JSON for all request and response bodies unless otherwise specified, and **MUST** return errors in [RFC 9457](https://datatracker.ietf.org/doc/html/rfc9457) Problem Details format (see [Appendix B](#appendix-b-error-responses-normative) for details).
