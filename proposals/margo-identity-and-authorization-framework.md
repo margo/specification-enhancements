@@ -214,13 +214,13 @@ This SUP supports Margo's core goals of **security**, **scalability**, **interop
 - Establishes a **cryptographically verifiable identity model** for Edge Compute Devices within a Trust Domain, using open, cloud-native non-human identity standards.
 - Introduces stronger guidance and extensions around protecting private keys associated with device identities, refining the Margo Device Requirements specification.
 - Authentication - and the basis for authorization decisions - is provided directly by verified device identities, rather than opaque, ad-hoc credentials.
-- The MIS and associated trust-bundle mechanisms provide standard, auditable points for identity issuance, renewal, and revocation.
+- The MIS and associated trust-bundle mechanisms provide standard, auditable points for identity issuance, renewal, and publication of revocation state.
 
 ### Scalability <!-- omit from toc -->
 
 - Separates **identity issuance and lifecycle management** (MIS) from individual consuming components, allowing MIS to scale independently while devices and services validate identities locally.
 - Margo components such as the DFM can validate identities using trust bundles and profile rules, avoiding per-session coupling with MIS and minimizing centralized state.
-- Standard lifecycle APIs (enrollment, renewal, revocation, replacement, termination) and a consistent Logical Device Identity model simplify long-term fleet management.
+- Standard enrollment and renewal APIs, standardized replacement authorization conveyance, and publication of revocation state simplify long-term fleet management.
 
 ### Interoperability <!-- omit from toc -->
 
@@ -245,7 +245,7 @@ This SUP supports Margo's core goals of **security**, **scalability**, **interop
 - **[Parent Epic 6: Enroll an edge device with a workload fleet manager (#42)](https://github.com/margo/product_management/issues/42):**
   Replaces PR1's WFM-centric onboarding model with a Trust Domain-scoped enrollment mechanism based on standardized **device-level identity** and extensible bootstrap methods, aligning with **[#57](https://github.com/margo/product_management/issues/57)** and supporting late binding and pre-provisioned credentials (**[#62](https://github.com/margo/product_management/issues/62)**, **[#63](https://github.com/margo/product_management/issues/63)**).
 - **[Parent Epic 12: Manage enrolled edge devices (#48)](https://github.com/margo/product_management/issues/48):**
-  Provides the lifecycle primitives (enrollment, renewal, revocation, replacement, termination) required for large-scale device management and auditability.
+  Provides the lifecycle primitives and lifecycle-state semantics required for large-scale device management and auditability, including enrollment, renewal, replacement, revocation, and termination.
 - **[Parent Epic 7: Enroll an edge device with a device fleet manager (#43)](https://github.com/margo/product_management/issues/43):**
   Supplies the trust model for DFM onboarding and verification (**[#58](https://github.com/margo/product_management/issues/58)**, **[#64](https://github.com/margo/product_management/issues/64)**), enabling consistent authenticity verification across devices.
 
@@ -271,7 +271,7 @@ This SUP is therefore two-layered:
 
   - the **Logical Device Identity (LDI)**, its lifecycle, and its **X.509** representation;
   - handling of hardware-bound keys and **Bootstrap Credentials**; and
-  - normative APIs for enrollment, renewal, and revocation of device identities.
+  - normative APIs for enrollment and renewal of device identities, plus standardized replacement authorization conveyance and revocation-state publication.
 
 The **normative core** of this SUP is based on cryptographically verifiable identities.
 Authentication and authorization decisions are performed directly using these identities (for example, mTLS with an **X.509 SVID**).
@@ -299,7 +299,7 @@ Existing SPIFFE libraries and tooling can be used for SVID validation, Trust Bun
 | JWT-SVID baseline semantics | SPIFFE, adopted by reference + constrained | This SUP defines device-profile usage and exchange behavior. |
 | Trust Bundle / Bundle Map | SPIFFE, adopted by reference | This SUP defines discovery and retrieval conventions around it. |
 | Discovery document | Margo | Not part of SPIFFE. |
-| Enrollment / renewal / revocation / JWT exchange APIs | Margo | Remote HTTPS lifecycle interfaces, not the SPIFFE Workload API. |
+| Enrollment / renewal / revocation-state publication / JWT exchange APIs | Margo | Remote HTTPS lifecycle interfaces, not the SPIFFE Workload API. |
 | LDI / PDI / ESI model | Margo | Device-specific concepts introduced by this SUP. |
 | Bootstrap methods | Margo + external standards | FDO, factory-certificate, and enrollment-token methods are integrated here. IEEE 802.1AR DevIDs are usable as factory certificates within the existing methods. |
 
@@ -821,7 +821,7 @@ Devices that already hold a valid X.509 SVID **MAY** obtain a short-lived **JWT 
 The Margo Identity and Authorization APIs define the network interfaces through which Margo components interact with the **Margo Identity Service (MIS)**.
 This SUP normatively defines how these APIs apply to **Edge Compute Devices** via the Edge Compute Device Identity Profile, but the same endpoints and semantics are intended to be reusable by future profiles for other Margo components.
 
-These APIs implement the operational behaviors described in previous sections - including identity issuance, renewal, revocation, and JWT SVID exchange - using RESTful patterns over HTTPS.
+These APIs implement the operational behaviors described in previous sections - including identity issuance, renewal, publication of revocation state, and JWT SVID exchange - using RESTful patterns over HTTPS.
 They are **Margo-specific lifecycle APIs**. They do **not** adopt the SPIFFE Workload API or SPIFFE Workload Endpoint specifications, which define a local gRPC-based interface for workload identity delivery.
 
 All APIs in this section are **normative**.
@@ -1417,6 +1417,8 @@ Content-Type: application/json
 #### Revocation List Endpoint
 
 This endpoint provides a **machine-readable list of revoked SVIDs** within the Trust Domain maintained by the Margo Identity Service (MIS).
+
+This SUP standardizes publication and verifier consumption of revocation state through this endpoint. The privileged workflow by which an operator, fleet tool, or MIS implementation decides to revoke or terminate an identity remains deployment-specific and is out of scope.
 
 Clients and services use it to check SVID status and enforce revocation, without relying solely on traditional PKI mechanisms such as CRLs or OCSP.
 
