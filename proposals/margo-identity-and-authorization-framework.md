@@ -1275,7 +1275,7 @@ the client either presents its current X.509 SVID as a TLS client certificate (m
 > - For the **Edge Compute Device Identity Profile** defined in this SUP, JWT SVIDs are **derived credentials** obtained from an X.509 SVID. They are short-lived and **MUST NOT** be renewed via this endpoint. Devices requiring a fresh JWT SVID **MUST** use the [JWT SVID Exchange Endpoint](#jwt-svid-exchange-endpoint).
 > - For other (future) identity profiles that directly issue JWT SVIDs through `/identities`, renewal semantics **MAY** be defined in those profiles.
 >
-> When renewing an X.509 SVID, clients **MAY** rotate keys by submitting a CSR for a new key pair; acceptance is **policy-controlled** (see [MIS Validation and Processing Logic](#mis-validation-and-processing-logic)).
+> When renewing an X.509 SVID, clients **MAY** rotate keys by submitting a CSR for a new key pair; acceptance is **policy-controlled** (see [MIS Validation and Processing Logic](#mis-validation-and-processing-logic)). As a **RECOMMENDED** default, MIS policy **SHOULD** permit renewal with a new key pair while preserving the existing identity, unless local policy forbids it. Deployments whose [Device Key Protection](#device-key-protection) policy requires continuity of the same hardware-bound or non-exportable private key **MAY** instead require re-enrollment rather than allowing renewal with a new key pair.
 
 ##### Example: SVID Renewal <!-- omit from toc -->
 
