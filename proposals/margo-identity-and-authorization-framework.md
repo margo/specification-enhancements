@@ -2265,6 +2265,9 @@ The format and structure of the enrollment token are defined by the MIS implemen
 - The MIS **MUST** validate that the submitted CSR is well-formed and that its signature verifies (proof of possession of the corresponding private key).
 - The MIS **MUST** derive the ESI from the token's `token_id` as specified above when first binding the token to an LDI, and **MUST** use that recorded binding when handling an idempotent retry.
 
+> **Security note (informative):**
+> Replay of a consumed enrollment token together with the same CSR during the bounded idempotent-retry window does not grant the attacker usable key possession. Even if the MIS replays the original successful enrollment outcome, the returned X.509 SVID remains bound to the private key corresponding to that CSR, which the attacker does not obtain from the replay alone.
+
 #### Initial trust bootstrap for Enrollment Token (normative) <!-- omit from toc -->
 
 - The enrollment token authenticates only the `POST /api/v1/identities` request and **MUST NOT** be treated as sufficient to authenticate `GET /.well-known/margo` or retrieval of the SPIFFE Bundle Map at `trust_bundle_uri`; [Initial Trust Bootstrap](#initial-trust-bootstrap) applies.
