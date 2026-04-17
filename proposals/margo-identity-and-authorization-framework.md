@@ -964,16 +964,18 @@ Its location is given by the `trust_bundle_uri` field in the [Discovery Document
 
 #### Enrollment and Identity Issuance Endpoint
 
-This endpoint is used by a Margo component (for this SUP: an Edge Compute Device) or by an authorized bootstrap intermediary defined by the selected bootstrap method (for example, an FDO Owner Onboarding Service component of the MIS) to perform **initial enrollment** with the Margo Identity Service (MIS).
+This endpoint is used by a Margo component (for this SUP: an Edge Compute Device) or by an authorized bootstrap intermediary defined by the selected bootstrap method to perform **initial enrollment** with the Margo Identity Service (MIS).
 
 During enrollment, the component authenticates using its **Bootstrap Credential** and requests issuance of a new identity, represented by an SVID.
 For Edge Compute Devices, this operation establishes the authoritative binding between a method-derived **Enrollment Subject Identifier (ESI)** and the device's **Logical Device Identity** within the Trust Domain. For **PDI-based** methods, that binding is anchored in validated **Physical Device Identity** evidence.
 For direct methods, the device authenticates directly to the MIS. For mediated methods, the intermediary authenticates to the MIS according to Trust Domain policy and conveys the validated bootstrap result defined by the selected method.
 
+Method-specific constraints on the authenticated actor and on whether the transition into MIS enrollment is an interoperable on-wire handoff or an internal implementation step are defined by the selected bootstrap method in [Appendix A](#appendix-a-bootstrap-methods-normative).
+
 | Item | Value |
 | :--- | :---- |
 | **Endpoint** | `POST /api/v1/identities` |
-| **Authentication** | Defined by the selected [bootstrap method](#appendix-a-bootstrap-methods-normative) and its actor model (for example, device-held mTLS, device-held JWT assertion, or an authorized intermediary for mediated methods such as FDO) |
+| **Authentication** | Defined by the selected [bootstrap method](#appendix-a-bootstrap-methods-normative) and its actor model (for example, device-held mTLS, device-held JWT assertion, or the method-defined actor for a mediated method) |
 | **Headers** | `Content-Type: application/json` |
 | **Body schema (request)** | See below |
 | **Body schema (response)** | See below |
@@ -1013,7 +1015,7 @@ For the **Edge Compute Device Identity Profile**, the selected bootstrap method 
 | :--------------- | :------------------ | :---------------------------------- | :--------- |
 | `urn:margo:bootstrap:factory-cert-mtls:v1` | Device | Validated TLS client certificate chain from the mTLS session | SHA-256 fingerprint of the DER-encoded TLS leaf certificate |
 | `urn:margo:bootstrap:factory-cert-jwt:v1` | Device | Signed Bootstrap Assertion JWT with `x5c` certificate chain | SHA-256 fingerprint of `x5c[0]` |
-| `urn:margo:bootstrap:fdo:v1` | Authorized FDO Owner Onboarding Service (OOS) acting on behalf of the MIS | Validated successful TO2 outcome, Ownership Voucher, and CSR binding produced by the FDO method profile in [Appendix A](#fido-device-onboard-fdo-method) | SHA-256 fingerprint of the first certificate in `OwnershipVoucher.OVDevCertChain` |
+| `urn:margo:bootstrap:fdo:v1` | FDO Owner Onboarding Service (OOS) component of the MIS | Validated successful TO2 outcome, Ownership Voucher, and CSR binding produced by the FDO method profile in [Appendix A](#fido-device-onboard-fdo-method) | SHA-256 fingerprint of the first certificate in `OwnershipVoucher.OVDevCertChain` |
 | `urn:margo:bootstrap:enrollment-token:v1` | Device | Single-use enrollment token presented as `bootstrapCredential.proof.token` over server-authenticated HTTPS | SHA-256 digest of the MIS-assigned token identifier (`token_id`), encoded as lowercase hexadecimal |
 
 ##### Profile-specific `svid_request` formats (request payload) <!-- omit from toc -->
