@@ -151,10 +151,19 @@ If a referenced device key cannot be resolved, then the `value` is used as a fal
 ### Margo-reserved Keys
 
 * `margo.cluster.hostname` - For ingress hosts, cert DNS names, externally reachable application URLs.
-
 * `margo.cluster.defaultStorageClass` - For PersistentVolume/PersistentVolumeClaim defaults on Kubernetes devices.
 
+Could be extended by further semantically-enriched keys, such as:
 
+* `margo.network.defaultExternalHostname` - concrete full hostname (FQDN) that the platform recommends or provides as the default external hostname. E.g., hostname = `edge01.plant-a.example.com`.
+* `margo.network.ingressBaseDomain` - base domain under which application-specific hostnames are created. In case an application needs a distinct hostname by extending the base domain. E.g., base domain = `apps.plant-a.example.com` and application can derive concrete hostname = `factory-insights.apps.plant-a.example.com`.
+
+_Alternatively:_ defining environment specific keys:
+
+* `margo.k8s.storageClassName` - The Kubernetes storageClassName that an application should use for its PersistentVolumeClaims.
+* `margo.k8s.ingressClassName` - The Kubernetes ingressClassName that an application should put on its Ingress resources. 
+* `margo.k8s.namespace` - Tthe Kubernetes namespace into which the application should be deployed (e.g., "margo.k8s.namespace": "factory-apps").
+* `margo.k8s.serviceAccountName` - The Kubernetes ServiceAccount name that application pods should run as (e.g., "margo.k8s.serviceAccountName": "margo-workload").
 
 ### Example 
 
@@ -170,7 +179,7 @@ The resolved values are then injected into:
 
 * Helm values (ingress.host, certificate.dnsNames[0], persistence.storageClass)
 or 
-* Compose environment variables (APP_HOSTNAME, DEVICE_ID)
+* Compose environment variables (APP_HOSTNAME)
 
 
 
@@ -379,7 +388,7 @@ Inclusion of new `installContext` element, as a dictionary of device-supplied pa
           "type": "wifi"
         }
       ]
-    },
+    },   
     "installContext": {
       "margo.cluster.hostname": {
         "type": "string",
@@ -398,7 +407,7 @@ Inclusion of new `installContext` element, as a dictionary of device-supplied pa
         "value": "standard",
         "description": "Default Kubernetes StorageClass to use for application PVCs when the application requests persistent storage.",
         "mutable": true
-      }
+      }    
     }
   }
 }
