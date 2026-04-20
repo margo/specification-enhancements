@@ -329,13 +329,13 @@ The governed security boundary within which identities are issued and mutually r
 The verifiable credential representing an identity within a Trust Domain. An SVID binds a SPIFFE ID to a key pair.
 This SUP adopts SPIFFE **X.509-SVID** and **JWT-SVID** by reference and defines how Margo components use them. For the Edge Compute Device Identity Profile, LDIs are represented by **X.509 SVIDs**, while **JWT SVIDs** are optional derived credentials for short-lived bearer use in non-mTLS scenarios.
 
-##### Policy-Based Authorization <!-- omit from toc -->
-
-Authorization based on verified **SPIFFE IDs** and associated attributes, evaluated locally within the Trust Domain - not on external token scopes.
-
 #### Terms introduced by this SUP <!-- omit from toc -->
 
 The following terms are defined by this SUP. They represent Margo-specific concepts that build on the SPIFFE primitives above.
+
+##### Policy-Based Authorization <!-- omit from toc -->
+
+Authorization based on verified **SPIFFE IDs** and associated attributes, evaluated locally within the Trust Domain - not on external token scopes.
 
 ##### Margo Identity Service (MIS) <!-- omit from toc -->
 
@@ -557,7 +557,7 @@ The following requirements are the **MIAF-specific constraints** that apply in a
 | **BasicConstraints** | `CA=false` for leaf SVIDs; `CA=true` permitted for intermediate issuers. | SPIFFE X.509-SVID | Issuer SVIDs SHOULD use `nameConstraints` to restrict SPIFFE ID namespaces. |
 | **KeyUsage** | `digitalSignature` (**MUST**). `keyCertSign` and `cRLSign` **MUST NOT** be set. | SPIFFE X.509-SVID | Other usages such as `keyEncipherment` or `keyAgreement` **MAY** be set, per SPIFFE X.509-SVID. |
 | **ExtendedKeyUsage** | If present, **MUST** follow the SPIFFE X.509-SVID specification. | SPIFFE X.509-SVID | MIAF does not introduce a different EKU rule at the framework level. |
-| **Validity Period** | **RECOMMENDED:** <= 1 year | **MIAF** | SPIFFE does not define validity period constraints. Actual lifetime may be further constrained by the identity profile. |
+| **Validity Period** | **RECOMMENDED:** <= 1 year | **MIAF** | Framework-level recommendation only. SPIFFE does not define validity period constraints; applicable identity profiles define binding maxima and narrower operational guidance. For devices, see [Profile-specific Constraints on the X.509 SVID Profile](#profile-specific-constraints-on-the-x509-svid-profile). |
 | **NameConstraints** | **OPTIONAL** | SPIFFE X.509-SVID | May be used by MIS to limit valid SPIFFE ID namespaces. |
 
 Validation (per SPIFFE X.509-SVID):
@@ -709,7 +709,7 @@ The MIS **MUST** maintain an authoritative mapping of ESI to LDI within the Trus
 >   ENR -->|SVID issued| ACT
 >   ACT -->|Before expiry| REN
 >   REN -->|SVID renewed| ACT
->   ACT -->|Hardware change / authorized rebinding| REP
+>   ACT -->|Authorized rebinding (hardware replacement, credential refresh, operator-initiated)| REP
 >   REP -->|Rebinding complete| ACT
 >   ACT -->|Compromise / Decommission / Retirement| REV
 >   REV -->|Identity retired| END([End of Lifecycle])
@@ -1252,6 +1252,9 @@ This endpoint allows an already enrolled component to **renew its expiring SVID*
 Renewal is authenticated **directly with an existing SVID**:
 the client either presents its current X.509 SVID as a TLS client certificate (mTLS), or presents a JWT SVID as an HTTP Bearer token, and the MIS issues a new SVID for the same SPIFFE ID.
 
+> **Note:**
+> This endpoint **MAY** accept JWT SVID bearer authentication because the caller is already presenting an issued identity and requesting refreshed credentials for that same SPIFFE ID. The [JWT SVID Exchange Endpoint](#jwt-svid-exchange-endpoint) intentionally does **not** accept JWT SVID bearer authentication because it is the mechanism used to obtain a JWT SVID from proof tied to an existing X.509 SVID.
+
 | Item | Value |
 | :--- | :---- |
 | **Endpoint** | `POST /api/v1/identities/{spiffeIdEncoded}/renewals` |
@@ -1313,9 +1316,6 @@ Content-Type: application/json
 > **Informative:**
 > The MIS verifies that the SPIFFE ID encoded in the path matches either the URI SAN of the client certificate (mTLS) or the `sub` claim of the presented JWT SVID (Bearer). If they match and the `svid_request` is valid, a new SVID is issued for the same identity. The client **MUST** replace its previous SVID and **SHOULD** preserve or rotate its key according to policy.
 
-> **Note:**
-> JWT SVID (Bearer) authentication is supported for the **renewal** endpoint. The JWT SVID **exchange** endpoint explicitly does **not** accept JWT Bearer authentication.
-
 ##### MIS Renewal Rate-Limiting and Backoff Policy <!-- omit from toc -->
 
 To prevent resource exhaustion, credential churn, or abuse through automated replay, the MIS **MUST** apply rate-limiting controls to all renewal operations.
@@ -1340,6 +1340,9 @@ To prevent resource exhaustion, credential churn, or abuse through automated rep
 This endpoint allows a component that already holds a valid X.509 SVID to request a **short-lived JWT SVID** representing the same identity.
 
 It is intended for environments where end-to-end mTLS is not feasible (for example, in the presence of TLS-terminating proxies), while still using the MIS and Trust Domain as the source of truth for identities.
+
+> **Note:**
+> This endpoint intentionally does **not** accept JWT SVID bearer authentication. It is the mechanism for obtaining a JWT SVID from proof bound to the caller's existing X.509 SVID, either by mTLS or by a client assertion signed with the X.509 SVID private key.
 
 | Item | Value |
 | :--- | :---- |
@@ -2069,6 +2072,7 @@ The module uses the following key-value pairs:
 - Devices and OOS implementations conformant to the `urn:margo:bootstrap:fdo:v1` method **MUST** implement the `margo.discovery` module.
 - The `margo.discovery:url` value **MUST** be an absolute `https` URL for the discovery document defined by this specification.
 - The OOS **MUST** send exactly one `margo.discovery:url` value for a successful onboarding attempt.
+- Future revisions of this module **MAY** define additional `margo.discovery:*` keys. Devices **MUST** ignore unknown keys in this module rather than failing onboarding.
 - If the module is unavailable or the URL value is missing or malformed, the onboarding attempt **MUST NOT** be treated as conformant to this profile.
 
 **References (informative):**
@@ -2189,7 +2193,7 @@ The Bootstrap Assertion JWT authenticates the enrollment request after the HTTPS
 
 | Claim | Required | Description |
 | :---- | :------- | :---------- |
-| `iss` | Y | **MUST** be `urn:margo:device:sha256:<lowercase-hex-fingerprint>` of `x5c[0]`. **Policy MUST NOT** be based on this value. |
+| `iss` | Y | **MUST** be `urn:margo:device:sha256:<lowercase-hex-fingerprint>` of `x5c[0]`. This claim is provided for log correlation and diagnostics; the authoritative cryptographic binding comes from the validated `x5c` chain. **Policy MUST NOT** be based on this value. |
 | `sub` | Y | **MUST** equal `iss`. |
 | `aud` | Y | **MUST** equal the full URL of the MIS enrollment endpoint. |
 | `iat` | Y | Issued-at timestamp (seconds since UNIX epoch). |
