@@ -61,7 +61,8 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@silvanoc | Data model single source of truth with LinkML | P2 | [PR](https://github.com/margo/specification-enhancements/pull/48)
 |@matlec | Margo Identity and Authorization Framework | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/38) |
 |@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40) |
-|@ajcraig | Moving away from Device Roles to capabilities | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/50)
+|@ajcraig | Moving away from Device Roles to capabilities | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/50) |
+|@arne-broering | Device specific parameter values | P1 | [DRAFT PR](https://github.com/margo/specification-enhancements/pull/54) |
 
 ## SUP Owner SUP Checklist
 
