@@ -1041,7 +1041,7 @@ For `svid_profile_uri = "https://margo.org/profiles/spiffe/x509-svid/v1"`, the `
 **Validation (normative):**
 
 - The MIS **MUST** ignore any Subject DN and SANs in the CSR and set the authoritative SPIFFE ID in the URI SAN of the issued certificate according to the identity profile in effect (for devices, the Logical Device Identity format). However, the MIS **MAY** enforce structural requirements (e.g., requiring a Common Name) if backed by a strict PKI.
-- Inputs containing PEM armor or malformed Base64 **MUST** be rejected with `400 Bad Request`.
+- Inputs containing PEM armor or malformed Base64 **MUST** be rejected with `400 Bad Request` and the `invalid-svid-request` error type.
 - CSRs using unsupported key types or signature algorithms **MUST** be rejected per [Cryptographic Requirements](#cryptographic-requirements) with `422 Unprocessable Entity` (`unsupported-svid-profile`) or another profile-appropriate error type (see [Appendix B](#appendix-b-error-responses-normative)).
 
 > **Informative example**
@@ -1199,7 +1199,7 @@ This logic ensures consistent handling of first-time enrollments, re-enrollments
 
   For **direct** methods, proof validation uses the credential conveyed by the device or its transport session. For **mediated** methods, proof validation **MUST** include verification that the intermediary is authorized to convey the validated bootstrap result defined by the selected method and that this result corresponds to a successfully completed external bootstrap protocol.
 
-  If proof validation fails, the MIS **MUST** reject the request with `401 Unauthorized` using a Problem Details object. Validation includes method-specific checks such as certificate chain verification (for mTLS), signature verification (for JWT-based methods), temporal validity checks (`iat`, `exp`), token validity verification (for token-based methods: known, unexpired, and either unused or eligible for method-defined idempotent retry handling), and validation of intermediary-conveyed bootstrap results for mediated methods.
+  If proof validation fails, the MIS **MUST** reject the request with `401 Unauthorized` and the `invalid-bootstrap-proof` error type. Validation includes method-specific checks such as certificate chain verification (for mTLS), signature verification (for JWT-based methods), temporal validity checks (`iat`, `exp`), token validity verification (for token-based methods: known, unexpired, and either unused or eligible for method-defined idempotent retry handling), and validation of intermediary-conveyed bootstrap results for mediated methods.
 
 1. **Derive Enrollment Subject Identifier**
 
@@ -1212,7 +1212,7 @@ This logic ensures consistent handling of first-time enrollments, re-enrollments
    Validation semantics, including the structure and verification rules for `svid_request`, are defined by the selected SVID profile.
 
    - If unsupported, the MIS **MUST** return `422 Unprocessable Entity` with an `unsupported-svid-profile` error type (see [Appendix B](#appendix-b-error-responses-normative)).
-   - If the provided `svid_request` fails profile-specific validation (for example, malformed CSR under the X.509 profile), the MIS **MUST** return `400 Bad Request`.
+  - If the provided `svid_request` fails profile-specific validation (for example, malformed CSR under the X.509 profile), the MIS **MUST** return `400 Bad Request` with an `invalid-svid-request` error type.
 
 1. **Validate replacement authorization when present**
 
@@ -1232,6 +1232,7 @@ This logic ensures consistent handling of first-time enrollments, re-enrollments
   - **Binding exists (re-enrollment / recovery)**
 
       - The MIS **MUST** retrieve the existing identity bound to the enrollment subject identifier.
+      - If `replacementAuthorization` is present for an ordinary re-enrollment / recovery request, the MIS **MUST** reject the request with `400 Bad Request` and the `spurious-replacement-authorization` error type.
       - If the CSR contains a **new** public key, the MIS **MUST** apply operator policy to decide if **key rotation** (same identity, new key) is permitted. If not permitted, return `409 Conflict`. If permitted, issue a new SVID and invalidate the prior SVID.
       - The MIS then issues a new SVID for the same identity and returns `200 OK`.
 
@@ -2385,9 +2386,13 @@ Error `type` URIs fall into two categories.
 
   | Condition | HTTP Status | `type` URI | `title` |
   | :-------- | :---------- | :--------- | :------ |
+  | Invalid SVID request | 400 | `https://margo.org/docs/errors/invalid-svid-request` | Invalid SVID Request |
+  | Invalid bootstrap proof | 401 | `https://margo.org/docs/errors/invalid-bootstrap-proof` | Invalid Bootstrap Proof |
+  | Invalid audience | 400 | `https://margo.org/docs/errors/invalid-audience` | Invalid Audience |
   | Unsupported bootstrap method | 422 | `https://margo.org/docs/errors/unsupported-method` | Unsupported Bootstrap Method |
   | Unsupported replacement authorization method | 422 | `https://margo.org/docs/errors/unsupported-replacement-authorization-method` | Unsupported Replacement Authorization Method |
   | Unsupported SVID profile | 422 | `https://margo.org/docs/errors/unsupported-svid-profile` | Unsupported SVID Profile |
+  | Spurious replacement authorization | 400 | `https://margo.org/docs/errors/spurious-replacement-authorization` | Spurious Replacement Authorization |
   | Replacement not authorized | 403 | `https://margo.org/docs/errors/replacement-not-authorized` | Replacement Not Authorized |
   | Key rotation not permitted | 409 | `https://margo.org/docs/errors/key-rotation-not-permitted` | Key Rotation Not Permitted |
   | Enrollment or renewal rate limit exceeded | 429 | `https://margo.org/docs/errors/too-many-requests` | Too Many Requests |
@@ -2402,14 +2407,15 @@ The following table summarizes normative mappings.
 | Endpoint | Error Condition | Status | Error Type | Required Action |
 | :------- | :-------------- | :----- | :--------- | :-------------- |
 | `POST /api/v1/identities` | Unknown `bootstrapCredential.method` | 422 | `unsupported-method` | Client **MUST** retry only with a supported method. |
-| `POST /api/v1/identities` | Invalid or missing CSR | 400 | `about:blank` | Client **MAY** resubmit with a corrected CSR. |
-| `POST /api/v1/identities` | Malformed JWT assertion or proof | 401 | `about:blank` | Client **MUST** regenerate a valid assertion. |
+| `POST /api/v1/identities` | Invalid or missing `svid_request` for the requested SVID profile (for example, malformed or invalid CSR under the X.509 SVID profile) | 400 | `invalid-svid-request` | Client **MAY** resubmit with a corrected SVID request. |
+| `POST /api/v1/identities` | Bootstrap proof invalid, malformed, expired, replayed, or otherwise fails method-specific validation | 401 | `invalid-bootstrap-proof` | Client **MUST** correct or regenerate the bootstrap proof before retrying. |
 | `POST /api/v1/identities` | Invalid, expired, or already-consumed enrollment token | 401 | `invalid-enrollment-token` | Client **MUST** obtain a new enrollment token from the operator. |
 | `POST /api/v1/identities` | Unsupported `replacementAuthorization.method` | 422 | `unsupported-replacement-authorization-method` | Client **MUST** retry only with a supported replacement authorization method, or omit the field for non-replacement enrollment. |
+| `POST /api/v1/identities` | `replacementAuthorization` present on initial enrollment or ordinary re-enrollment, where it **MUST** be absent | 400 | `spurious-replacement-authorization` | Client **MUST** omit `replacementAuthorization` unless performing replacement / rebinding to an existing identity. |
 | `POST /api/v1/identities` | Replacement ticket invalid, expired, replayed, or not authorized for the requested rebinding | 403 | `replacement-not-authorized` | Client **MUST** obtain valid replacement authorization before retrying. |
 | `POST /api/v1/identities` | Requested key rotation not permitted by policy | 409 | `key-rotation-not-permitted` | Client **MUST** retry with the existing key or obtain operator approval before rotating keys. |
 | `POST /api/v1/identities/{spiffeIdEncoded}/renewals` | Unsupported SVID profile | 422 | `unsupported-svid-profile` | Client **MUST** retry with a supported profile. |
-| `POST /api/v1/identities/{spiffeIdEncoded}/jwt-svid` | Audience or assertion invalid | 400 | `about:blank` | Client **MUST** correct request and retry. |
+| `POST /api/v1/identities/{spiffeIdEncoded}/jwt-svid` | Audience invalid | 400 | `invalid-audience` | Client **MUST** correct the requested audience and retry. |
 | Any endpoint | Authorization failed (credential invalid or expired) | 401 | `about:blank` | Client **MUST** re-authenticate and retry. |
 | Any endpoint | Rate limit exceeded | 429 | `too-many-requests` | Client **SHOULD** apply backoff and alert operator. |
 | `GET /api/v1/revocations` | JSON structure invalid | 500 | `revocation-format` | Server **SHOULD** log and repair malformed data. |
