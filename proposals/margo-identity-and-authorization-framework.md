@@ -320,7 +320,7 @@ The following terms are used as defined by SPIFFE. This SUP does not redefine th
 
 The governed security boundary within which identities are issued and mutually recognized. This SUP uses **Trust Domain** in the SPIFFE sense: a trust-root-backed identity namespace and policy boundary. A Trust Domain defines:
 
-- authoritative **trust anchors** (root and intermediate CAs);
+- authoritative **trust anchors** (for example, the X.509 authority certificates published for the Trust Domain);
 - the namespace for **SPIFFE IDs**; and
 - policies for identity lifecycle and authorization.
 
@@ -402,9 +402,9 @@ Conceptually, the **Margo Identity and Authorization Framework (MIAF)** consists
    The logical and administrative boundary within which identities are issued and mutually recognized - for example, an end-user's factory network or a managed service operated by a fleet-management vendor.
    A Trust Domain defines:
 
-   - the authoritative **trust anchors** (root and intermediate CAs);
-   - the namespace for **SPIFFE IDs** (e.g., `spiffe://factory.example/...`);
-   - and the **policies** governing identity lifecycle and authorization within that boundary.
+      - the authoritative **trust anchors** (for example, the X.509 authority certificates published for the Trust Domain);
+      - the namespace for **SPIFFE IDs** (e.g., `spiffe://factory.example/...`);
+      - and the **policies** governing identity lifecycle and authorization within that boundary.
 
    Each issued SPIFFE ID is scoped to exactly one Trust Domain; verifiers **MAY** validate identities from multiple Trust Domains via configuration and/or federation.
 
@@ -413,9 +413,9 @@ Conceptually, the **Margo Identity and Authorization Framework (MIAF)** consists
    The identity authority of a Trust Domain.
    MIS is responsible for:
 
-   - validating **Bootstrap Credentials** presented by components during enrollment;
-   - issuing, renewing, and revoking **SVIDs** for identities in the Trust Domain; and
-  - maintaining the authoritative binding between method-derived **Enrollment Subject Identifiers (ESIs)** and **Logical Device Identities (LDIs)** for devices covered by this SUP.
+    - validating **Bootstrap Credentials** presented by components during enrollment;
+    - issuing, renewing, and revoking **SVIDs** for identities in the Trust Domain; and
+    - maintaining the authoritative binding between method-derived **Enrollment Subject Identifiers (ESIs)** and **Logical Device Identities (LDIs)** for devices covered by this SUP.
 
    MIS exposes a consistent set of APIs - **discovery**, **enrollment**, **renewal**, **revocation**, and **JWT SVID exchange** - that all identity profiles build upon.
    This API design allows other components (e.g., WFM Clients or telemetry agents) to reuse the same trust foundation in future SUPs.
@@ -431,8 +431,10 @@ Conceptually, the **Margo Identity and Authorization Framework (MIAF)** consists
    
    Each Trust Domain publishes a **Trust Bundle** containing:
 
-   - root and intermediate certificates used to validate X.509 SVID chains; and
-   - public keys used to verify JWT SVIDs (if used).
+      - X.509 trust-anchor certificates used to validate X.509 SVID chains; and
+      - public keys used to verify JWT SVIDs (if used).
+
+      Intermediate CA certificates **MAY** also be distributed by the deployment, including alongside issued SVID chains, but they are not required to appear in the Trust Bundle when standard path-building succeeds without them.
 
    Trust Bundles are identified by their Trust Domain name and distributed using the SPIFFE **Bundle Map mechanism**, as defined in the [SPIFFE Trust Domain and Bundle specification](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md).
    Margo clients and servers use these bundles when validating SVIDs during mutual authentication.
@@ -467,7 +469,7 @@ Specific details of these flows for **Edge Compute Devices** are defined later i
 >  TD["**Trust Domain**<br/>Defines trust anchors, policies, and namespace"]
 >  X509["**X.509 SVID**<br/>Certificate binding SPIFFE ID to key pair"]
 >  JWT["**JWT SVID**<br/>Token binding SPIFFE ID to signed JWT claim set"]
->  TB["**Trust Bundle**<br/>Root and intermediate certificates,<br/>JWT verification keys"]
+>  TB["**Trust Bundle**<br/>X.509 trust anchors,<br/>JWT verification keys"]
 >
 >  Client -->|"requests identity (X.509 SVID)"| MIS
 >  MIS -->|"issues X.509 SVID"| X509
@@ -597,8 +599,10 @@ Each Trust Domain maintains a **Trust Bundle**, the authoritative set of cryptog
 
 A Trust Bundle **MUST** include:
 
-- root and intermediate X.509 certificates for SVID chain validation; and
+- X.509 trust-anchor certificates for SVID chain validation; and
 - public keys used to verify JWT SVID signatures.
+
+For X.509 authorities published in a SPIFFE Bundle Map, the bundle represents the public trust anchors for that Trust Domain. Intermediate CA certificates **MAY** also be published, but are not required when they are conveyed with issued SVID chains or distributed by other deployment-specific means.
 
 Bundles:
 
