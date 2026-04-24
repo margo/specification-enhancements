@@ -441,7 +441,7 @@ Conceptually, the **Margo Identity and Authorization Framework (MIAF)** consists
 
 A typical interaction sequence in MIAF (applicable to all Margo components, not just devices) is as follows. This sequence is **informative** and illustrates a typical flow; normative API details are in [Section 5](#5-apis).
 
-1. **Discovery:** A Margo component locates MIS endpoints and Trust Bundle locations via the `.well-known/margo` discovery document defined in this SUP.
+1. **Discovery:** A Margo component locates MIS endpoints and Trust Bundle locations via a discovery document URL defined in this SUP.
 2. **Enrollment:** The component presents a **Bootstrap Credential** (per its Bootstrap Method) to the MIS and receives an **SVID** for its identity.
 3. **Renewal:** Before expiry, the component renews its SVID via an authenticated request (for example, mTLS using the current SVID).
 4. **Authentication to peers:** The component authenticates to other Margo components using mTLS with its **X.509 SVID**, or, where mTLS is not possible, using a short-lived **JWT SVID** obtained from the MIS.
@@ -864,11 +864,13 @@ All endpoints using `{spiffeIdEncoded}` **MUST** follow this same encoding rule.
 
 The discovery document serves as the **entry point** to a Trust Domain. Before any enrollment, renewal, or JWT SVID exchange operation, a client **MUST** retrieve this document to discover MIS location, supported bootstrap methods, and compatible SVID profiles. It provides the foundational metadata required to interact with all subsequent APIs defined in this specification.
 
+Each discovery document describes exactly one Trust Domain. When an HTTPS origin serves exactly one Trust Domain, deployments **SHOULD** expose the discovery document at `GET /.well-known/margo` on that origin. Deployments **MAY** instead use another absolute HTTPS discovery URL for the applicable Trust Domain (for example, when one origin serves multiple Trust Domains, or when discovery is provisioned per tenant). When a bootstrap method, provisioning flow, or deployment configuration supplies a discovery URL, clients **MUST** use that URL as-is; otherwise, clients **SHOULD** default to `GET /.well-known/margo` on the expected HTTPS origin for that Trust Domain.
+
 This document is **Margo-specific metadata**. It advertises Margo endpoints and bootstrap capabilities and points clients to the standard SPIFFE Bundle Map resource published for the Trust Domain, whose entry for `trust_domain` is the authoritative local Trust Bundle.
 
 | Item | Value |
 | :--- | :---- |
-| **Endpoint** | `GET /.well-known/margo` |
+| **Endpoint** | `GET <discovery-url>` (default convention: `GET /.well-known/margo`) |
 | **Authentication** | None |
 | **Headers** | `Accept: application/json` |
 | **Body schema (request)** | None |
@@ -878,7 +880,7 @@ This document is **Margo-specific metadata**. It advertises Margo endpoints and 
 
 > **Initial trust bootstrap (normative):**
 > The discovery document is intentionally unauthenticated at the application layer, but clients **MUST** authenticate the HTTPS connection used to retrieve it.
-> Specifically, clients **MUST** validate the MIS server identity for `GET /.well-known/margo` using an **initial trust mechanism** that exists prior to this protocol, as defined in [Initial Trust Bootstrap](#initial-trust-bootstrap).
+> Specifically, clients **MUST** validate the MIS server identity for the applicable discovery URL using an **initial trust mechanism** that exists prior to this protocol, as defined in [Initial Trust Bootstrap](#initial-trust-bootstrap).
 
 **Response body schema (`200 OK`, `application/json`):**
 
@@ -894,12 +896,12 @@ This document is **Margo-specific metadata**. It advertises Margo endpoints and 
 | `recommended_svid_profile_uri` | string | Y | URI of the SVID profile version recommended by the MIS. Clients **SHOULD** prefer this profile when compatible. |
 
 > **Informative:**
-> The discovery document is the authoritative entry point for all identity operations. Clients **MUST** query this endpoint before enrollment or renewal to determine the MIS base URI, supported profiles, and authentication methods. This design allows Margo deployments to evolve profiles and bootstrap mechanisms without breaking existing clients, while keeping endpoint locations predictable.
+> The discovery document is the authoritative entry point for all identity operations. Clients **MUST** query the applicable discovery URL before enrollment or renewal to determine the MIS base URI, supported profiles, and authentication methods. This design allows Margo deployments to evolve profiles and bootstrap mechanisms without breaking existing clients, while keeping the default endpoint location predictable.
 > Clients **SHOULD** honor `ETag`/`Last-Modified` when polling the discovery document to minimize load.
 
 ##### Example: Discovery Document <!-- omit from toc -->
 
-**Example request:**
+**Example request using the default path convention:**
 
 ```http
 GET /.well-known/margo
@@ -1565,7 +1567,7 @@ sequenceDiagram
 
     rect rgb(230,230,230)
         note over Device,MIS: Discovery & Trust Bootstrap
-        Device->>MIS: GET /.well-known/margo
+        Device->>MIS: GET discovery URL
         MIS-->>Device: 200 OK (Discovery Document)
         Device->>MIS: GET trust_bundle_uri
         MIS-->>Device: 200 OK (SPIFFE Bundle Map containing local Trust Bundle)
@@ -1590,7 +1592,7 @@ sequenceDiagram
         deactivate RS
     end
 
-      note right of RS: The Resource Server retrieves and caches<br/>the SPIFFE Bundle Map from MIS via the discovery<br/>document (`trust_bundle_uri` in GET /.well-known/margo)<br/>and selects the local Trust Bundle by `trust_domain`.
+      note right of RS: The Resource Server retrieves and caches<br/>the SPIFFE Bundle Map from MIS via the discovery<br/>document (`trust_bundle_uri` in the discovery response)<br/>and selects the local Trust Bundle by `trust_domain`.
 ```
 
 #### Device SVID Renewal Flow
@@ -1670,7 +1672,7 @@ sequenceDiagram
         deactivate RS
         deactivate Proxy
 
-      note right of RS: The Resource Server retrieves and caches<br/>the SPIFFE Bundle Map from MIS via the discovery<br/>document (`trust_bundle_uri` in GET /.well-known/margo)<br/>and selects the local Trust Bundle by `trust_domain`.
+      note right of RS: The Resource Server retrieves and caches<br/>the SPIFFE Bundle Map from MIS via the discovery<br/>document (`trust_bundle_uri` in the discovery response)<br/>and selects the local Trust Bundle by `trust_domain`.
     end
 ```
 
@@ -1782,7 +1784,7 @@ sequenceDiagram
     Operator->>Device: Provision token + discovery URL<br/>(out-of-band, deployment-specific)
 
     Device->>Device: Generate SVID key pair + CSR
-    Device->>MIS: GET /.well-known/margo (server-authenticated HTTPS)
+    Device->>MIS: GET discovery URL (server-authenticated HTTPS)
     MIS-->>Device: Discovery document
     Device->>MIS: POST /api/v1/identities<br/>(svid_profile_uri, CSR, bootstrapCredential.method,<br/>bootstrapCredential.proof.token)
     activate MIS
@@ -1824,12 +1826,14 @@ These requirements ensure that all MIAF operations - discovery, enrollment, rene
 All MIAF trust semantics ultimately depend on an initial root of trust for reaching the MIS in the first place.
 In particular, a new client cannot validate MIS-issued SVIDs using the Trust Bundle until it has retrieved the SPIFFE Bundle Map at `trust_bundle_uri` and selected the Trust Bundle for the relevant Trust Domain.
 
-Therefore, clients **MUST** authenticate the HTTPS connection used to retrieve the discovery document (`GET /.well-known/margo`) and the SPIFFE Bundle Map resource referenced by `trust_bundle_uri` using an **initial trust mechanism** that exists prior to this protocol.
+The discovery URL may be supplied by a bootstrap method, provisioning flow, or deployment configuration, or derived from the default `/.well-known/margo` convention for the expected MIS origin.
+
+Therefore, clients **MUST** authenticate the HTTPS connection used to retrieve the discovery document at the applicable discovery URL and the SPIFFE Bundle Map resource referenced by `trust_bundle_uri` using an **initial trust mechanism** that exists prior to this protocol.
 At least one of the following mechanisms **MUST** be used:
 
 1. **Web PKI / enterprise PKI:** Validate the MIS server certificate chain to a configured set of trust anchors and validate the expected DNS name per [RFC 6125](https://datatracker.ietf.org/doc/html/rfc6125).
 2. **Pinned trust:** Validate the MIS server certificate chain or public key against operator-provisioned pins (for example, a pinned CA certificate).
-3. **Secure bootstrap delivery:** In bootstrap-channel-delivered scenarios (for example, FDO TO2), obtain, through the authenticated bootstrap channel, the discovery information defined by the selected bootstrap method - such as the absolute HTTPS URL of the MIAF discovery document - and any deployment-specific inputs needed to authenticate the first HTTPS retrieval of that document. This SUP does **not** define a common wire format for bootstrap-channel delivery of HTTPS trust anchors. The discovery document and the SPIFFE Bundle Map retrieved over HTTPS, including the selected Trust Bundle for the relevant Trust Domain, remain the authoritative MIAF sources after bootstrap.
+3. **Secure bootstrap delivery:** In bootstrap-channel-delivered scenarios (for example, FDO TO2), obtain, through the authenticated bootstrap channel, the discovery information defined by the selected bootstrap method - such as the absolute HTTPS URL of the MIAF discovery document for the applicable Trust Domain - and any deployment-specific inputs needed to authenticate the first HTTPS retrieval of that document. This SUP does **not** define a common wire format for bootstrap-channel delivery of HTTPS trust anchors. The discovery document and the SPIFFE Bundle Map retrieved over HTTPS, including the selected Trust Bundle for the relevant Trust Domain, remain the authoritative MIAF sources after bootstrap.
 
 Clients **MUST NOT** treat the first retrieval of the discovery document or the SPIFFE Bundle Map at `trust_bundle_uri` as unauthenticated or "trust on first use".
 
@@ -2056,7 +2060,7 @@ The resulting SHA-256 digest **MUST** be encoded as lowercase hexadecimal.
 
 - The OOS **MUST** use the `fdo.csr` ServiceInfo Module's `simpleenroll-*` exchange to convey the device CSR and return the issued leaf certificate representing the device's X.509 SVID.
 - The OOS **MUST** use the `fdo.csr` ServiceInfo Module's `cacerts-*` exchange to return the CA certificates needed to validate the issued SVID chain.
-- The OOS **MUST** use the `margo.discovery` ServiceInfo Module defined below to provide, over the authenticated TO2 channel, the absolute HTTPS URL of the MIAF discovery document (`GET /.well-known/margo`).
+- The OOS **MUST** use the `margo.discovery` ServiceInfo Module defined below to provide, over the authenticated TO2 channel, the absolute HTTPS URL of the MIAF discovery document for the applicable Trust Domain.
 
 #### Initial trust bootstrap for FDO (normative) <!-- omit from toc -->
 
@@ -2072,10 +2076,10 @@ This specification defines the `margo.discovery` ServiceInfo Module for conveyin
 The module uses the following key-value pairs:
 
 - `margo.discovery:active` (`bool`): instructs the device to activate or deactivate the module.
-- `margo.discovery:url` (`tstr`): absolute HTTPS URL of the MIAF discovery document (`GET /.well-known/margo`).
+- `margo.discovery:url` (`tstr`): absolute HTTPS URL of the MIAF discovery document.
 
 - Devices and OOS implementations conformant to the `urn:margo:bootstrap:fdo:v1` method **MUST** implement the `margo.discovery` module.
-- The `margo.discovery:url` value **MUST** be an absolute `https` URL for the discovery document defined by this specification.
+- The `margo.discovery:url` value **MUST** be an absolute `https` URL for the discovery document defined by this specification. The default path convention is `/.well-known/margo`, but deployments **MAY** use another absolute discovery URL that identifies exactly one Trust Domain.
 - The OOS **MUST** send exactly one `margo.discovery:url` value for a successful onboarding attempt.
 - Future revisions of this module **MAY** define additional `margo.discovery:*` keys. Devices **MUST** ignore unknown keys in this module rather than failing onboarding.
 - If the module is unavailable or the URL value is missing or malformed, the onboarding attempt **MUST NOT** be treated as conformant to this profile.
@@ -2285,14 +2289,14 @@ The format and structure of the enrollment token are defined by the MIS implemen
 
 #### Initial trust bootstrap for Enrollment Token (normative) <!-- omit from toc -->
 
-- The enrollment token authenticates only the `POST /api/v1/identities` request and **MUST NOT** be treated as sufficient to authenticate `GET /.well-known/margo` or retrieval of the SPIFFE Bundle Map at `trust_bundle_uri`; [Initial Trust Bootstrap](#initial-trust-bootstrap) applies.
+- The enrollment token authenticates only the `POST /api/v1/identities` request and **MUST NOT** be treated as sufficient to authenticate retrieval of the discovery document or the SPIFFE Bundle Map at `trust_bundle_uri`; [Initial Trust Bootstrap](#initial-trust-bootstrap) applies.
 - The deployment-specific provisioning flow for this method **MUST** ensure that the device has the discovery URL and any trust anchors or pins required for the chosen initial trust mechanism, unless those inputs are already preconfigured on the device.
 
 
 #### Deployment and provisioning notes (informative) <!-- omit from toc -->
 
 - Token generation is performed through MIS administration tooling. The mechanism for token generation is deployment-specific and outside the scope of this specification.
-- The operator **SHOULD** provision both the enrollment token and the **discovery URL** (`GET /.well-known/margo`) on the device. Without the discovery URL, the device cannot locate the MIS.
+- The operator **SHOULD** provision both the enrollment token and the **discovery URL** on the device. By default this URL is `/.well-known/margo` on the expected MIS origin, but deployments **MAY** use another absolute discovery URL. Without the discovery URL, the device cannot locate the MIS.
 - The mechanism for provisioning the token and discovery URL on the device is deployment-specific (for example, USB provisioning, QR code, secure configuration management, or manual entry).
 - Operators **SHOULD** minimize the time window between token generation and device provisioning to reduce the risk of token leakage.
 - After successful enrollment, the device holds a standard X.509 SVID and uses the same renewal, JWT SVID exchange, and peer-authentication flows as devices enrolled via other bootstrap methods. The bootstrap method remains relevant for MIS-side audit, enrollment policy, and rebinding policy even though the enrollment token is no longer presented after enrollment.
