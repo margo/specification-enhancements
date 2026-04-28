@@ -597,6 +597,8 @@ The following requirements describe how MIAF deployments publish and use Trust B
 
 Each Trust Domain maintains a **Trust Bundle**, the authoritative set of cryptographic material used to validate SVIDs within that domain.
 
+The Trust Bundle selected for a Trust Domain is the authoritative source for validating X.509 SVIDs and JWT SVIDs for that Trust Domain **after** it has been retrieved over authenticated HTTPS. It does **not** authenticate its own first retrieval. Clients **MUST** authenticate the HTTPS connection used to retrieve the discovery document and the SPIFFE Bundle Map using [Initial Trust Bootstrap](#initial-trust-bootstrap) before treating any retrieved bundle material as authoritative.
+
 A Trust Bundle **MUST** include:
 
 - X.509 trust-anchor certificates for SVID chain validation; and
@@ -614,7 +616,7 @@ Bundles:
 Validation process:
 
 1. Determine the peer's Trust Domain from its SPIFFE ID.
-2. Retrieve the SPIFFE Bundle Map (via the [discovery document](#discovery-document-endpoint)'s `trust_bundle_uri` or from cache) and select the corresponding Trust Bundle.
+2. Retrieve the SPIFFE Bundle Map over HTTPS authenticated per [Initial Trust Bootstrap](#initial-trust-bootstrap) (via the [discovery document](#discovery-document-endpoint)'s `trust_bundle_uri` or from cache) and select the corresponding Trust Bundle.
 3. Validate the SVID chain or JWT signature using that Trust Bundle.
 4. If validation succeeds and local policy allows, apply **policy-based authorization**.
 
@@ -880,7 +882,7 @@ This document is **Margo-specific metadata**. It advertises Margo endpoints and 
 
 > **Initial trust bootstrap (normative):**
 > The discovery document is intentionally unauthenticated at the application layer, but clients **MUST** authenticate the HTTPS connection used to retrieve it.
-> Specifically, clients **MUST** validate the MIS server identity for the applicable discovery URL using an **initial trust mechanism** that exists prior to this protocol, as defined in [Initial Trust Bootstrap](#initial-trust-bootstrap).
+> Specifically, clients **MUST** validate the MIS server identity for the applicable discovery URL using an **initial trust mechanism** that exists prior to this protocol, as defined in [Initial Trust Bootstrap](#initial-trust-bootstrap). The Trust Bundle referenced by that document does **not** authenticate this first retrieval. If the client cannot authenticate the HTTPS server for the discovery URL, it **MUST** abort bootstrap and **MUST NOT** fall back to unauthenticated retrieval or trust on first use.
 
 **Response body schema (`200 OK`, `application/json`):**
 
@@ -962,6 +964,8 @@ The entry keyed by the local `trust_domain` contains the authoritative set of pu
 | **Body schema (response)** | The response **MUST** conform to the [SPIFFE Bundle Map format](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md#5-spiffe-bundle-map). |
 | **Responses** | `200 OK` - Bundle Map retrieved<br>`304 Not Modified` - cached copy still valid<br>`404 Not Found` - bundle unavailable |
 | **Caching** | The endpoint **SHOULD** support HTTP caching headers (`ETag`, `Last-Modified`). |
+
+The Bundle Map returned by `trust_bundle_uri` is the authoritative source for Trust Bundle material in this specification **after** authenticated retrieval. Clients **MUST NOT** treat this resource as self-authenticating on first retrieval. If the client cannot authenticate the HTTPS server for `trust_bundle_uri` using an initial trust mechanism as defined in [Initial Trust Bootstrap](#initial-trust-bootstrap), the client **MUST** abort bootstrap.
 
 > **Informative:**
 > Clients **MUST** retrieve and validate this Bundle Map, select the Trust Bundle for `trust_domain`, and use that Trust Bundle before validating any SVIDs issued within the Trust Domain.
@@ -1558,6 +1562,7 @@ This flow represents the complete "golden path" for a new **Edge Compute Device*
 > **Note:**
 > This flow illustrates the **default case** for Margo deployments, where devices authenticate directly to Margo components using mTLS and X.509 SVIDs.
 > Scenarios where mTLS is not feasible (for example, due to TLS termination at a proxy) are covered separately in [**JWT SVID Usage in Proxy Scenarios**](#jwt-svid-usage-in-proxy-scenarios).
+> Before the first `GET discovery URL`, the device already has an initial trust basis for the MIS HTTPS endpoint as defined in [Initial Trust Bootstrap](#initial-trust-bootstrap). Both discovery retrieval and subsequent retrieval of `trust_bundle_uri` rely on that HTTPS server authentication; the retrieved Trust Bundle becomes authoritative only after those steps succeed.
 
 ```mermaid
 sequenceDiagram
@@ -1566,7 +1571,7 @@ sequenceDiagram
     participant RS as Resource Server (e.g., WFM)
 
     rect rgb(230,230,230)
-        note over Device,MIS: Discovery & Trust Bootstrap
+    note over Device,MIS: Discovery & Trust Bootstrap<br/>MIS HTTPS server authenticated via initial trust mechanism
         Device->>MIS: GET discovery URL
         MIS-->>Device: 200 OK (Discovery Document)
         Device->>MIS: GET trust_bundle_uri
@@ -1828,6 +1833,15 @@ In particular, a new client cannot validate MIS-issued SVIDs using the Trust Bun
 
 The discovery URL may be supplied by a bootstrap method, provisioning flow, or deployment configuration, or derived from the default `/.well-known/margo` convention for the expected MIS origin.
 
+Bootstrap trust therefore proceeds in the following order:
+
+1. Obtain the applicable discovery URL from the selected bootstrap method, provisioning flow, deployment configuration, or the default `/.well-known/margo` convention.
+2. Authenticate the HTTPS server for that discovery URL using one of the initial trust mechanisms below.
+3. Retrieve the discovery document and learn `trust_bundle_uri`.
+4. Authenticate the HTTPS server for `trust_bundle_uri` using the same or another allowed initial trust mechanism.
+5. Retrieve the SPIFFE Bundle Map and select the Trust Bundle for the relevant Trust Domain.
+6. Use that selected Trust Bundle as the authoritative runtime source for validating SVIDs and JWT SVIDs within that Trust Domain.
+
 Therefore, clients **MUST** authenticate the HTTPS connection used to retrieve the discovery document at the applicable discovery URL and the SPIFFE Bundle Map resource referenced by `trust_bundle_uri` using an **initial trust mechanism** that exists prior to this protocol.
 At least one of the following mechanisms **MUST** be used:
 
@@ -1835,7 +1849,7 @@ At least one of the following mechanisms **MUST** be used:
 2. **Pinned trust:** Validate the MIS server certificate chain or public key against operator-provisioned pins (for example, a pinned CA certificate).
 3. **Secure bootstrap delivery:** In bootstrap-channel-delivered scenarios (for example, FDO TO2), obtain, through the authenticated bootstrap channel, the discovery information defined by the selected bootstrap method - such as the absolute HTTPS URL of the MIAF discovery document for the applicable Trust Domain - and any deployment-specific inputs needed to authenticate the first HTTPS retrieval of that document. This SUP does **not** define a common wire format for bootstrap-channel delivery of HTTPS trust anchors. The discovery document and the SPIFFE Bundle Map retrieved over HTTPS, including the selected Trust Bundle for the relevant Trust Domain, remain the authoritative MIAF sources after bootstrap.
 
-Clients **MUST NOT** treat the first retrieval of the discovery document or the SPIFFE Bundle Map at `trust_bundle_uri` as unauthenticated or "trust on first use".
+If the client cannot authenticate the HTTPS server for the discovery URL or the SPIFFE Bundle Map at `trust_bundle_uri` using one of these mechanisms, the client **MUST** abort bootstrap. Clients **MUST NOT** treat the first retrieval of the discovery document or the SPIFFE Bundle Map at `trust_bundle_uri` as unauthenticated or "trust on first use".
 
 #### Minimum TLS Baseline
 
@@ -1859,6 +1873,7 @@ Validation **MUST** include the following, depending on context:
 
   - The client **MUST** validate the server certificate chain to its configured initial trust anchors (see [Initial Trust Bootstrap](#initial-trust-bootstrap)).
   - The client **MUST** validate the expected DNS name per [RFC 6125 - Service Identity in TLS](https://datatracker.ietf.org/doc/html/rfc6125).
+  - The Trust Bundle selected from `trust_bundle_uri` **MUST NOT** replace these TLS server-validation checks for MIS HTTPS endpoints; it is used to validate SVIDs and JWT SVIDs within the Trust Domain.
 
 - **SVID identity for MIAF mTLS (X.509 SVIDs):**
 
@@ -1882,9 +1897,10 @@ Primary objectives: protect private keys, preserve identity integrity, and minim
 | **Unauthorized Enrollment** | An attacker attempts to enroll without valid bootstrap credentials. | MIS **MUST** validate all bootstrap proofs as defined by the selected bootstrap method. Methods based on manufacturer certificates or hardware attestation provide cryptographic proof of device authenticity. Token-based methods rely on operator-issued, single-use, time-bounded credentials; operators **SHOULD** apply differentiated MIS enrollment, issuance, or rebinding policies based on the bootstrap method used. |
 | **Replay or Theft of SVIDs / Tokens** | An intercepted X.509 SVID or JWT SVID is reused outside its intended context. | All SVIDs **MUST** be short-lived. Resource Servers **MUST** verify signature, expiry, and audience. JWT SVIDs **MUST** be bound to specific audiences and limited lifetimes (<= 5 minutes recommended). |
 | **Private Key Compromise** | An attacker exfiltrates a device's private key. | Keys **MUST** be stored in secure hardware (TPM, TEE, SE) where available; where only software storage is possible, implementations **MUST** provide at-rest encryption, integrity protection, and OS/process isolation (see [Device Key Protection](#device-key-protection)). MIS renewal **MUST** require fresh proof of possession (via CSR or bootstrap credential) before issuing a replacement SVID. |
+| **Initial Trust Anchor Confusion** | An attacker causes a device to trust the wrong HTTPS authority during first contact and serves a malicious discovery document or SPIFFE Bundle Map. | Devices **MUST** authenticate the first HTTPS retrieval of the discovery document and `trust_bundle_uri` using one of the mechanisms in [Initial Trust Bootstrap](#initial-trust-bootstrap). Deployments that provision trust anchors or pins for this purpose **MUST** protect that provisioning path against tampering and **SHOULD** make it auditable. |
 | **Certificate Revocation Lag** | Revocation events are not propagated promptly. | MIS **SHOULD** maintain and publish a [JSON-based revocation list](#revocation-list-endpoint) within its Trust Domain. Clients and servers **SHOULD** poll or cache this list periodically to maintain fresh state. |
 | **Denial-of-Service (DoS)** | Attackers flood enrollment or renewal requests to exhaust MIS resources. | MIS **MUST** rate-limit enrollment, renewal, and JWT SVID exchange operations and return `429 Too Many Requests` with `Retry-After`. Clients **MUST NOT** retry before this interval. |
-| **Service Impersonation / MITM** | An adversary attempts to impersonate MIS or another service. | All endpoints **MUST** use HTTPS with TLS 1.3 and strict certificate validation. Clients **MUST** verify that peer certificates are valid SVIDs issued under the expected Trust Domain and signed by anchors in the Trust Bundle. |
+| **Service Impersonation / MITM** | An adversary attempts to impersonate MIS or another service. | All endpoints **MUST** use HTTPS with TLS 1.3 and strict certificate validation. For MIS HTTPS endpoints, clients **MUST** validate the server certificate chain and expected DNS name using their configured initial trust mechanism. For peer identity validation, clients and services **MUST** verify that presented SVIDs are valid for the expected Trust Domain and signed by anchors in the Trust Bundle. |
 | **Replay of Bootstrap Assertions** | A factory JWT assertion or bootstrap credential is captured and re-submitted. | MIS **MUST** reject any assertion with duplicate `jti` values and **MUST** enforce tight time windows (`exp` <= 5 minutes). |
 | **Cross-Domain Trust Confusion** | Components accept identities from unintended Trust Domains. | Verifiers **MUST** determine the Trust Domain from the SPIFFE ID and **MUST NOT** trust SVIDs unless the domain is explicitly configured or federated. |
 | **Enrollment Token Theft or Leakage** | An attacker obtains an enrollment token before the legitimate device uses it. | Tokens **MUST** be high-entropy (>= 128 bits), single-use, and time-bounded. MIS **MUST** reject expired tokens and, except for method-defined idempotent retry handling, consumed tokens. Operators **SHOULD** minimize the time window between token generation and device provisioning. Tokens **MUST** be transmitted to the device over a secure out-of-band channel. |
@@ -2133,7 +2149,11 @@ Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-
 
 #### Initial trust bootstrap for Factory mTLS (normative) <!-- omit from toc -->
 
-The manufacturer-issued client certificate presented for enrollment authenticates the device to the MIS during mutual TLS, but it does **not** establish the initial trust basis for the first HTTPS retrieval of the MIAF discovery document or the SPIFFE Bundle Map at `trust_bundle_uri`; [Initial Trust Bootstrap](#initial-trust-bootstrap) applies.
+Per [Initial Trust Bootstrap](#initial-trust-bootstrap), this method requires a pre-existing HTTPS trust basis independent of the manufacturer-issued client certificate.
+
+- The device **MUST** obtain the discovery URL from provisioning, deployment configuration, or the default `/.well-known/margo` convention.
+- The device **MUST** authenticate the HTTPS server for the discovery document and the SPIFFE Bundle Map using an allowed initial trust mechanism, typically Web PKI / enterprise PKI or pinned trust configured during manufacturing or operator provisioning.
+- The manufacturer-issued client certificate presented for enrollment authenticates the device to the MIS during mutual TLS only after that HTTPS server authentication has succeeded.
 
 **Process Summary (informative):**
 
@@ -2183,7 +2203,11 @@ Implementations **MUST** derive the ESI as the **SHA-256 fingerprint of the DER-
 
 #### Initial trust bootstrap for Factory JWT (normative) <!-- omit from toc -->
 
-The Bootstrap Assertion JWT authenticates the enrollment request after the HTTPS connection is established, but it does **not** establish the initial trust basis for the first HTTPS retrieval of the MIAF discovery document or the SPIFFE Bundle Map at `trust_bundle_uri`; [Initial Trust Bootstrap](#initial-trust-bootstrap) applies.
+Per [Initial Trust Bootstrap](#initial-trust-bootstrap), this method requires a pre-existing HTTPS trust basis independent of the Bootstrap Assertion JWT.
+
+- The device **MUST** obtain the discovery URL from provisioning, deployment configuration, or the default `/.well-known/margo` convention.
+- The device **MUST** authenticate the HTTPS server for the discovery document and the SPIFFE Bundle Map using an allowed initial trust mechanism, typically Web PKI / enterprise PKI or pinned trust configured during manufacturing or operator provisioning.
+- The Bootstrap Assertion JWT authenticates the enrollment request only after that HTTPS server authentication has succeeded.
 
 #### Factory Bootstrap Assertion JWT Structure <!-- omit from toc -->
 
