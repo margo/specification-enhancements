@@ -115,27 +115,21 @@ PUT /api/v1/clients/{clientId}/capabilities
 
 **Proposed addition.** Replaces the `roles` field. Describes what the device can do and what types of workloads it can receive and process.
 
-A device reports its runtimes using one of two mechanisms:
+#### New Capability items in proposal
 
-* **`supportedRuntimes`** — for well-known, Margo-standard OCI runtimes (docker, podman, kubernetes).
+**`supportedRuntimes`** — for well-known, Margo-standard OCI runtimes (docker, podman, kubernetes).
+- A device MUST report at least one `supportedRuntimes`.
 
-A device MUST report at least one `supportedRuntimes`.
+**`suppotedManifests`** — for well-known, Margo-standard manifests (helm, compose).
+- A device MUST report at least one `supportedManifests`.
+
 
 | Attribute         | Type               | Required? | Description |
 |-------------------|--------------------|-----------|-------------|
 | wfmClient         | boolean         | Y         | Reports the WFM client present on the device. See [WfmClient Attributes](#wfmclient-attributes). |
 | otelCollector     | boolean     | Y         | Reports the OTEL collector present on the device. See [OtelCollector Attributes](#otelcollector-attributes). |
-| supportedRuntimes | []SupportedRuntime | Y        | Standard Margo OCI runtimes available on the device. See [SupportedRuntime Attributes](#supportedruntime-attributes). |
-| supportedManifests| []SupportedManifestType | Y    | Manifest/deployment formats the device can receive and process locally. See [SupportedManifestType](#supportedmanifesttype). |
-
-### SupportedRuntime Attributes
-
-Use `supportedRuntimes` when the device runtime is one of the standard Margo-defined OCI runtime types.
-
-| Attribute | Type              | Required? | Description |
-|-----------|-------------------|-----------|-------------|
-| type      | SupportedRuntimeType | Y      | Example: The standard OCI-compatible runtime available on the device. See [SupportedRuntimeType](#supportedruntimetype). |
-
+| supportedRuntimes | array | Y        | Standard Margo OCI runtimes available on the device. See [SupportedRuntimes](#supportedruntime). |
+| supportedManifests| array | Y    | Manifest/deployment formats the device can receive and process locally. See [SupportedManifest](#supportedmanifest). |
 
 ## Enumerations
 
@@ -172,7 +166,7 @@ Use `supportedRuntimes` when the device runtime is one of the standard Margo-def
 | microphone         | Microphone peripheral. |
 | speaker            | Speaker peripheral. |
 
-### SupportedRuntimeType
+### SupportedRuntimes
 
 | Permissible Values | Description |
 |--------------------|-------------|
@@ -180,7 +174,7 @@ Use `supportedRuntimes` when the device runtime is one of the standard Margo-def
 | podman             | Podman OCI container runtime. |
 | kubernetes         | Kubernetes container orchestration runtime. |
 
-### SupportedManifestType
+### SupportedManifests
 
 | Permissible Values | Description |
 |--------------------|-------------|
@@ -225,15 +219,11 @@ Use `supportedRuntimes` when the device runtime is one of the standard Margo-def
             ]
         },
         "capabilities": {
-            "wfmClient": {
-                "present": true
-            },
-            "otelCollector": {
-                "present": true
-            },
+            "wfmClient": true,
+            "otelCollector": true,
             "supportedRuntimes": [
-                { "type": "kubernetes" },
-                { "type": "podman" }
+                "kubernetes",
+                "podman"
             ],
             "supportedManifests": [
                 "helm",
