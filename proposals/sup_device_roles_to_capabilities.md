@@ -42,7 +42,7 @@ This proposal builds on the current device capability reporting specification. S
 
 ## Device Model: Resources vs. Capabilities
 
-Devices MUST provide the Workload Fleet Management service with both their resources and their capabilities. Resources are quantitative attributes (CPU, memory, storage) used for workload scheduling. Capabilities describe what the device can do — which runtimes it supports, which manifest types it can process, and any vendor-specific or hardware-accelerated features it provides.
+Devices MUST provide the Workload Fleet Management service with both their resources and their capabilities. Resources are quantitative attributes (CPU, memory, storage) used for workload scheduling. Capabilities describe what the device can do — which runtimes it supports, and which manifest types it can process.
 
 This proposal replaces the `roles` field in the current `DeviceCapabilitiesManifest` with a `capabilities` object, while keeping the `resources` object unchanged.
 
@@ -50,25 +50,38 @@ This proposal replaces the `roles` field in the current `DeviceCapabilitiesManif
 
 The `roles` field in the current `DeviceCapabilitiesManifest` `properties` schema is replaced by a `capabilities` object. All references to static device roles (Standalone Cluster, Cluster Leader, Standalone Device) in the specification will be updated following this SUP.
 
-All previously hard-coded device requirements (WFM client, OCI runtime, OTEL collector) are now expressed as capabilities within the `capabilities` object. The WFM client and OTEL collector are reported as boolean flags, while OCI runtime support is captured through `supportedRuntimes` or `vendorRuntimes`. A device MUST report at least one entry across `supportedRuntimes` or `vendorRuntimes`, and MUST report at least one `supportedManifest`.
+All previously hard-coded device requirements (WFM client, OCI runtime, OTEL collector) are now expressed as capabilities within the `capabilities` object. The WFM client and OTEL collector are reported as boolean flags, while OCI runtime support is captured through `supportedRuntimes`. A device MUST report at least one entry across `supportedRuntimes`, and MUST report at least one `supportedManifest`.
+
+If a any element within the device capabilities change, the device client MUST update the `DeviceCapabilitiesManifest` reported to the WFM.
 
 ---
 
 ## Device-Specific Runtimes (active CURRENT SUP)
 
-Devices MUST report vendor-specific runtimes and their named capabilities using the `vendorRuntimes` field in the `capabilities` object. Application description files may specify required vendor runtimes and capabilities. The WFM MUST validate that a device has the required vendor runtime and capabilities before dispatching a deployment.
+> Note: this SUP is related to the following SUP, however, we will reinject the integration at a later point if/once the [Device specific runtimes SUP](https://github.com/margo/specification-enhancements/pull/55) is approved. 
 
 ---
 
 ## Gateway and Compound Devices(APPROVED SUP)
 
-Gateway devices MUST report their capabilities to the WFM as a single `DeviceCapabilitiesManifest`, reflecting the aggregate capabilities of all sub-devices they manage. Gateway operational modes:
+>Note: The Gateway SUP was approved, and is now in the stage of being injected into the specification. If this SUP, roles to capabilities, gets approved, we will need to update the capabilities the Gateway reports. For both Opaque and See-thru configurations. 
+
+### Opaque gateway function
+
+Opaque Gateway devices MUST report their capabilities to the WFM as a single `DeviceCapabilitiesManifest`, reflecting the aggregate capabilities of all sub-devices they manage. Gateway operational modes:
 
 * **Autonomous** — the gateway decides which sub-device handles each deployment.
 * **Directed** — the WFM dictates the sub-device for each deployment.
 * **Mixed** — the WFM directs some placements and the gateway decides the rest.
 
 An opaque gateway presents the combined capabilities of its sub-devices and supports only the autonomous mode.
+
+### See-thru gateway function
+
+See-thru gateway devices must report their capabilities individually, as outlined in this proposal. 
+
+Located [here](https://github.com/margo/specification-enhancements/blob/main/proposals/gateway.md#see-thru-gateway) is the approved SUP that describes how the see-thru devies report their capabilities.
+
 
 ---
 
@@ -105,61 +118,28 @@ PUT /api/v1/clients/{clientId}/capabilities
 A device reports its runtimes using one of two mechanisms:
 
 * **`supportedRuntimes`** — for well-known, Margo-standard OCI runtimes (docker, podman, kubernetes).
-* **`vendorRuntimes`** — for vendor-specific runtime environments that extend or replace the standard runtimes. A device MAY report only `vendorRuntimes` if none of the standard `SupportedRuntimeType` values apply.
 
-A device MUST report at least one entry across `supportedRuntimes` or `vendorRuntimes`.
+A device MUST report at least one `supportedRuntimes`.
 
 | Attribute         | Type               | Required? | Description |
 |-------------------|--------------------|-----------|-------------|
-| wfmClient         | WfmClient          | Y         | Reports the WFM client present on the device. See [WfmClient Attributes](#wfmclient-attributes). |
-| otelCollector     | OtelCollector      | Y         | Reports the OTEL collector present on the device. See [OtelCollector Attributes](#otelcollector-attributes). |
-| supportedRuntimes | []SupportedRuntime | N*        | Standard Margo OCI runtimes available on the device. See [SupportedRuntime Attributes](#supportedruntime-attributes). Required if no `vendorRuntimes` are reported. |
+| wfmClient         | boolean         | Y         | Reports the WFM client present on the device. See [WfmClient Attributes](#wfmclient-attributes). |
+| otelCollector     | boolean     | Y         | Reports the OTEL collector present on the device. See [OtelCollector Attributes](#otelcollector-attributes). |
+| supportedRuntimes | []SupportedRuntime | Y        | Standard Margo OCI runtimes available on the device. See [SupportedRuntime Attributes](#supportedruntime-attributes). |
 | supportedManifests| []SupportedManifestType | Y    | Manifest/deployment formats the device can receive and process locally. See [SupportedManifestType](#supportedmanifesttype). |
-| vendorRuntimes    | []VendorRuntime    | N*        | Vendor-specific runtimes, used as an alternative or supplement to `supportedRuntimes` when standard runtime types do not apply. See [VendorRuntime Attributes](#vendorruntime-attributes). Required if no `supportedRuntimes` are reported. |
-
-> \* At least one of `supportedRuntimes` or `vendorRuntimes` MUST be present.
-
-### WfmClient Attributes
-
-| Attribute | Type   | Required? | Description |
-|-----------|--------|-----------|-------------|
-| present   | boolean | Y        | Indicates whether a Margo-compliant WFM client is installed and running on the device. |
-
-### OtelCollector Attributes
-
-| Attribute | Type    | Required? | Description |
-|-----------|---------|-----------|-------------|
-| present   | boolean | Y         | Indicates whether an OTEL collector is installed and running on the device. |
 
 ### SupportedRuntime Attributes
 
-Use `supportedRuntimes` when the device runtime is one of the standard Margo-defined OCI runtime types. For runtimes not covered by `SupportedRuntimeType`, use `vendorRuntimes` instead.
+Use `supportedRuntimes` when the device runtime is one of the standard Margo-defined OCI runtime types.
 
 | Attribute | Type              | Required? | Description |
 |-----------|-------------------|-----------|-------------|
 | type      | SupportedRuntimeType | Y      | Example: The standard OCI-compatible runtime available on the device. See [SupportedRuntimeType](#supportedruntimetype). |
 
-### VendorRuntime Attributes
-
-Use `vendorRuntimes` when the device provides a runtime environment not covered by the standard `SupportedRuntimeType` values, or when additional vendor-specific metadata and capabilities must be advertised alongside the runtime. This is the extension point for proprietary, platform-specific, or industrial runtime environments.
-
-This section aligns with the device-specific runtime SUP. See ongoing SUP details [here](https://github.com/margo/specification-enhancements/pull/55).
-
-| Attribute            | Type                   | Required? | Description |
-|----------------------|------------------------|-----------|-------------|
-| runtimeRef           | string                 | Y         | Stable identifier for the vendor-specific runtime environment (e.g., reverse-domain scoped, such as `com.northstar-ida.industry.edge-os`). |
-| vendor               | string                 | N         | Human-readable vendor name. |
-| vendorId             | string                 | N         | Stable machine-readable vendor namespace identifier. Runtime and capability identifiers SHOULD be scoped under this value (e.g., `com.northstar-ida`). |
-| modelNumberId        | string                 | N         | Stable model number identifier from a shared dictionary. |
-| version              | string                 | N         | Installed version of the runtime environment. If an application declares a version constraint, the WFM MUST evaluate it against this value. |
-| runtimeCapabilities  | []string               | N         | List of runtime-specific capability identifiers available on the device. If an application declares required `runtimeCapabilities`, the WFM MUST compare them against this list. |
-| properties           | map[string]any         | N         | Optional extensibility map for runtime-specific metadata (e.g., OS version, driver versions). Not part of the core matching model. |
-
-If a `runtimeEnvironment`, its `version`, or its `runtimeCapabilities` change, the device client MUST update the `DeviceCapabilitiesManifest` reported to the WFM.
-
----
 
 ## Enumerations
+
+> Note: These enumerations can be expanded in the future through the SUP process. This SUP aims to set the framework for future expansion. 
 
 ### CpuArchitectureType
 
@@ -258,22 +238,6 @@ If a `runtimeEnvironment`, its `version`, or its `runtimeCapabilities` change, t
             "supportedManifests": [
                 "helm",
                 "compose"
-            ],
-            "vendorRuntimes": [
-                {
-                    "runtimeRef": "com.acme.special-rt",
-                    "vendor": "Acme Corp",
-                    "vendorId": "com.acme",
-                    "modelNumberId": "com.acme.edge-devices.X1000",
-                    "version": "3.1.0",
-                    "runtimeCapabilities": [
-                        "foo",
-                        "bar"
-                    ],
-                    "properties": {
-                        "osVersion": "Debian 12"
-                    }
-                }
             ]
         }
     }
