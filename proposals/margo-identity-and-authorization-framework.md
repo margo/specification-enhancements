@@ -1232,6 +1232,7 @@ This logic ensures consistent handling of first-time enrollments, re-enrollments
   - **No binding exists (initial enrollment)**
 
       - The MIS applies operator-defined Trust Domain policy to determine whether new identities may be created.
+      - If Trust Domain policy requires explicit operator admission before issuance, the MIS **MAY** return `409 Conflict` with the `enrollment-pending` error type and a `Retry-After` header indicating when the device **SHOULD** retry. This response is applicable only to PDI-based bootstrap methods (such as `factory-cert-mtls` and `factory-cert-jwt`); the MIS **MUST NOT** return `enrollment-pending` for methods where the bootstrap proof itself constitutes operator pre-authorization (such as `enrollment-token`). Devices **MUST** treat `enrollment-pending` as a transient condition and retry; they **MUST NOT** treat it as a permanent rejection.
       - Upon approval, the MIS **MUST** create a new identity (for devices: a UUIDv4 Logical Device Identity) and persist a mapping between the enrollment subject identifier and that identity.
       - The MIS then issues an SVID according to the selected `svid_profile_uri` and returns `201 Created` with the profile-conformant response body.
 
@@ -2425,6 +2426,7 @@ Error `type` URIs fall into two categories.
   | Key rotation not permitted | 409 | `https://margo.org/docs/errors/key-rotation-not-permitted` | Key Rotation Not Permitted |
   | Enrollment or renewal rate limit exceeded | 429 | `https://margo.org/docs/errors/too-many-requests` | Too Many Requests |
   | Invalid enrollment token | 401 | `https://margo.org/docs/errors/invalid-enrollment-token` | Invalid Enrollment Token |
+  | Enrollment pending operator admission | 409 | `https://margo.org/docs/errors/enrollment-pending` | Enrollment Pending |
   | Invalid revocation list format | 500 | `https://margo.org/docs/errors/revocation-format` | Revocation List Parsing Error |
 
 ### Error Handling for Specific APIs
@@ -2442,6 +2444,7 @@ The following table summarizes normative mappings.
 | `POST /api/v1/identities` | `replacementAuthorization` present on initial enrollment or ordinary re-enrollment, where it **MUST** be absent | 400 | `spurious-replacement-authorization` | Client **MUST** omit `replacementAuthorization` unless performing replacement / rebinding to an existing identity. |
 | `POST /api/v1/identities` | Replacement ticket invalid, expired, replayed, or not authorized for the requested rebinding | 403 | `replacement-not-authorized` | Client **MUST** obtain valid replacement authorization before retrying. |
 | `POST /api/v1/identities` | Requested key rotation not permitted by policy | 409 | `key-rotation-not-permitted` | Client **MUST** retry with the existing key or obtain operator approval before rotating keys. |
+| `POST /api/v1/identities` | New identity creation deferred pending explicit operator admission; applicable only to PDI-based bootstrap methods | 409 | `enrollment-pending` | Client **MUST** retry after the interval indicated by the `Retry-After` response header. **MUST NOT** be returned for `enrollment-token`. |
 | `POST /api/v1/identities/{spiffeIdEncoded}/renewals` | Unsupported SVID profile | 422 | `unsupported-svid-profile` | Client **MUST** retry with a supported profile. |
 | `POST /api/v1/identities/{spiffeIdEncoded}/jwt-svid` | Audience invalid | 400 | `invalid-audience` | Client **MUST** correct the requested audience and retry. |
 | Any endpoint | Authorization failed (credential invalid or expired) | 401 | `about:blank` | Client **MUST** re-authenticate and retry. |
@@ -2487,8 +2490,8 @@ Clients **MUST** implement the following behaviors to ensure consistent interope
 
 2. **Retry Logic**
 
-    - For recoverable errors (`429`), clients **MAY** retry after the indicated delay or per `Retry-After`.
-    - For permanent errors (`422`, `400`), clients **MUST NOT** retry without correction.
+  - For recoverable errors (for example, `429` `too-many-requests` and `409` `enrollment-pending`), clients **MAY** retry after the indicated delay or per `Retry-After`.
+  - For permanent errors (for example, `422`, `400`, or `409` `key-rotation-not-permitted`), clients **MUST NOT** retry without correction or operator action.
 
 3. **Logging and Auditability**
 
