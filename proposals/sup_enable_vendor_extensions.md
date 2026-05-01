@@ -145,10 +145,10 @@ spec:
       properties:
       repository: oci://northstarida.azurecr.io/charts/northstarida-digitron-orchestrator
       revision: 1.0.9
-  x-northstar-industrial-extensions:
-    device-features:
-      enable-gpu: true
-      custom-init: /opt/northstar/init.sh
+    x-northstar-industrial-extensions:
+      device-features:
+        enable-gpu: true
+        custom-init: /opt/northstar/init.sh
 ```
 
 #### 5. Application Deployment YAML (application ↔ device supplier extension at deploymentProfile.components root)
