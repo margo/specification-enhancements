@@ -64,6 +64,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@ajcraig | Moving away from Device Roles to capabilities | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/50) |
 |@arne-broering | Device specific parameter values | P1 | [DRAFT PR](https://github.com/margo/specification-enhancements/pull/54) |
 |@arne-broering | Supporting device specific runtimes | P1 | [DRAFT PR](https://github.com/margo/specification-enhancements/pull/55) |
+|@phil-abb | Supporting vendor specific extensions | P1 | [DRAFT PR](https://github.com/margo/specification-enhancements/pull/56) |
 
 ## SUP Owner SUP Checklist
 
