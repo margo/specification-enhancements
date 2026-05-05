@@ -715,7 +715,7 @@ The MIS **MUST** maintain an authoritative mapping of ESI to LDI within the Trus
 >   ENR -->|SVID issued| ACT
 >   ACT -->|Before expiry| REN
 >   REN -->|SVID renewed| ACT
->   ACT -->|Authorized rebinding (hardware replacement, credential refresh, operator-initiated)| REP
+>   ACT -->|"Authorized rebinding (hardware replacement, credential refresh, operator-initiated)"| REP
 >   REP -->|Rebinding complete| ACT
 >   ACT -->|Compromise / Decommission / Retirement| REV
 >   REV -->|Identity retired| END([End of Lifecycle])
