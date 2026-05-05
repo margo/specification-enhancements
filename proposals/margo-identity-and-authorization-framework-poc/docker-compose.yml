@@ -1,0 +1,234 @@
+services:
+  # Step CA is an online CA for secure, automated certificate management. In this PoC,
+  # Step CA manages the root CA used by any X.509 SVIDs issued in this PoC.
+  step-ca:
+    image: smallstep/step-ca:latest
+    user: "0"
+    entrypoint: ["/bin/bash", "/etc/step-ca/entrypoint.sh"]
+    command:
+      - /usr/local/bin/step-ca
+      - --password-file
+      - /home/step/secrets/password
+      - /home/step/config/ca.json
+    environment:
+      DOCKER_STEPCA_INIT_NAME: Margo PoC
+      DOCKER_STEPCA_INIT_DNS_NAMES: step-ca,localhost
+      DOCKER_STEPCA_INIT_PROVISIONER_NAME: margo-mis
+      DOCKER_STEPCA_INIT_PASSWORD_FILE: /run/secrets/step-password
+      CRED_OUT: /cred-out
+    volumes:
+      - step-ca-data:/home/step
+      - ./config/step-ca/password:/run/secrets/step-password:ro
+      - ./config/step-ca/entrypoint.sh:/etc/step-ca/entrypoint.sh:ro
+      - step-ca-cred-share:/cred-out
+    ports:
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD", "step", "ca", "health", "--ca-url", "https://localhost:9000", "--root", "/home/step/certs/root_ca.crt"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # The "Margo Identity Service" (MIS) container. The MIS exposes its normative
+  # HTTP REST API at tcp/8443 over HTTPS.
+  #
+  # Deployment Mode: Intermediate CA mode
+  #
+  # This MIS implementation also serves a non-normative admin API (/admin/v1) on 127.0.0.1:8445
+  # inside the container. This port is NOT published.
+  # Invoke `docker compose exec mis mis generate-token` for admin operations.
+  mis:
+    profiles: ["intermediate"]
+    build:
+      context: .
+      dockerfile: Dockerfile.mis
+    depends_on:
+      mis-intermediate-bootstrap:
+        condition: service_completed_successfully
+    env_file: ./config/mis.env
+    volumes:
+      - ./var/dev/mis-etc/tls:/etc/mis/tls:ro
+      - ./var/dev/mis-etc/factory/root.crt:/etc/mis/factory/root.crt:ro
+      - mis-ca-share:/etc/mis/ca:ro
+      - mis-identity:/var/lib/mis
+      - ./var/dev/mis-etc/jwtsvid:/etc/mis/jwtsvid:ro
+    ports:
+      - "8443:8443"
+    container_name: mis
+
+  # The "Margo Identity Service" (MIS) container. The MIS exposes its normative
+  # HTTP REST API at tcp/8443 over HTTPS.
+  #
+  # Deployment Mode: Registration Authority mode
+  #
+  # This MIS implementation also serves a non-normative admin API (/admin/v1) on 127.0.0.1:8445
+  # inside the container. This port is NOT published.
+  # Invoke `docker compose exec mis mis generate-token` for admin operations.
+  mis-ra:
+    profiles: ["ra"]
+    build:
+      context: .
+      dockerfile: Dockerfile.mis
+    depends_on:
+      step-ca:
+        condition: service_healthy
+    env_file:
+      - ./config/mis.env
+      - ./config/mis.ra.env
+    volumes:
+      - ./var/dev/mis-etc/tls:/etc/mis/tls:ro
+      - ./var/dev/mis-etc/factory/root.crt:/etc/mis/factory/root.crt:ro
+      - step-ca-cred-share:/etc/mis/stepca:ro
+      - mis-identity:/var/lib/mis
+      - ./var/dev/mis-etc/jwtsvid:/etc/mis/jwtsvid:ro
+    ports:
+      - "8443:8443"
+    container_name: mis
+
+  # This container is identical to "mis" in intermediate CA mode but
+  # uses short TTLs (MIS_SVID_TTL=2m) for the daemon E2E lifecycle test.
+  #
+  # Run via `make up-daemon-test`.
+  mis-daemon-test:
+    profiles: ["daemon-test"]
+    build:
+      context: .
+      dockerfile: Dockerfile.mis
+    depends_on:
+      mis-intermediate-bootstrap:
+        condition: service_completed_successfully
+    env_file:
+      - ./config/mis.env
+      - ./config/mis-daemon-test.env
+    volumes:
+      - ./var/dev/mis-etc/tls:/etc/mis/tls:ro
+      - ./var/dev/mis-etc/factory/root.crt:/etc/mis/factory/root.crt:ro
+      - mis-ca-share:/etc/mis/ca:ro
+      - mis-identity:/var/lib/mis
+      - ./var/dev/mis-etc/jwtsvid:/etc/mis/jwtsvid:ro
+    ports:
+      - "8443:8443"
+    container_name: mis
+
+  # This container bootstraps an intermediate CA signed by Step CA's root CA.
+  # MIS uses the intermediate CA is in "intermediate CA" mode to sign X.509 SVIDs
+  # without interacting with Step CA directly via its admin API.
+  mis-intermediate-bootstrap:
+    profiles: ["intermediate", "daemon-test"]
+    build:
+      context: .
+      dockerfile: Dockerfile.bootstrap
+    depends_on:
+      step-ca:
+        condition: service_healthy
+    volumes:
+      - ./scripts/bootstrap-mis-intermediate.sh:/usr/local/bin/bootstrap.sh:ro
+      - ./config/step-ca/password:/etc/step/password:ro
+      - step-ca-data:/ca:ro
+      - mis-ca-share:/out
+    entrypoint: ["/bin/sh", "/usr/local/bin/bootstrap.sh"]
+
+  ############################
+  # MIS / SPIRE interop demo
+  ############################
+  spire-server:
+    profiles: ["spire"]
+    image: ghcr.io/spiffe/spire-server:1.10.4
+    user: "0"
+    depends_on:
+      spire-upstream-bootstrap:
+        condition: service_completed_successfully
+    command:
+      - -config
+      - /etc/spire/server/server.conf
+    volumes:
+      - ./config/spire-server/server.conf:/etc/spire/server/server.conf:ro
+      - spire-upstream-share:/etc/spire/upstream:ro
+      - spire-server-data:/run/spire/server/data
+      - spire-server-admin:/tmp/spire-server/private
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD", "/opt/spire/bin/spire-server", "healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  spire-upstream-bootstrap:
+    profiles: ["spire"]
+    build:
+      context: .
+      dockerfile: Dockerfile.bootstrap
+    depends_on:
+      step-ca:
+        condition: service_healthy
+    volumes:
+      - ./scripts/bootstrap-spire-upstream.sh:/usr/local/bin/bootstrap.sh:ro
+      - ./config/step-ca/password:/etc/step/password:ro
+      - step-ca-data:/ca:ro
+      - spire-upstream-share:/out
+    entrypoint: ["/bin/sh", "/usr/local/bin/bootstrap.sh"]
+
+  spire-entries-bootstrap:
+    profiles: ["spire"]
+    build:
+      context: .
+      dockerfile: Dockerfile.spire-bootstrap
+    depends_on:
+      spire-server:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/usr/local/bin/bootstrap.sh"]
+    volumes:
+      - ./scripts/bootstrap-spire-entries.sh:/usr/local/bin/bootstrap.sh:ro
+      - spire-server-admin:/tmp/spire-server/private:ro
+      - spire-agent-bootstrap:/run/spire/agent/bootstrap
+
+  spire-agent:
+    profiles: ["spire"]
+    build:
+      context: .
+      dockerfile: Dockerfile.spire-agent
+    depends_on:
+      spire-entries-bootstrap:
+        condition: service_completed_successfully
+    pid: host
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        /opt/spire/bin/spire-agent run
+        -config /etc/spire/agent/agent.conf
+        -joinToken "$$(cat /run/spire/agent/bootstrap/join-token)"
+    volumes:
+      - ./config/spire-agent/agent.conf:/etc/spire/agent/agent.conf:ro
+      - spire-agent-bootstrap:/run/spire/agent/bootstrap:ro
+      - spire-agent-socket:/run/spire/agent-socket
+
+  spire-workload:
+    profiles: ["spire"]
+    build:
+      context: .
+      dockerfile: Dockerfile.spire-workload
+    depends_on:
+      spire-agent:
+        condition: service_started
+    labels:
+      com.margo.role: spire-workload
+    environment:
+      SPIRE_WORKLOAD_LISTEN: ":8444"
+      SPIRE_WORKLOAD_TRUST_DOMAIN: "margo.example.com"
+      SPIRE_AGENT_SOCKET: "unix:///run/spire/agent-socket/api.sock"
+    volumes:
+      - spire-agent-socket:/run/spire/agent-socket:ro
+    ports:
+      - "8444:8444"
+
+volumes:
+  mis-ca-share:
+  step-ca-data:
+  step-ca-cred-share:
+  mis-identity:
+  spire-upstream-share:
+  spire-server-data:
+  spire-server-admin:
+  spire-agent-bootstrap:
+  spire-agent-socket:

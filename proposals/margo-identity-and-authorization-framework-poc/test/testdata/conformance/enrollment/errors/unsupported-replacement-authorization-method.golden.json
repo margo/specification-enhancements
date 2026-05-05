@@ -1,0 +1,5 @@
+{
+  "type": "https://margo.org/docs/errors/unsupported-replacement-authorization-method",
+  "title": "Unsupported Replacement Authorization Method",
+  "status": 422
+}

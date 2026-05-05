@@ -1,0 +1,5 @@
+{
+  "type": "https://margo.org/docs/errors/invalid-audience",
+  "title": "Invalid Audience",
+  "status": 400
+}

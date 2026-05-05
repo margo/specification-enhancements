@@ -1,0 +1,6 @@
+FROM smallstep/step-ca:latest
+
+# Run as root so the bootstrap script can chown files to the MIS user (65532)
+# on the shared volume; the smallstep image otherwise runs as the `step` user.
+USER root
+ENTRYPOINT ["/bin/sh"]

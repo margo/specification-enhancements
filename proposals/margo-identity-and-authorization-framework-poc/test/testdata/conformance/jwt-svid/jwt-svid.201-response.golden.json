@@ -1,0 +1,4 @@
+{
+  "jwt": "<<JWT>>",
+  "expires_at": "<<EXPIRES_AT>>"
+}
