@@ -106,7 +106,7 @@ func newRenewHarnessWithAuth(t *testing.T, policy identity.StaticPolicy, limit s
 	// Wrap in a mux that installs the path-parameter value the way the real
 	// mux does; use httptest so we can call it via a full HTTP round-trip.
 	mux := http.NewServeMux()
-	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewals", h)
+	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewal", h)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if installPeer {
 			r.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{peer}}
@@ -158,7 +158,7 @@ func postRenewal(t *testing.T, h *renewHarness, spiffeID string, body []byte) (*
 func postRenewalWithHeaders(t *testing.T, h *renewHarness, spiffeID string, body []byte, headers map[string]string) (*http.Response, []byte) {
 	t.Helper()
 	enc := common.EncodeSPIFFEID(spiffeID)
-	u := h.srv.URL + "/api/v1/identities/" + enc + "/renewals"
+	u := h.srv.URL + "/api/v1/identities/" + enc + "/renewal"
 	req, _ := http.NewRequest(http.MethodPost, u, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	for k, v := range headers {
@@ -348,14 +348,14 @@ func TestRenewal_NoPeerCert(t *testing.T) {
 	})
 
 	mux := http.NewServeMux()
-	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewals", h)
+	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewal", h)
 	// Do NOT install a peer cert.
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 
 	body, _ := json.Marshal(common.EnrollmentRequestDTO{SVIDProfileURI: common.SVIDProfileURIX509V1})
 	enc := common.EncodeSPIFFEID("spiffe://" + td + "/margo/device/x")
-	resp, _ := http.Post(srv.URL+"/api/v1/identities/"+enc+"/renewals", "application/json", bytes.NewReader(body))
+	resp, _ := http.Post(srv.URL+"/api/v1/identities/"+enc+"/renewal", "application/json", bytes.NewReader(body))
 	if resp.StatusCode != 401 {
 		t.Errorf("status = %d, want 401", resp.StatusCode)
 	}

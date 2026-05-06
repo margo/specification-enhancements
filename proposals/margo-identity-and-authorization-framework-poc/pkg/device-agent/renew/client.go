@@ -32,7 +32,7 @@ type Result struct {
 	Response   common.EnrollmentResponseDTO // populated on 2xx
 }
 
-// Renew posts a new CSR to /api/v1/identities/{spiffeIdEncoded}/renewals.
+// Renew posts a new CSR to /api/v1/identities/{spiffeIdEncoded}/renewal.
 // When BearerToken is empty, the HTTPS transport is expected to carry the
 // device's current SVID as the mTLS client certificate. When BearerToken is
 // set, the request is authenticated with Authorization: Bearer <jwt-svid>.
@@ -95,5 +95,5 @@ func Renew(ctx context.Context, req Request) (*Result, error) {
 // RenewalURL returns the MIS renewal endpoint URL for the given SPIFFE ID.
 func RenewalURL(misBaseURL, spiffeID string) string {
 	enc := common.EncodeSPIFFEID(spiffeID)
-	return strings.TrimRight(misBaseURL, "/") + "/api/v1/identities/" + enc + "/renewals"
+	return strings.TrimRight(misBaseURL, "/") + "/api/v1/identities/" + enc + "/renewal"
 }

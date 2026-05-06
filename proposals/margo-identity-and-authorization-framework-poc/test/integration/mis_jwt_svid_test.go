@@ -99,7 +99,7 @@ func TestJWTSVIDExchange_Integration(t *testing.T) {
 	// jwt-svid handler once we have the URL.
 	mux := http.NewServeMux()
 	mux.Handle("POST /api/v1/identities", enrollH)
-	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewals", renewH)
+	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewal", renewH)
 
 	// currentPeer holds the peer cert to inject for each request; nil means no
 	// peer cert (client_assertion path).

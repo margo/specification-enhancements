@@ -20,7 +20,7 @@ type Config struct {
 	BundleMapHandler http.Handler
 	// EnrollmentHandler handles POST /api/v1/identities.
 	EnrollmentHandler http.Handler
-	// RenewalHandler handles POST /api/v1/identities/{spiffeIdEncoded}/renewals.
+	// RenewalHandler handles POST /api/v1/identities/{spiffeIdEncoded}/renewal.
 	RenewalHandler http.Handler
 	// JWTSVIDHandler handles POST /api/v1/identities/{spiffeIdEncoded}/jwt-svid.
 	JWTSVIDHandler http.Handler
@@ -68,7 +68,7 @@ func NewServer(cfg Config) *Server {
 	mux.Handle("GET /.well-known/margo", cfg.DiscoveryHandler)
 	mux.Handle("GET /.well-known/spiffe/bundle.json", cfg.BundleMapHandler)
 	mux.Handle("POST /api/v1/identities", cfg.EnrollmentHandler)
-	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewals", cfg.RenewalHandler)
+	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewal", cfg.RenewalHandler)
 	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/jwt-svid", cfg.JWTSVIDHandler)
 	mux.Handle("GET /api/v1/revocations", cfg.RevocationsHandler)
 
@@ -122,4 +122,3 @@ func (s *Server) ListenAndServeTLS(ctx context.Context, addr, certFile, keyFile 
 		return err
 	}
 }
-

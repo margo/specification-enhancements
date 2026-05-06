@@ -1270,7 +1270,7 @@ the client either presents its current X.509 SVID as a TLS client certificate (m
 
 | Item | Value |
 | :--- | :---- |
-| **Endpoint** | `POST /api/v1/identities/{spiffeIdEncoded}/renewals` |
+| **Endpoint** | `POST /api/v1/identities/{spiffeIdEncoded}/renewal` |
 | **Authentication**         | **Either:**<br>- **Mutual TLS:** The client **MUST** present its current X.509 SVID as the TLS client certificate. The MIS **MUST** extract the SPIFFE ID from the URI SAN and verify that it matches `{spiffeIdEncoded}`.<br>- **JWT SVID (Bearer):** The client **MUST** present a valid JWT SVID using `Authorization: Bearer <jwt-svid>`. The MIS **MUST** validate the JWT SVID according to the [JWT SVID Profile](#jwt-svid-profile), and verify that the `sub` claim's SPIFFE ID matches `{spiffeIdEncoded}`.<br>`{spiffeIdEncoded}` **MUST** be computed as defined in the [Common URI and Encoding Rules](#common-uri-and-encoding-rules). |
 | **Headers** | `Content-Type: application/json` |
 | **Body schema (request)**  | See below |
@@ -1298,7 +1298,7 @@ the client either presents its current X.509 SVID as a TLS client certificate (m
 **Example request (device renewing X.509 SVID over mTLS):**
 
 ```http
-POST /api/v1/identities/c3BpZmZlOi8vbm9ydGhzdGFyLWlkYS5jb20vbWFyZ28vZGV2aWNlLzEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMA/renewals
+POST /api/v1/identities/c3BpZmZlOi8vbm9ydGhzdGFyLWlkYS5jb20vbWFyZ28vZGV2aWNlLzEyM2U0NTY3LWU4OWItMTJkMy1hNDU2LTQyNjYxNDE3NDAwMA/renewal
 Content-Type: application/json
 # TLS 1.3, client certificate = current device X.509 SVID
 ```
@@ -1615,7 +1615,7 @@ sequenceDiagram
 
     rect rgb(235,235,235)
         note over Device,MIS: SVID Renewal
-        Device->>MIS: POST /api/v1/identities/{spiffeIdEncoded}/renewals<br/>(svid_profile_uri, svid_request[CSR])
+        Device->>MIS: POST /api/v1/identities/{spiffeIdEncoded}/renewal<br/>(svid_profile_uri, svid_request[CSR])
         activate MIS
         MIS->>MIS: Authenticate via current identity<br/>(mTLS with current X.509 SVID or JWT SVID (Bearer))
         MIS->>MIS: Validate CSR & policy (key rotation permitted?) 
@@ -2446,7 +2446,7 @@ The following table summarizes normative mappings.
 | `POST /api/v1/identities` | Replacement ticket invalid, expired, replayed, or not authorized for the requested rebinding | 403 | `replacement-not-authorized` | Client **MUST** obtain valid replacement authorization before retrying. |
 | `POST /api/v1/identities` | Requested key rotation not permitted by policy | 409 | `key-rotation-not-permitted` | Client **MUST** retry with the existing key or obtain operator approval before rotating keys. |
 | `POST /api/v1/identities` | New identity creation deferred pending explicit operator admission; applicable only to PDI-based bootstrap methods | 409 | `enrollment-pending` | Client **MUST** retry after the interval indicated by the `Retry-After` response header. **MUST NOT** be returned for `enrollment-token`. |
-| `POST /api/v1/identities/{spiffeIdEncoded}/renewals` | Unsupported SVID profile | 422 | `unsupported-svid-profile` | Client **MUST** retry with a supported profile. |
+| `POST /api/v1/identities/{spiffeIdEncoded}/renewal` | Unsupported SVID profile | 422 | `unsupported-svid-profile` | Client **MUST** retry with a supported profile. |
 | `POST /api/v1/identities/{spiffeIdEncoded}/jwt-svid` | Audience invalid | 400 | `invalid-audience` | Client **MUST** correct the requested audience and retry. |
 | Any endpoint | Authorization failed (credential invalid or expired) | 401 | `about:blank` | Client **MUST** re-authenticate and retry. |
 | Any endpoint | Rate limit exceeded | 429 | `too-many-requests` | Client **SHOULD** apply backoff and alert operator. |

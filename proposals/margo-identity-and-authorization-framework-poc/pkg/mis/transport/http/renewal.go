@@ -53,7 +53,7 @@ type RenewalConfig struct {
 	Now func() time.Time
 }
 
-// NewRenewalHandler builds the POST /api/v1/identities/{spiffeIdEncoded}/renewals handler.
+// NewRenewalHandler builds the POST /api/v1/identities/{spiffeIdEncoded}/renewal handler.
 func NewRenewalHandler(cfg RenewalConfig) http.Handler {
 	if cfg.Service == nil {
 		panic("http: RenewalConfig.Service is required")
@@ -100,7 +100,7 @@ func handleRenewal(w http.ResponseWriter, r *http.Request, cfg RenewalConfig) {
 			return
 		}
 		token := strings.TrimSpace(strings.TrimPrefix(auth, "Bearer "))
-		audience := strings.TrimRight(cfg.EndpointBaseURL, "/") + "/api/v1/identities/" + encoded + "/renewals"
+		audience := strings.TrimRight(cfg.EndpointBaseURL, "/") + "/api/v1/identities/" + encoded + "/renewal"
 		authenticatedSPIFFEID, err := cfg.BearerVerifier.Verify(r.Context(), token, audience)
 		if err != nil {
 			WriteProblem(w, r, errpkg.New(http.StatusUnauthorized, "Unauthorized").

@@ -19,8 +19,8 @@ import (
 	"time"
 
 	"github.com/margo/miaf-poc/pkg/common"
-	"github.com/margo/miaf-poc/pkg/device-agent/identitymanager"
 	"github.com/margo/miaf-poc/pkg/device-agent/agentstate"
+	"github.com/margo/miaf-poc/pkg/device-agent/identitymanager"
 )
 
 // mintLeafChain builds a minimal leaf cert signed by a fresh CA.
@@ -190,7 +190,7 @@ func TestHandleRenew_BearerAuthPath(t *testing.T) {
 				JWT:       "issued-jwt",
 				ExpiresAt: time.Now().Add(5 * time.Minute).UTC().Format(time.RFC3339),
 			})
-		case strings.HasSuffix(r.URL.Path, "/renewals"):
+		case strings.HasSuffix(r.URL.Path, "/renewal"):
 			sawBearerRenew = true
 			if got := r.Header.Get("Authorization"); got != "Bearer issued-jwt" {
 				t.Errorf("Authorization = %q, want Bearer issued-jwt", got)

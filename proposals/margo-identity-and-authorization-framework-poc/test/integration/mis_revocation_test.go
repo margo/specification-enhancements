@@ -74,7 +74,7 @@ func TestIntegration_Revocation_EnrollAdminRevokeList(t *testing.T) {
 	adminMux := adminSrv.Handler()
 
 	renewMux := http.NewServeMux()
-	renewMux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewals", mishttp.NewRenewalHandler(mishttp.RenewalConfig{
+	renewMux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewal", mishttp.NewRenewalHandler(mishttp.RenewalConfig{
 		Service:     svc,
 		RateLimiter: s.RenewalEvents(store.RenewalEventsConfig{MaxInWindow: 10, Window: time.Hour}),
 	}))
@@ -172,7 +172,7 @@ func TestIntegration_Revocation_EnrollAdminRevokeList(t *testing.T) {
 		SVIDProfileURI: common.SVIDProfileURIX509V1,
 		SVIDRequest:    common.SVIDRequestX509DTO{CSR: base64.StdEncoding.EncodeToString(renewCSR)},
 	})
-	renewURL := "/api/v1/identities/" + common.EncodeSPIFFEID(spiffeID) + "/renewals"
+	renewURL := "/api/v1/identities/" + common.EncodeSPIFFEID(spiffeID) + "/renewal"
 	renewReq := httptest.NewRequest(http.MethodPost, renewURL, bytes.NewReader(renewBody))
 	renewReq.Header.Set("Content-Type", "application/json")
 	renewReq.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{leaf}}

@@ -18,8 +18,8 @@ import (
 
 func TestRenew_HappyPath(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasSuffix(r.URL.Path, "/renewals") {
-			t.Errorf("path = %q; expected /renewals suffix", r.URL.Path)
+		if !strings.HasSuffix(r.URL.Path, "/renewal") {
+			t.Errorf("path = %q; expected /renewal suffix", r.URL.Path)
 		}
 		var req common.EnrollmentRequestDTO
 		_ = json.NewDecoder(r.Body).Decode(&req)

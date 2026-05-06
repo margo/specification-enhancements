@@ -85,7 +85,7 @@ func newRenewalConformanceHarness(t *testing.T, policy identity.StaticPolicy, li
 		Logger:      slog.Default(),
 	})
 	mux := http.NewServeMux()
-	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewals", h)
+	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewal", h)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{leaf}}
 		mux.ServeHTTP(w, r)
@@ -106,10 +106,10 @@ func TestConformance_Renewal_200(t *testing.T) {
 		SVIDProfileURI: common.SVIDProfileURIX509V1,
 		SVIDRequest:    common.SVIDRequestX509DTO{CSR: renewalCSR(t, h.key)},
 	})
-	u := h.srv.URL + "/api/v1/identities/" + common.EncodeSPIFFEID(h.spid) + "/renewals"
+	u := h.srv.URL + "/api/v1/identities/" + common.EncodeSPIFFEID(h.spid) + "/renewal"
 	resp, err := http.Post(u, "application/json", bytes.NewReader(body))
 	if err != nil {
-		t.Fatalf("POST renewals: %v", err)
+		t.Fatalf("POST renewal: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
@@ -146,7 +146,7 @@ func TestConformance_Renewal_Errors(t *testing.T) {
 					SVIDProfileURI: common.SVIDProfileURIX509V1,
 					SVIDRequest:    common.SVIDRequestX509DTO{CSR: renewalCSR(t, rotKey)},
 				})
-				return 409, h.srv.URL + "/api/v1/identities/" + common.EncodeSPIFFEID(h.spid) + "/renewals", b
+				return 409, h.srv.URL + "/api/v1/identities/" + common.EncodeSPIFFEID(h.spid) + "/renewal", b
 			},
 		},
 		{
@@ -160,7 +160,7 @@ func TestConformance_Renewal_Errors(t *testing.T) {
 					SVIDProfileURI: "https://margo.org/profiles/spiffe/jwt-svid/v1",
 					SVIDRequest:    common.SVIDRequestX509DTO{CSR: renewalCSR(t, h.key)},
 				})
-				return 422, h.srv.URL + "/api/v1/identities/" + common.EncodeSPIFFEID(h.spid) + "/renewals", b
+				return 422, h.srv.URL + "/api/v1/identities/" + common.EncodeSPIFFEID(h.spid) + "/renewal", b
 			},
 		},
 		{
@@ -174,7 +174,7 @@ func TestConformance_Renewal_Errors(t *testing.T) {
 					SVIDProfileURI: common.SVIDProfileURIX509V1,
 					SVIDRequest:    common.SVIDRequestX509DTO{CSR: "not-a-csr"},
 				})
-				return 400, h.srv.URL + "/api/v1/identities/" + common.EncodeSPIFFEID(h.spid) + "/renewals", b
+				return 400, h.srv.URL + "/api/v1/identities/" + common.EncodeSPIFFEID(h.spid) + "/renewal", b
 			},
 		},
 		{
@@ -185,7 +185,7 @@ func TestConformance_Renewal_Errors(t *testing.T) {
 			wantCode: 429,
 			mutate: func(t *testing.T, h *renewalHarness) (int, string, []byte) {
 				// First burn the one-slot budget.
-				u := h.srv.URL + "/api/v1/identities/" + common.EncodeSPIFFEID(h.spid) + "/renewals"
+				u := h.srv.URL + "/api/v1/identities/" + common.EncodeSPIFFEID(h.spid) + "/renewal"
 				b, _ := json.Marshal(common.EnrollmentRequestDTO{
 					SVIDProfileURI: common.SVIDProfileURIX509V1,
 					SVIDRequest:    common.SVIDRequestX509DTO{CSR: renewalCSR(t, h.key)},

@@ -125,7 +125,7 @@ func TestServer_RenewalRouteLive(t *testing.T) {
 
 	// Well-formed path, no peer cert => the handler must return 401, not 501.
 	enc := common.EncodeSPIFFEID("spiffe://margo.example.com/margo/device/x")
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/identities/"+enc+"/renewals", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/identities/"+enc+"/renewal", nil)
 	rec := httptest.NewRecorder()
 	srv.Handler().ServeHTTP(rec, req)
 

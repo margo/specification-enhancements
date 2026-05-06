@@ -57,7 +57,7 @@ func TestRenewal_Integration(t *testing.T) {
 
 	mux := http.NewServeMux()
 	mux.Handle("POST /api/v1/identities", enrollH)
-	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewals", renewH)
+	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewal", renewH)
 
 	factoryLeaf, _ := x509.ParseCertificate(deviceLeafCert.Certificate[0])
 
@@ -93,7 +93,7 @@ func TestRenewal_Integration(t *testing.T) {
 			SVIDProfileURI: common.SVIDProfileURIX509V1,
 			SVIDRequest:    common.SVIDRequestX509DTO{CSR: base64.StdEncoding.EncodeToString(der)},
 		})
-		path := "/api/v1/identities/" + common.EncodeSPIFFEID(spiffeID) + "/renewals"
+		path := "/api/v1/identities/" + common.EncodeSPIFFEID(spiffeID) + "/renewal"
 		req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		req.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{svidLeaf}}
@@ -135,7 +135,7 @@ func TestRenewal_Integration(t *testing.T) {
 	tightLim := s.RenewalEvents(store.RenewalEventsConfig{MaxInWindow: 100, Window: time.Hour})
 	tightH := mishttp.NewRenewalHandler(mishttp.RenewalConfig{Service: tightSvc, RateLimiter: tightLim})
 	tightMux := http.NewServeMux()
-	tightMux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewals", tightH)
+	tightMux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewal", tightH)
 
 	rotKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	rotDER, _ := x509.CreateCertificateRequest(rand.Reader, &x509.CertificateRequest{SignatureAlgorithm: x509.ECDSAWithSHA256}, rotKey)
@@ -144,7 +144,7 @@ func TestRenewal_Integration(t *testing.T) {
 		SVIDRequest:    common.SVIDRequestX509DTO{CSR: base64.StdEncoding.EncodeToString(rotDER)},
 	})
 	rotReq := httptest.NewRequest(http.MethodPost,
-		"/api/v1/identities/"+common.EncodeSPIFFEID(spiffeID)+"/renewals",
+		"/api/v1/identities/"+common.EncodeSPIFFEID(spiffeID)+"/renewal",
 		bytes.NewReader(rotBody))
 	rotReq.Header.Set("Content-Type", "application/json")
 	rotReq.TLS = &tls.ConnectionState{PeerCertificates: []*x509.Certificate{svidLeaf}}
@@ -223,7 +223,7 @@ func TestRenewal_BearerIntegration(t *testing.T) {
 		DefaultTTL:   5 * time.Minute,
 	})
 	mux.Handle("POST /api/v1/identities", enrollH)
-	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewals", renewH)
+	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/renewal", renewH)
 	mux.Handle("POST /api/v1/identities/{spiffeIdEncoded}/jwt-svid", jwtSVIDH)
 
 	factoryLeaf, _ := x509.ParseCertificate(deviceLeafCert.Certificate[0])
@@ -256,7 +256,7 @@ func TestRenewal_BearerIntegration(t *testing.T) {
 		t.Fatalf("BuildClientAssertion: %v", err)
 	}
 	jwtBody, _ := json.Marshal(common.JWTSVIDExchangeRequestDTO{
-		Audience:        []string{srv.URL + "/api/v1/identities/" + encoded + "/renewals"},
+		Audience:        []string{srv.URL + "/api/v1/identities/" + encoded + "/renewal"},
 		ClientAssertion: assertion,
 	})
 	jwtResp := doPost(t, srv.URL+"/api/v1/identities/"+encoded+"/jwt-svid", jwtBody)
@@ -277,7 +277,7 @@ func TestRenewal_BearerIntegration(t *testing.T) {
 		SVIDProfileURI: common.SVIDProfileURIX509V1,
 		SVIDRequest:    common.SVIDRequestX509DTO{CSR: base64.StdEncoding.EncodeToString(rotCSR)},
 	})
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/identities/"+encoded+"/renewals", bytes.NewReader(rotBody))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/identities/"+encoded+"/renewal", bytes.NewReader(rotBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+jwtDTO.JWT)
 	resp, err := http.DefaultClient.Do(req)
