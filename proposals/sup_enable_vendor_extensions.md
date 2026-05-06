@@ -47,6 +47,7 @@ There are three types of supplier extensions:
 
     - Placed in the Application Deployment YAML at the root of the `spec` object
     - Used for information exchanges between the WMF supplier and the device supplier.
+    - WFM suppliers may also add their own extensions to the `deploymentProfiles` or `deploymentProfiles.components` roots as well.
 
 ### Extension Field Format
 
