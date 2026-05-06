@@ -11,6 +11,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -232,6 +233,27 @@ func openStore(t *testing.T) *store.Store {
 	}
 	t.Cleanup(func() { s.Close() })
 	return s
+}
+
+// parseChainPEM decodes each PEM string in the certificate_chain_pem array
+// from an enrollment / renewal response into parsed certificates, leaf-first.
+func parseChainPEM(chainPEM []string) ([]*x509.Certificate, error) {
+	out := make([]*x509.Certificate, 0, len(chainPEM))
+	for i, p := range chainPEM {
+		block, _ := pem.Decode([]byte(p))
+		if block == nil {
+			return nil, fmt.Errorf("chain[%d]: no PEM block", i)
+		}
+		c, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("chain[%d]: %w", i, err)
+		}
+		out = append(out, c)
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("empty certificate chain")
+	}
+	return out, nil
 }
 
 // startFakeStepCA returns an httptest.TLSServer that responds to POST

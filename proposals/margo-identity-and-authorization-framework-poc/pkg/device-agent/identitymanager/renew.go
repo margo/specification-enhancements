@@ -48,6 +48,11 @@ func (m *Manager) handleRenew(ctx context.Context, c *RenewCmd) {
 			c.Reply <- RenewReply{Err: fmt.Errorf("load current signer: %w", err)}
 			return
 		}
+		svidChain, err := jwtsvid.LoadSVIDChain(m.cfg.SVIDCertFile)
+		if err != nil {
+			c.Reply <- RenewReply{Err: fmt.Errorf("load svid chain: %w", err)}
+			return
+		}
 		exchange, err := jwtsvid.Exchange(ctx, jwtsvid.Request{
 			Client:     cli,
 			MISBaseURL: m.cfg.MISBaseURL,
@@ -56,6 +61,7 @@ func (m *Manager) handleRenew(ctx context.Context, c *RenewCmd) {
 			TTL:        5 * time.Minute,
 			Mode:       jwtsvid.ModeClientAssertion,
 			SigningKey: signer,
+			SVIDChain:  svidChain,
 		})
 		if err != nil {
 			c.Reply <- RenewReply{Err: fmt.Errorf("exchange renewal bearer jwt: %w", err)}

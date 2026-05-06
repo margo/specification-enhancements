@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,6 +38,10 @@ type Request struct {
 	// SigningKey is required when Mode == ModeClientAssertion. It is the
 	// device's current SVID private key.
 	SigningKey crypto.Signer
+	// SVIDChain is required when Mode == ModeClientAssertion. It is the
+	// device's complete SVID chain (leaf followed by intermediates), embedded
+	// in the assertion's JWS x5c header per the SUP X.509 SVID Profile.
+	SVIDChain []*x509.Certificate
 	// Now overrides the clock for assertion iat/exp. Zero uses time.Now.
 	Now func() time.Time
 }
@@ -76,7 +81,10 @@ func Exchange(ctx context.Context, req Request) (*Result, error) {
 		if req.SigningKey == nil {
 			return nil, fmt.Errorf("jwtsvid: SigningKey required for ModeClientAssertion")
 		}
-		assertion, err := BuildClientAssertion(req.SigningKey, req.SPIFFEID, url, req.Now())
+		if len(req.SVIDChain) == 0 {
+			return nil, fmt.Errorf("jwtsvid: SVIDChain required for ModeClientAssertion")
+		}
+		assertion, err := BuildClientAssertion(req.SigningKey, req.SVIDChain, req.SPIFFEID, url, req.Now())
 		if err != nil {
 			return nil, err
 		}

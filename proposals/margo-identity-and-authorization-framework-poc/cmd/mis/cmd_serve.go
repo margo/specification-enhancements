@@ -222,7 +222,7 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		Service:      svc,
 		Signer:       jwtSigner,
 		IssuanceLog:  st.IssuedJWTSVIDs(),
-		LeafLookup:   st.IssuedSVIDs(),
+		BundleSource: trustAnchors,
 		ReplayStore:  st.JWTReplay(),
 		RateLimiter:  renewalLimiter,
 		IssuerURL:    baseURLNoSlash + "/",

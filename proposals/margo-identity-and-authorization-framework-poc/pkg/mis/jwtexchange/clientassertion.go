@@ -16,7 +16,6 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 
 	"github.com/margo/miaf-poc/pkg/mis/bootstrap/factorycertjwt/replay"
-	"github.com/margo/miaf-poc/pkg/mis/identity"
 )
 
 // Error sentinels. All map to 401 about:blank in the HTTP handler.
@@ -24,25 +23,23 @@ var (
 	ErrAssertionMissing = errors.New("jwtexchange: client_assertion missing")
 	ErrAssertionInvalid = errors.New("jwtexchange: client_assertion invalid")
 	ErrReplay           = errors.New("jwtexchange: client_assertion replay")
-	ErrUnknownSPIFFEID  = errors.New("jwtexchange: no active issued SVID for SPIFFE ID")
+	ErrUntrustedChain   = errors.New("jwtexchange: x5c chain does not verify against the Trust Bundle")
+	ErrUnknownSPIFFEID  = errors.New("jwtexchange: x5c[0] SPIFFE ID does not match path")
 	ErrUnsupportedAlg   = errors.New("jwtexchange: unsupported alg")
 )
 
 // permittedAlgs lists the JWS algorithms the SUP allows for this method.
 var permittedAlgs = []jose.SignatureAlgorithm{jose.ES256, jose.PS256}
 
-// LeafLookup is the narrow slice of identity.IssuanceLog the verifier needs.
-type LeafLookup interface {
-	LeafByActiveSPIFFEID(ctx context.Context, spiffeID string, now time.Time) (identity.IssuedSVIDRecord, error)
-}
-
 // VerifyConfig parametrises VerifyClientAssertion.
 type VerifyConfig struct {
-	LeafLookup  LeafLookup       // required
+	// Roots is the set of X.509 trust anchors (root CAs) for the local Trust
+	// Domain, used to validate the x5c chain in the client_assertion. Required.
+	Roots       *x509.CertPool
 	Replay      replay.Store     // required
 	Now         func() time.Time // defaults to time.Now
 	ExpectedAud string           // required: exact endpoint URL
-	MaxLifetime time.Duration    // SUP fixes at 5m; PoC keeps configurable for  tests
+	MaxLifetime time.Duration    // SUP fixes at 5m; PoC keeps configurable for tests
 	ClockSkew   time.Duration    // applied to exp/nbf
 }
 
@@ -58,9 +55,14 @@ type VerifiedClientAssertion struct {
 // Assertion verification. It requires the path-conveyed SPIFFE ID up front so
 // the iss/sub equality is checked against the same value that authorises the
 // surrounding request.
+//
+// The assertion's JWS header MUST include x5c with the complete X.509 SVID
+// chain (leaf first, then intermediates). The chain is validated against
+// cfg.Roots; the JWS signature is verified against the public key of x5c[0];
+// and x5c[0]'s URI SAN MUST equal pathSPIFFEID.
 func VerifyClientAssertion(ctx context.Context, cfg VerifyConfig, pathSPIFFEID, compact string) (VerifiedClientAssertion, error) {
-	if cfg.LeafLookup == nil {
-		return VerifiedClientAssertion{}, errors.New("jwtexchange: VerifyConfig.LeafLookup is required")
+	if cfg.Roots == nil {
+		return VerifiedClientAssertion{}, errors.New("jwtexchange: VerifyConfig.Roots is required")
 	}
 	if cfg.Replay == nil {
 		return VerifiedClientAssertion{}, errors.New("jwtexchange: VerifyConfig.Replay is required")
@@ -88,25 +90,31 @@ func VerifyClientAssertion(ctx context.Context, cfg VerifyConfig, pathSPIFFEID, 
 	if len(parsed.Headers) != 1 {
 		return VerifiedClientAssertion{}, fmt.Errorf("%w: expected one JWS header, got %d", ErrAssertionInvalid, len(parsed.Headers))
 	}
-	hdrAlg := jose.SignatureAlgorithm(parsed.Headers[0].Algorithm)
+	hdr := parsed.Headers[0]
+	hdrAlg := jose.SignatureAlgorithm(hdr.Algorithm)
 
-	// Look up the active leaf for the path SPIFFE ID.
-	rec, err := cfg.LeafLookup.LeafByActiveSPIFFEID(ctx, pathSPIFFEID, cfg.Now())
+	// Extract and verify the x5c chain against the Trust Bundle root anchors.
+	// go-jose v4's Header.Certificates() decodes x5c and runs x509.Verify in
+	// one call, treating x5c[1:] as intermediates and x5c[0] as the leaf.
+	leaf, err := extractAndVerifyChain(hdr, cfg.Roots)
 	if err != nil {
-		if errors.Is(err, identity.ErrNotFound) {
-			return VerifiedClientAssertion{}, ErrUnknownSPIFFEID
+		return VerifiedClientAssertion{}, err
+	}
+
+	// x5c[0]'s URI SAN MUST equal the path-conveyed SPIFFE ID.
+	if len(leaf.URIs) == 0 || leaf.URIs[0].String() != pathSPIFFEID {
+		var got string
+		if len(leaf.URIs) > 0 {
+			got = leaf.URIs[0].String()
 		}
-		return VerifiedClientAssertion{}, fmt.Errorf("jwtexchange: leaf lookup: %w", err)
+		return VerifiedClientAssertion{}, fmt.Errorf("%w: x5c[0] URI SAN = %q, want %q", ErrUnknownSPIFFEID, got, pathSPIFFEID)
 	}
-	leaf, perr := x509.ParseCertificate(rec.LeafDER)
-	if perr != nil {
-		return VerifiedClientAssertion{}, fmt.Errorf("jwtexchange: parse stored leaf: %w", perr)
-	}
+
 	if err := algMatchesLeafKey(hdrAlg, leaf); err != nil {
 		return VerifiedClientAssertion{}, fmt.Errorf("%w: %v", ErrUnsupportedAlg, err)
 	}
 
-	// Verify signature and extract claims.
+	// Verify signature against x5c[0]'s public key, and extract claims.
 	var std jwt.Claims
 	if err := parsed.Claims(leaf.PublicKey, &std); err != nil {
 		return VerifiedClientAssertion{}, fmt.Errorf("%w: signature: %v", ErrAssertionInvalid, err)
@@ -151,6 +159,29 @@ func VerifyClientAssertion(ctx context.Context, cfg VerifyConfig, pathSPIFFEID, 
 		IssuedAt: iat,
 		Expiry:   exp,
 	}, nil
+}
+
+// extractAndVerifyChain decodes the x5c header from h and verifies the chain
+// against roots. It returns x5c[0] on success.
+//
+// jose.ErrMissingX5cHeader indicates x5c was absent entirely, mapped to
+// ErrAssertionInvalid. Any other error means the chain is present but fails
+// trust validation, mapped to ErrUntrustedChain.
+func extractAndVerifyChain(h jose.Header, roots *x509.CertPool) (*x509.Certificate, error) {
+	chains, err := h.Certificates(x509.VerifyOptions{
+		Roots:     roots,
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	})
+	if err != nil {
+		if errors.Is(err, jose.ErrMissingX5cHeader) {
+			return nil, fmt.Errorf("%w: x5c header missing", ErrAssertionInvalid)
+		}
+		return nil, fmt.Errorf("%w: %v", ErrUntrustedChain, err)
+	}
+	if len(chains) == 0 || len(chains[0]) == 0 {
+		return nil, fmt.Errorf("%w: x5c chain empty after verification", ErrAssertionInvalid)
+	}
+	return chains[0][0], nil
 }
 
 func algMatchesLeafKey(alg jose.SignatureAlgorithm, leaf *x509.Certificate) error {

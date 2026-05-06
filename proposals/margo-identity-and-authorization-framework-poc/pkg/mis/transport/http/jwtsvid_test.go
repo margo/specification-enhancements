@@ -3,12 +3,14 @@ package http_test
 import (
 	"bytes"
 	"context"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"math/big"
@@ -25,6 +27,7 @@ import (
 
 	"github.com/margo/miaf-poc/pkg/common"
 	"github.com/margo/miaf-poc/pkg/mis/bootstrap/factorycertjwt/replay"
+	"github.com/margo/miaf-poc/pkg/mis/bundlemap"
 	errpkg "github.com/margo/miaf-poc/pkg/mis/errors"
 	"github.com/margo/miaf-poc/pkg/mis/identity"
 	"github.com/margo/miaf-poc/pkg/mis/store"
@@ -48,14 +51,64 @@ type stubJWTAuditT struct{}
 
 func (stubJWTAuditT) Record(_ context.Context, _ identity.IssuedJWTSVIDRecord) error { return nil }
 
-// stubLeafLookupT implements jwtexchange.LeafLookup.
-type stubLeafLookupT struct {
-	rec identity.IssuedSVIDRecord
-	err error
+// stubBundleSourceT implements mishttp.BundleSource. It returns a snapshot
+// containing a single X.509 root authority used to validate x5c chains in
+// client_assertion JWTs.
+type stubBundleSourceT struct {
+	root *x509.Certificate
 }
 
-func (s *stubLeafLookupT) LeafByActiveSPIFFEID(_ context.Context, _ string, _ time.Time) (identity.IssuedSVIDRecord, error) {
-	return s.rec, s.err
+func (s *stubBundleSourceT) GetTrustAnchors(_ context.Context) (bundlemap.TrustAnchorSet, time.Time, error) {
+	return bundlemap.TrustAnchorSet{
+		TrustDomain:     "margo.example.com",
+		X509Authorities: []*x509.Certificate{s.root},
+	}, time.Now(), nil
+}
+
+// testCA mints a self-signed root and signs leaf certificates.
+type testCA struct {
+	rootKey  *ecdsa.PrivateKey
+	rootCert *x509.Certificate
+}
+
+func newTestCA(t *testing.T) *testCA {
+	t.Helper()
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	tmpl := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "test-ca"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		IsCA:                  true,
+		KeyUsage:              x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	if err != nil {
+		t.Fatalf("ca sign: %v", err)
+	}
+	root, _ := x509.ParseCertificate(der)
+	return &testCA{rootKey: key, rootCert: root}
+}
+
+func (c *testCA) signLeaf(t *testing.T, spiffeID string, pub crypto.PublicKey, serial int64) *x509.Certificate {
+	t.Helper()
+	u, _ := url.Parse(spiffeID)
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(serial),
+		Subject:      pkix.Name{},
+		NotBefore:    time.Now().Add(-time.Minute),
+		NotAfter:     time.Now().Add(time.Hour),
+		URIs:         []*url.URL{u},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, c.rootCert, pub, c.rootKey)
+	if err != nil {
+		t.Fatalf("leaf sign: %v", err)
+	}
+	leaf, _ := x509.ParseCertificate(der)
+	return leaf
 }
 
 // stubReplayT implements replay.Store.
@@ -92,9 +145,10 @@ type jwtHarness struct {
 	ldi      identity.LDI
 	peerKey  *ecdsa.PrivateKey
 	peer     *x509.Certificate
+	ca       *testCA
 	limiter  *stubRateLimiterT
 	signer   *stubJWTSignerT
-	leafRec  *stubLeafLookupT
+	bundle   *stubBundleSourceT
 	replayS  replay.Store
 	encoded  string
 	spiffeID string
@@ -128,24 +182,14 @@ func newJWTHarness(t *testing.T) *jwtHarness {
 		time.Hour,
 	)
 
-	// Build a peer cert whose URI SAN matches the LDI SPIFFE ID.
+	// Build a CA-signed peer cert whose URI SAN matches the LDI SPIFFE ID.
+	ca := newTestCA(t)
 	peerKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	u, _ := url.Parse(ldi.SPIFFEID)
-	peerTmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(99),
-		Subject:      pkix.Name{CommonName: "jwt-device"},
-		NotBefore:    time.Now().Add(-time.Minute),
-		NotAfter:     time.Now().Add(time.Hour),
-		URIs:         []*url.URL{u},
-	}
-	peerDER, _ := x509.CreateCertificate(rand.Reader, peerTmpl, peerTmpl, &peerKey.PublicKey, peerKey)
-	peer, _ := x509.ParseCertificate(peerDER)
+	peer := ca.signLeaf(t, ldi.SPIFFEID, &peerKey.PublicKey, 99)
 
 	signer := &stubJWTSignerT{compact: "eyJ.fake.svid"}
 	limiter := &stubRateLimiterT{allowed: true}
-	leafRec := &stubLeafLookupT{
-		rec: identity.IssuedSVIDRecord{LeafDER: peer.Raw, NotAfter: peer.NotAfter},
-	}
+	bundle := &stubBundleSourceT{root: ca.rootCert}
 	replayStore := stubReplayT{}
 
 	encoded := common.EncodeSPIFFEID(ldi.SPIFFEID)
@@ -154,7 +198,7 @@ func newJWTHarness(t *testing.T) *jwtHarness {
 		Service:      svc,
 		Signer:       signer,
 		IssuanceLog:  stubJWTAuditT{},
-		LeafLookup:   leafRec,
+		BundleSource: bundle,
 		ReplayStore:  replayStore,
 		RateLimiter:  limiter,
 		IssuerURL:    jwtHarnessIssuerURL,
@@ -180,9 +224,10 @@ func newJWTHarness(t *testing.T) *jwtHarness {
 		ldi:      ldi,
 		peerKey:  peerKey,
 		peer:     peer,
+		ca:       ca,
 		limiter:  limiter,
 		signer:   signer,
-		leafRec:  leafRec,
+		bundle:   bundle,
 		replayS:  replayStore,
 		encoded:  encoded,
 		spiffeID: ldi.SPIFFEID,
@@ -219,23 +264,13 @@ func newJWTHarnessNoPeer(t *testing.T) *jwtHarness {
 		time.Hour,
 	)
 
+	ca := newTestCA(t)
 	peerKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	u, _ := url.Parse(ldi.SPIFFEID)
-	peerTmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(100),
-		Subject:      pkix.Name{CommonName: "jwt-device-nopeer"},
-		NotBefore:    time.Now().Add(-time.Minute),
-		NotAfter:     time.Now().Add(time.Hour),
-		URIs:         []*url.URL{u},
-	}
-	peerDER, _ := x509.CreateCertificate(rand.Reader, peerTmpl, peerTmpl, &peerKey.PublicKey, peerKey)
-	peer, _ := x509.ParseCertificate(peerDER)
+	peer := ca.signLeaf(t, ldi.SPIFFEID, &peerKey.PublicKey, 100)
 
 	signer := &stubJWTSignerT{compact: "eyJ.fake.svid"}
 	limiter := &stubRateLimiterT{allowed: true}
-	leafRec := &stubLeafLookupT{
-		rec: identity.IssuedSVIDRecord{LeafDER: peer.Raw, NotAfter: peer.NotAfter},
-	}
+	bundle := &stubBundleSourceT{root: ca.rootCert}
 
 	replayStore := replay.NewMemoryStore(replay.Config{})
 
@@ -245,7 +280,7 @@ func newJWTHarnessNoPeer(t *testing.T) *jwtHarness {
 		Service:      svc,
 		Signer:       signer,
 		IssuanceLog:  stubJWTAuditT{},
-		LeafLookup:   leafRec,
+		BundleSource: bundle,
 		ReplayStore:  replayStore,
 		RateLimiter:  limiter,
 		IssuerURL:    jwtHarnessIssuerURL,
@@ -268,9 +303,10 @@ func newJWTHarnessNoPeer(t *testing.T) *jwtHarness {
 		ldi:      ldi,
 		peerKey:  peerKey,
 		peer:     peer,
+		ca:       ca,
 		limiter:  limiter,
 		signer:   signer,
-		leafRec:  leafRec,
+		bundle:   bundle,
 		replayS:  replayStore,
 		encoded:  encoded,
 		spiffeID: ldi.SPIFFEID,
@@ -298,13 +334,18 @@ func postJWT(t *testing.T, h *jwtHarness, encoded string, body []byte, extraHead
 	return resp, b
 }
 
-// mkClientAssertion builds a signed client_assertion JWT for tests.
-func mkClientAssertion(t *testing.T, key *ecdsa.PrivateKey, spiffeID, audURL string) string {
+// mkClientAssertion builds a signed client_assertion JWT for tests, embedding
+// the SVID chain in the JWS x5c header per the SUP X.509 SVID Profile.
+func mkClientAssertion(t *testing.T, key *ecdsa.PrivateKey, chain []*x509.Certificate, spiffeID, audURL string) string {
 	t.Helper()
-	signer, err := jose.NewSigner(
-		jose.SigningKey{Algorithm: jose.ES256, Key: key},
-		(&jose.SignerOptions{}).WithType("JWT"),
-	)
+	x5c := make([]string, len(chain))
+	for i, c := range chain {
+		x5c[i] = base64.StdEncoding.EncodeToString(c.Raw)
+	}
+	sopts := (&jose.SignerOptions{}).
+		WithType("JWT").
+		WithHeader(jose.HeaderKey("x5c"), x5c)
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: jose.ES256, Key: key}, sopts)
 	if err != nil {
 		t.Fatalf("NewSigner: %v", err)
 	}
@@ -353,7 +394,8 @@ func TestJWTSVID_HappyPath_ClientAssertion(t *testing.T) {
 	h := newJWTHarnessNoPeer(t)
 	encoded := common.EncodeSPIFFEID(h.spiffeID)
 	audURL := jwtHarnessBase + "/api/v1/identities/" + encoded + "/jwt-svid"
-	assertion := mkClientAssertion(t, h.peerKey, h.spiffeID, audURL)
+	chain := []*x509.Certificate{h.peer, h.ca.rootCert}
+	assertion := mkClientAssertion(t, h.peerKey, chain, h.spiffeID, audURL)
 
 	body, _ := json.Marshal(common.JWTSVIDExchangeRequestDTO{
 		Audience:        []string{"https://workload.example.test"},
@@ -475,24 +517,16 @@ func TestJWTSVID_RateLimit_429WithRetryAfter(t *testing.T) {
 	ldi2, _ := s2.Identities().CreateLDIAndBind(context.Background(), mustHash("rl-esi"), "urn:margo:bootstrap:factory-cert-mtls:v1", td)
 	svc2 := identity.NewService(s2.Identities(), fakeChainIssuer{}, identity.StaticPolicy{KeyRotation: true}, identity.NoReplacements{}, noopIssuanceLog{}, noopRevocationQueue{}, td, time.Hour)
 
+	ca2 := newTestCA(t)
 	peerKey2, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	u2, _ := url.Parse(ldi2.SPIFFEID)
-	tmpl2 := &x509.Certificate{
-		SerialNumber: big.NewInt(55),
-		Subject:      pkix.Name{CommonName: "rl-device"},
-		NotBefore:    time.Now().Add(-time.Minute),
-		NotAfter:     time.Now().Add(time.Hour),
-		URIs:         []*url.URL{u2},
-	}
-	peerDER2, _ := x509.CreateCertificate(rand.Reader, tmpl2, tmpl2, &peerKey2.PublicKey, peerKey2)
-	peer2, _ := x509.ParseCertificate(peerDER2)
+	peer2 := ca2.signLeaf(t, ldi2.SPIFFEID, &peerKey2.PublicKey, 55)
 
 	rateLimiter := &stubRateLimiterT{allowed: false, retryAfter: 30 * time.Second}
 	cfg2 := mishttp.JWTSVIDConfig{
 		Service:      svc2,
 		Signer:       &stubJWTSignerT{compact: "eyJ.x"},
 		IssuanceLog:  stubJWTAuditT{},
-		LeafLookup:   &stubLeafLookupT{rec: identity.IssuedSVIDRecord{LeafDER: peer2.Raw, NotAfter: peer2.NotAfter}},
+		BundleSource: &stubBundleSourceT{root: ca2.rootCert},
 		ReplayStore:  stubReplayT{},
 		RateLimiter:  rateLimiter,
 		IssuerURL:    jwtHarnessIssuerURL,
@@ -536,17 +570,9 @@ func TestJWTSVID_NotFound_UnknownSPIFFEID(t *testing.T) {
 	// Use a SPIFFE ID that is not in the store; we need a peer cert that matches
 	// that unknown ID so mTLS auth passes and we reach the issuance step.
 	unknownID := "spiffe://margo.example.com/margo/device/unknown-99"
+	caU := newTestCA(t)
 	unknownKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	u, _ := url.Parse(unknownID)
-	tmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(77),
-		Subject:      pkix.Name{CommonName: "unknown"},
-		NotBefore:    time.Now().Add(-time.Minute),
-		NotAfter:     time.Now().Add(time.Hour),
-		URIs:         []*url.URL{u},
-	}
-	unknownDER, _ := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &unknownKey.PublicKey, unknownKey)
-	unknownCert, _ := x509.ParseCertificate(unknownDER)
+	unknownCert := caU.signLeaf(t, unknownID, &unknownKey.PublicKey, 77)
 
 	// Build a second server that injects the unknown peer cert.
 	td := "margo.example.com"
@@ -558,7 +584,7 @@ func TestJWTSVID_NotFound_UnknownSPIFFEID(t *testing.T) {
 		Service:      svc2,
 		Signer:       &stubJWTSignerT{compact: "eyJ.x"},
 		IssuanceLog:  stubJWTAuditT{},
-		LeafLookup:   &stubLeafLookupT{},
+		BundleSource: &stubBundleSourceT{root: caU.rootCert},
 		ReplayStore:  stubReplayT{},
 		RateLimiter:  &stubRateLimiterT{allowed: true},
 		IssuerURL:    jwtHarnessIssuerURL,

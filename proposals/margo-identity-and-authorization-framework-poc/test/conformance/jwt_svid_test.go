@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/margo/miaf-poc/pkg/common"
+	"github.com/margo/miaf-poc/pkg/mis/bundlemap"
 	"github.com/margo/miaf-poc/pkg/mis/identity"
 	"github.com/margo/miaf-poc/pkg/mis/jwtsigner"
 	"github.com/margo/miaf-poc/pkg/mis/store"
@@ -37,12 +38,12 @@ type noopJWTSVIDLog struct{}
 
 func (noopJWTSVIDLog) Record(_ context.Context, _ identity.IssuedJWTSVIDRecord) error { return nil }
 
-// noopLeafLookup is a no-op jwtexchange.LeafLookup (never used when mTLS auth
+// noopBundleSource is a no-op mishttp.BundleSource (never used when mTLS auth
 // succeeds, but required by JWTSVIDConfig).
-type noopLeafLookup struct{}
+type noopBundleSource struct{}
 
-func (noopLeafLookup) LeafByActiveSPIFFEID(_ context.Context, _ string, _ time.Time) (identity.IssuedSVIDRecord, error) {
-	return identity.IssuedSVIDRecord{}, identity.ErrNotFound
+func (noopBundleSource) GetTrustAnchors(_ context.Context) (bundlemap.TrustAnchorSet, time.Time, error) {
+	return bundlemap.TrustAnchorSet{TrustDomain: "margo.example.com"}, time.Now(), nil
 }
 
 // noopReplay is a no-op replay.Store (never used when mTLS auth succeeds).
@@ -135,7 +136,7 @@ func newJWTSVIDConformanceHarness(t *testing.T, lim store.RenewalEventsConfig) *
 		Service:      svc,
 		Signer:       signer,
 		IssuanceLog:  noopJWTSVIDLog{},
-		LeafLookup:   noopLeafLookup{},
+		BundleSource: noopBundleSource{},
 		ReplayStore:  noopReplay{},
 		RateLimiter:  s.RenewalEvents(lim),
 		IssuerURL:    issuerURL,

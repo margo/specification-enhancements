@@ -5,12 +5,17 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"io"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/margo/miaf-poc/pkg/common"
 	"github.com/margo/miaf-poc/pkg/device-agent/jwtsvid"
@@ -78,6 +83,18 @@ func TestExchange_ModeClientAssertion(t *testing.T) {
 	if err != nil {
 		t.Fatalf("keygen: %v", err)
 	}
+	// Build a self-signed leaf so the Exchange path can construct the x5c
+	// header. The handler in this test does not validate the chain.
+	u, _ := url.Parse("spiffe://margo.example.com/device/d1")
+	tmpl := &x509.Certificate{
+		SerialNumber: big.NewInt(99),
+		Subject:      pkix.Name{},
+		NotBefore:    time.Now().Add(-time.Minute),
+		NotAfter:     time.Now().Add(time.Hour),
+		URIs:         []*url.URL{u},
+	}
+	leafDER, _ := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
+	leaf, _ := x509.ParseCertificate(leafDER)
 
 	result, err := jwtsvid.Exchange(context.Background(), jwtsvid.Request{
 		Client:     ts.Client(),
@@ -85,7 +102,8 @@ func TestExchange_ModeClientAssertion(t *testing.T) {
 		SPIFFEID:   "spiffe://margo.example.com/device/d1",
 		Audiences:  []string{"https://dfm.example/"},
 		Mode:       jwtsvid.ModeClientAssertion,
-		SigningKey:  key,
+		SigningKey: key,
+		SVIDChain:  []*x509.Certificate{leaf},
 	})
 	if err != nil {
 		t.Fatalf("Exchange: %v", err)

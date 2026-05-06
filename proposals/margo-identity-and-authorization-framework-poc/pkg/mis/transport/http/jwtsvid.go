@@ -2,6 +2,8 @@ package http
 
 import (
 	"bytes"
+	"context"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -22,10 +24,12 @@ import (
 
 // JWTSVIDConfig bundles dependencies for the JWT SVID Exchange handler.
 type JWTSVIDConfig struct {
-	Service      *identity.Service
-	Signer       identity.JWTSigner
-	IssuanceLog  identity.JWTSVIDIssuanceLog
-	LeafLookup   jwtexchange.LeafLookup
+	Service     *identity.Service
+	Signer      identity.JWTSigner
+	IssuanceLog identity.JWTSVIDIssuanceLog
+	// BundleSource provides the X.509 trust anchors used to validate the x5c
+	// chain in a client_assertion JWT.
+	BundleSource BundleSource
 	ReplayStore  replay.Store
 	RateLimiter  identity.RenewalRateLimiter
 	IssuerURL    string
@@ -46,7 +50,7 @@ func NewJWTSVIDHandler(cfg JWTSVIDConfig) http.Handler {
 		{"Service", cfg.Service != nil},
 		{"Signer", cfg.Signer != nil},
 		{"IssuanceLog", cfg.IssuanceLog != nil},
-		{"LeafLookup", cfg.LeafLookup != nil},
+		{"BundleSource", cfg.BundleSource != nil},
 		{"RateLimiter", cfg.RateLimiter != nil},
 		{"IssuerURL", cfg.IssuerURL != ""},
 		{"EndpointBase", cfg.EndpointBase != ""},
@@ -124,8 +128,14 @@ func handleJWTSVID(w http.ResponseWriter, r *http.Request, cfg JWTSVIDConfig) {
 			return
 		}
 		expectedAud := strings.TrimRight(cfg.EndpointBase, "/") + "/api/v1/identities/" + encoded + "/jwt-svid"
+		roots, err := buildX509RootPool(r.Context(), cfg.BundleSource)
+		if err != nil {
+			WriteProblem(w, r, errpkg.New(http.StatusInternalServerError, "Internal Server Error").
+				WithDetail("trust anchor lookup failed: "+err.Error()))
+			return
+		}
 		if _, err := jwtexchange.VerifyClientAssertion(r.Context(), jwtexchange.VerifyConfig{
-			LeafLookup:  cfg.LeafLookup,
+			Roots:       roots,
 			Replay:      cfg.ReplayStore,
 			Now:         cfg.Now,
 			ExpectedAud: expectedAud,
@@ -197,4 +207,21 @@ func handleJWTSVID(w http.ResponseWriter, r *http.Request, cfg JWTSVIDConfig) {
 		"spiffe_id", spiffeID,
 		"audiences", req.Audience,
 		"ttl_seconds", int(res.ExpiresAt.Sub(now).Seconds()))
+}
+
+// buildX509RootPool snapshots the current X.509 trust anchors from the bundle
+// source into a CertPool suitable for x5c chain verification.
+func buildX509RootPool(ctx context.Context, src BundleSource) (*x509.CertPool, error) {
+	set, _, err := src.GetTrustAnchors(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pool := x509.NewCertPool()
+	for _, c := range set.X509Authorities {
+		if c == nil {
+			continue
+		}
+		pool.AddCert(c)
+	}
+	return pool, nil
 }

@@ -45,7 +45,7 @@ func TestJWTSVIDExchange_Integration(t *testing.T) {
 
 	// ---------- setup shared infrastructure ----------
 
-	intCertPath, intKeyPath, _ := mintTestIntermediate(t, td)
+	intCertPath, intKeyPath, rootCert := mintTestIntermediate(t, td)
 	issuer, err := ca.NewIntermediateIssuer(ca.Config{
 		TrustDomain: td,
 		CertFile:    intCertPath,
@@ -57,6 +57,16 @@ func TestJWTSVIDExchange_Integration(t *testing.T) {
 
 	st := openStore(t)
 	jwtSigner := mintJWTSigner(t)
+
+	rootPath := t.TempDir() + "/root.pem"
+	writePEM(t, rootPath, "CERTIFICATE", rootCert.Raw)
+	trustAnchors, err := ca.NewTrustAnchors(ca.TrustAnchorsConfig{
+		TrustDomain: td,
+		RootFile:    rootPath,
+	})
+	if err != nil {
+		t.Fatalf("NewTrustAnchors: %v", err)
+	}
 
 	policy := identity.StaticPolicy{NewLDI: true, KeyRotation: true}
 	svc := identity.NewService(
@@ -112,7 +122,7 @@ func TestJWTSVIDExchange_Integration(t *testing.T) {
 		Service:      svc,
 		Signer:       jwtSigner,
 		IssuanceLog:  st.IssuedJWTSVIDs(),
-		LeafLookup:   st.IssuedSVIDs(),
+		BundleSource: trustAnchors,
 		ReplayStore:  st.JWTReplay(),
 		RateLimiter:  rateLimiter,
 		IssuerURL:    issuerURL,
@@ -141,11 +151,11 @@ func TestJWTSVIDExchange_Integration(t *testing.T) {
 
 	var enrollDTO common.EnrollmentResponseDTO
 	_ = json.Unmarshal(enrollResp.Body.Bytes(), &enrollDTO)
-	block, _ := pem.Decode([]byte(enrollDTO.SVID.CertificateChainPEM[0]))
-	svidLeaf, err := x509.ParseCertificate(block.Bytes)
+	svidChain, err := parseChainPEM(enrollDTO.SVID.CertificateChainPEM)
 	if err != nil {
-		t.Fatalf("parse issued SVID leaf: %v", err)
+		t.Fatalf("parse issued SVID chain: %v", err)
 	}
+	svidLeaf := svidChain[0]
 	spiffeID := svidLeaf.URIs[0].String()
 	encoded := common.EncodeSPIFFEID(spiffeID)
 
@@ -175,7 +185,7 @@ func TestJWTSVIDExchange_Integration(t *testing.T) {
 
 	currentPeer = nil // no peer cert - triggers client_assertion path
 	assertionAud := endpointBase + "/api/v1/identities/" + encoded + "/jwt-svid"
-	assertion, err := dagjwtsvid.BuildClientAssertion(devKey, spiffeID, assertionAud, time.Now())
+	assertion, err := dagjwtsvid.BuildClientAssertion(devKey, svidChain, spiffeID, assertionAud, time.Now())
 	if err != nil {
 		t.Fatalf("BuildClientAssertion: %v", err)
 	}
@@ -251,7 +261,7 @@ func TestJWTSVIDExchange_Integration(t *testing.T) {
 			Service:      svc2,
 			Signer:       jwtSigner,
 			IssuanceLog:  st2.IssuedJWTSVIDs(),
-			LeafLookup:   st2.IssuedSVIDs(),
+			BundleSource: trustAnchors,
 			ReplayStore:  st2.JWTReplay(),
 			RateLimiter:  tightLimiter,
 			IssuerURL:    issuerURL,

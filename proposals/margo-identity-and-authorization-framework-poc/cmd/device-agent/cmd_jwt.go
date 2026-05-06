@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,13 +13,13 @@ import (
 
 	"github.com/spiffe/go-spiffe/v2/spiffeid"
 
+	"github.com/margo/miaf-poc/pkg/device-agent/agentstate"
 	"github.com/margo/miaf-poc/pkg/device-agent/bundle"
 	"github.com/margo/miaf-poc/pkg/device-agent/discovery"
 	"github.com/margo/miaf-poc/pkg/device-agent/httpclient"
 	"github.com/margo/miaf-poc/pkg/device-agent/jwtsvid"
 	jwtverify "github.com/margo/miaf-poc/pkg/device-agent/jwtsvid/verify"
 	"github.com/margo/miaf-poc/pkg/device-agent/keygen"
-	"github.com/margo/miaf-poc/pkg/device-agent/agentstate"
 )
 
 func jwtExchange(ctx context.Context, cmd *cli.Command) error {
@@ -40,8 +41,9 @@ func jwtExchange(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	var (
-		client *http.Client
-		mode   = jwtsvid.ModeMTLS
+		client    *http.Client
+		mode      = jwtsvid.ModeMTLS
+		svidChain []*x509.Certificate
 	)
 	switch cmd.String("auth") {
 	case "mtls":
@@ -49,6 +51,9 @@ func jwtExchange(ctx context.Context, cmd *cli.Command) error {
 	case "client-assertion":
 		client, err = httpclient.New(trustAnchor)
 		mode = jwtsvid.ModeClientAssertion
+		if err == nil {
+			svidChain, err = jwtsvid.LoadSVIDChain(svidCert)
+		}
 	default:
 		return fmt.Errorf("--auth must be 'mtls' or 'client-assertion'")
 	}
@@ -63,7 +68,8 @@ func jwtExchange(ctx context.Context, cmd *cli.Command) error {
 		Audiences:  cmd.StringSlice("audience"),
 		TTL:        cmd.Duration("ttl"),
 		Mode:       mode,
-		SigningKey:  svidKey,
+		SigningKey: svidKey,
+		SVIDChain:  svidChain,
 	})
 	if err != nil {
 		return err

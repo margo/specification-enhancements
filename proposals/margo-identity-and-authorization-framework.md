@@ -434,7 +434,7 @@ Conceptually, the **Margo Identity and Authorization Framework (MIAF)** consists
       - X.509 trust-anchor certificates used to validate X.509 SVID chains; and
       - public keys used to verify JWT SVIDs (if used).
 
-      Intermediate CA certificates **MAY** also be distributed by the deployment, including alongside issued SVID chains, but they are not required to appear in the Trust Bundle when standard path-building succeeds without them.
+      Intermediate CA certificates required for X.509 SVID path validation are conveyed with the SVID chain itself, per the [X.509 SVID Profile](#x509-svid-profile); they are not part of the Trust Bundle.
 
    Trust Bundles are identified by their Trust Domain name and distributed using the SPIFFE **Bundle Map mechanism**, as defined in the [SPIFFE Trust Domain and Bundle specification](https://github.com/spiffe/spiffe/blob/main/standards/SPIFFE_Trust_Domain_and_Bundle.md).
    Margo clients and servers use these bundles when validating SVIDs during mutual authentication.
@@ -562,9 +562,10 @@ The following requirements are the **MIAF-specific constraints** that apply in a
 | **Validity Period** | **RECOMMENDED:** <= 1 year | **MIAF** | Framework-level recommendation only. SPIFFE does not define validity period constraints; applicable identity profiles define binding maxima and narrower operational guidance. For devices, see [Profile-specific Constraints on the X.509 SVID Profile](#profile-specific-constraints-on-the-x509-svid-profile). |
 | **NameConstraints** | **OPTIONAL** | SPIFFE X.509-SVID | May be used by MIS to limit valid SPIFFE ID namespaces. |
 
-Validation (per SPIFFE X.509-SVID):
+Validation and chain delivery (per SPIFFE X.509-SVID):
 
-- Certificate chains **MUST** validate against the **Trust Bundle** of the Trust Domain.
+- When an X.509 SVID is presented to a verifier, the presenter **MUST** deliver the complete SVID chain - the leaf SVID followed by all intermediate CA certificates required for path validation. The root **MAY** be omitted. This requirement applies wherever an X.509 SVID is conveyed to a verifier in this SUP, including the TLS Certificate message during mTLS, the JWS `x5c` header of a `client_assertion` (see [JWT SVID Exchange Endpoint](#jwt-svid-exchange-endpoint)), and the `subject_token` of an OAuth 2.0 Token Exchange request when the X.509 SVID type is used (see [Appendix C](#appendix-c-oauth2-and-api-gateway-interoperability-informative)).
+- Verifiers **MUST** validate the presented chain against the Trust Bundle's X.509 trust anchors for the relevant Trust Domain. Verifiers **MUST NOT** rely on AIA fetching or other out-of-band intermediate retrieval to complete path validation.
 - Each SPIFFE ID **MUST** be unique within its Trust Domain.
 
 ##### JWT SVID Profile
@@ -604,7 +605,7 @@ A Trust Bundle **MUST** include:
 - X.509 trust-anchor certificates for SVID chain validation; and
 - public keys used to verify JWT SVID signatures.
 
-For X.509 authorities published in a SPIFFE Bundle Map, the bundle represents the public trust anchors for that Trust Domain. Intermediate CA certificates **MAY** also be published, but are not required when they are conveyed with issued SVID chains or distributed by other deployment-specific means.
+Intermediate CA certificates required for X.509 SVID path validation are conveyed with the SVID chain itself, per the [X.509 SVID Profile](#x509-svid-profile); they are not part of the Trust Bundle.
 
 Bundles:
 
@@ -1095,7 +1096,7 @@ For `svid_profile_uri = "https://margo.org/profiles/spiffe/x509-svid/v1"`, the `
 
 | Field | Type | Required | Description |
 | :---- | :--- | :------- | :---------- |
-| `certificate_chain_pem` | array of string | Y | PEM-encoded X.509 certificate chain. The first element **MUST** be the SVID (leaf certificate representing the issued identity), followed by any required intermediates. The root **MAY** be omitted if distributed via the Trust Bundle. PEM strings **MUST** be base64 with line breaks; clients **MUST NOT** assume a specific wrap width. |
+| `certificate_chain_pem` | array of string | Y | PEM-encoded X.509 certificate chain. The first element **MUST** be the SVID (leaf certificate representing the issued identity). The MIS **MUST** include all intermediate CA certificates required for path validation; the root **MAY** be omitted. The client receiving this chain **MUST** retain it in full and present the complete chain to verifiers as required by the [X.509 SVID Profile](#x509-svid-profile). PEM strings **MUST** be base64 with line breaks; clients **MUST NOT** assume a specific wrap width. |
 
 ###### JWT SVID profile (`https://margo.org/profiles/spiffe/jwt-svid/v1`) <!-- omit from toc -->
 
@@ -1376,7 +1377,7 @@ A `client_assertion` JWT used for this endpoint **MUST** conform to the followin
 | `exp` | **MUST NOT** exceed five (5) minutes after issuance. |
 | `jti` | **MUST** be unique for each assertion. |
 
-The JWT **MUST** be digitally signed using the private key associated with the client's X.509 SVID, and the MIS **MUST** validate the signature chain against the Trust Bundle for the client's Trust Domain. The JWS `alg` **MUST** comply with [Cryptographic Requirements](#cryptographic-requirements) and **MUST** match the key type in the current X.509 SVID.
+The JWS header **MUST** include `x5c` containing the complete X.509 SVID chain corresponding to the signing key, with the leaf SVID as the first entry, per [RFC 7517 §4.7](https://datatracker.ietf.org/doc/html/rfc7517#section-4.7) and the chain-delivery requirement in the [X.509 SVID Profile](#x509-svid-profile). The JWT **MUST** be digitally signed using the private key associated with that leaf SVID. The MIS **MUST** validate the `x5c` chain against the Trust Bundle for the client's Trust Domain, and **MUST** verify the JWS signature using the public key of `x5c[0]`. The JWS `alg` **MUST** comply with [Cryptographic Requirements](#cryptographic-requirements) and **MUST** match the key type in the SVID at `x5c[0]`.
 
 > **Warning:** Do not confuse this **Client Authentication Assertion** with the **Bootstrap Assertion** used in the `factory-cert-jwt` bootstrap method:
 >
@@ -1404,7 +1405,7 @@ The JWT **MUST** be digitally signed using the private key associated with the c
 
 **Validation (normative):**
 
-- If `client_assertion` is used, its signature chain **MUST** validate back to the Trust Domain's **Trust Bundle**.
+- If `client_assertion` is used, its `x5c` chain **MUST** validate to the Trust Domain's **Trust Bundle** root anchors per the [X.509 SVID Profile](#x509-svid-profile), and the JWS signature **MUST** verify against the public key of `x5c[0]`.
 - The MIS **MUST** ensure the JWT SVID's `sub` claim equals the SPIFFE ID encoded in `{spiffeIdEncoded}`.
 - The MIS **MUST** include the requested audiences (possibly filtered or restricted by policy) in the `aud` claim.
 - JWT SVID lifetime **MUST** comply with the [JWT SVID Profile](#jwt-svid-profile) and **MUST** respect [Cryptographic Requirements](#cryptographic-requirements) for signature algorithms.
@@ -2539,7 +2540,7 @@ sequenceDiagram
 | :-------- | :------- | :-----------|
 | `grant_type` | Y | **MUST** be `urn:ietf:params:oauth:grant-type:token-exchange`. |
 | `subject_token` | Y | The encoded SVID representing the requester. |
-| `subject_token_type` | Y | **MUST** identify the format:<br>- `urn:margo:token-type:x509-svid`: base64-encoded PEM chain<br>- `urn:margo:token-type:jwt-svid`: compact JWT SVID<br>Additional values MAY be registered later. |
+| `subject_token_type` | Y | **MUST** identify the format:<br>- `urn:margo:token-type:x509-svid`: base64-encoded PEM chain conforming to the chain-delivery requirement in the [X.509 SVID Profile](#x509-svid-profile) (leaf SVID first, followed by all required intermediates)<br>- `urn:margo:token-type:jwt-svid`: compact JWT SVID<br>Additional values MAY be registered later. |
 | `audience` | N | Target resource audience for the requested token. |
 | `scope` | N | Optional scopes; AS policy determines allowed values. |
 

@@ -214,7 +214,7 @@ func TestRenewal_BearerIntegration(t *testing.T) {
 		Service:      svc,
 		Signer:       jwtSigner,
 		IssuanceLog:  st.IssuedJWTSVIDs(),
-		LeafLookup:   st.IssuedSVIDs(),
+		BundleSource: trustAnchors,
 		ReplayStore:  st.JWTReplay(),
 		RateLimiter:  st.RenewalEvents(store.RenewalEventsConfig{MaxInWindow: 10, Window: time.Hour}),
 		IssuerURL:    srv.URL + "/",
@@ -242,13 +242,16 @@ func TestRenewal_BearerIntegration(t *testing.T) {
 	}
 	var enrollDTO common.EnrollmentResponseDTO
 	_ = json.Unmarshal(enrollResp.Body.Bytes(), &enrollDTO)
-	block, _ := pem.Decode([]byte(enrollDTO.SVID.CertificateChainPEM[0]))
-	originalLeaf, _ := x509.ParseCertificate(block.Bytes)
+	originalChain, err := parseChainPEM(enrollDTO.SVID.CertificateChainPEM)
+	if err != nil {
+		t.Fatalf("parse issued SVID chain: %v", err)
+	}
+	originalLeaf := originalChain[0]
 	spiffeID := originalLeaf.URIs[0].String()
 	encoded := common.EncodeSPIFFEID(spiffeID)
 
 	currentPeer = nil
-	assertion, err := jwtsvid.BuildClientAssertion(devKey, spiffeID, srv.URL+"/api/v1/identities/"+encoded+"/jwt-svid", time.Now())
+	assertion, err := jwtsvid.BuildClientAssertion(devKey, originalChain, spiffeID, srv.URL+"/api/v1/identities/"+encoded+"/jwt-svid", time.Now())
 	if err != nil {
 		t.Fatalf("BuildClientAssertion: %v", err)
 	}
