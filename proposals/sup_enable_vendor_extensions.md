@@ -43,11 +43,16 @@ There are three types of supplier extensions:
       - At the root of the `deploymentProfile` object (for deployment-profile-wide extensions)
       - At the root of a `deploymentProfile.components` object (for component-specific extensions)
 
-3. **WFM supplier Extensions ↔ Device supplier Extensions**
+3. **WFM supplier ↔ Device supplier Extensions**
 
     - Placed in the Application Deployment YAML at the root of the `spec` object
     - Used for information exchanges between the WMF supplier and the device supplier.
     - WFM suppliers may also add their own extensions to the `deploymentProfiles` or `deploymentProfiles.components` roots as well.
+  
+4. **Device supplier ↔ WFM supplier Extensions**
+
+    - Placed in the Application Deployment JSON at the root
+    - Used for information exchanges between the device supplier and the WFM supplier.
 
 ### Extension Field Format
 
@@ -182,6 +187,23 @@ spec:
         revision: 1.0.9
   x-cloudfm-extensions:
     cm-store-id: ABBC123JELZ
+```
+
+#### 7. Device Capabilities JSON (device ↔ WFM supplier extension at root)
+
+```json
+{
+  "apiVersion": "device.margo.org/v1alpha1",
+  "kind": "DeviceCapabilitiesManifest",
+  "properties": {...},
+  "x-southstar-inc-extensions": {
+    "mode": "hybrid",
+    "security": {
+      "storage": "vault",
+      "rootOfTrust": "tpm" 
+    }
+  }
+}
 ```
 
 ### Schema Update Guidance
