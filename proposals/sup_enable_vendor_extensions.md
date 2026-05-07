@@ -123,8 +123,8 @@ deploymentProfiles:
         revision: 1.0.9
       x-northstar-industrial-extensions:
         device-features:
-        enable-gpu: true
-        custom-init: /opt/northstar/init.sh
+          enable-gpu: true
+          custom-init: /opt/northstar/init.sh
 ```
 
 #### 4. Application Deployment YAML (application ↔ device supplier extension at deploymentProfile root)
