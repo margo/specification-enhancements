@@ -51,7 +51,7 @@ There are three types of supplier extensions:
   
 4. **Device supplier ↔ WFM supplier Extensions**
 
-    - Placed in the Application Deployment JSON at the root
+    - Placed in the Device Capabilities JSON at the root
     - Used for information exchanges between the device supplier and the WFM supplier.
 
 ### Extension Field Format
