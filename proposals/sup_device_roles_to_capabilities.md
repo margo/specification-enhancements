@@ -50,9 +50,9 @@ This proposal replaces the `roles` field in the current `DeviceCapabilitiesManif
 
 The `roles` field in the current `DeviceCapabilitiesManifest` `properties` schema is replaced by a `capabilities` object. All references to static device roles (Standalone Cluster, Cluster Leader, Standalone Device) in the specification will be updated following this SUP.
 
-All previously hard-coded device requirements (WFM client, OCI runtime, OTEL collector) are now expressed as capabilities within the `capabilities` object. The WFM client and OTEL collector are reported as boolean flags, while OCI runtime support is captured through `supportedRuntimes`. A device MUST report at least one entry across `supportedRuntimes`, and MUST report at least one `supportedManifest`.
+All previously hard-coded device requirements (WFM client, OCI runtime, OTEL collector) are now expressed as capabilities within the `capabilities` object. The WFM client and OTEL collector are reported as boolean flags, while OCI runtime support is captured through `supportedRuntimes`. A device MUST report at least one entry across `supportedRuntimes`, and MUST report at least one `supportedDeploymentTypes`.
 
-If a any element within the device capabilities change, the device client MUST update the `DeviceCapabilitiesManifest` reported to the WFM.
+If any element within the device capabilities change, the device client MUST update the `DeviceCapabilitiesManifest` reported to the WFM.
 
 ---
 
@@ -120,8 +120,8 @@ PUT /api/v1/clients/{clientId}/capabilities
 **`supportedRuntimes`** — for well-known, Margo-standard OCI runtimes (docker, podman, kubernetes).
 - A device MUST report at least one `supportedRuntimes`.
 
-**`suppotedManifests`** — for well-known, Margo-standard manifests (helm, compose).
-- A device MUST report at least one `supportedManifests`.
+**`supportedDeploymentTypes`** — for well-known, Margo-standard manifests (helm, compose).
+- A device MUST report at least one `supportedDeploymentTypes`.
 
 
 | Attribute         | Type               | Required? | Description |
@@ -129,7 +129,7 @@ PUT /api/v1/clients/{clientId}/capabilities
 | wfmClient         | boolean         | Y         | Reports the WFM client present on the device. See [WfmClient Attributes](#wfmclient-attributes). |
 | otelCollector     | boolean     | Y         | Reports the OTEL collector present on the device. See [OtelCollector Attributes](#otelcollector-attributes). |
 | supportedRuntimes | array | Y        | Standard Margo OCI runtimes available on the device. See [SupportedRuntimes](#supportedruntime). |
-| supportedManifests| array | Y    | Manifest/deployment formats the device can receive and process locally. See [SupportedManifest](#supportedmanifest). |
+| supportedDeploymentTypess| array | Y    | Manifest/deployment formats the device can receive and process locally. See [supportedDeploymentTypes](#supportedDeploymentTypes). |
 
 ## Enumerations
 
@@ -170,11 +170,9 @@ PUT /api/v1/clients/{clientId}/capabilities
 
 | Permissible Values | Description |
 |--------------------|-------------|
-| docker             | Docker OCI container runtime. |
-| podman             | Podman OCI container runtime. |
-| kubernetes         | Kubernetes container orchestration runtime. |
+| oci            | OCI container runtime |
 
-### SupportedManifests
+### supportedDeploymentTypess
 
 | Permissible Values | Description |
 |--------------------|-------------|
@@ -222,10 +220,9 @@ PUT /api/v1/clients/{clientId}/capabilities
             "wfmClient": true,
             "otelCollector": true,
             "supportedRuntimes": [
-                "kubernetes",
-                "podman"
+                "oci"
             ],
-            "supportedManifests": [
+            "supportedDeploymentTypes": [
                 "helm",
                 "compose"
             ]
