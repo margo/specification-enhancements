@@ -102,6 +102,7 @@ dev-env:
 	@echo 'export MIS_STEPCA_PROVISIONER_NAME=margo-mis'
 
 pki:
+	./scripts/gen-stepca-password.sh
 	./scripts/gen-mis-tls.sh
 	./scripts/gen-factory-pki.sh
 	./scripts/gen-mis-jwtsvid-key.sh
