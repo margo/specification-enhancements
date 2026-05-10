@@ -11,9 +11,9 @@ type CreateEnrollmentTokenRequest struct {
 
 // CreateEnrollmentTokenResponse is returned on 201 Created.
 type CreateEnrollmentTokenResponse struct {
-	TokenID   string `json:"token_id"`
+	TokenID   string `json:"tokenId"`
 	Secret    string `json:"secret"`
-	ExpiresAt string `json:"expires_at"` // RFC3339Nano
+	ExpiresAt string `json:"expiresAt"` // RFC3339Nano
 }
 
 // CreateReplacementTicketRequest is the body of POST /admin/v1/replacement-tickets.
@@ -21,15 +21,15 @@ type CreateEnrollmentTokenResponse struct {
 // NON-NORMATIVE: this is a PoC administration API and is NOT part of the
 // Margo Identity & Authorisation Framework SUP.
 type CreateReplacementTicketRequest struct {
-	SPIFFEID string `json:"spiffe_id"`
+	SPIFFEID string `json:"spiffeId"`
 	TTL      string `json:"ttl"`
 }
 
 // CreateReplacementTicketResponse is returned on 201 Created.
 type CreateReplacementTicketResponse struct {
 	Ticket    string `json:"ticket"`
-	SPIFFEID  string `json:"spiffe_id"`
-	ExpiresAt string `json:"expires_at"`
+	SPIFFEID  string `json:"spiffeId"`
+	ExpiresAt string `json:"expiresAt"`
 }
 
 // RevokeSPIFFEIDRequest is the body of POST /admin/v1/revocations.
@@ -37,7 +37,7 @@ type CreateReplacementTicketResponse struct {
 // NON-NORMATIVE: this is a PoC administration API and is NOT part of the
 // Margo Identity & Authorisation Framework SUP.
 type RevokeSPIFFEIDRequest struct {
-	SPIFFEID string `json:"spiffe_id"`
+	SPIFFEID string `json:"spiffeId"`
 	// Reason is an operator-supplied free-text label recorded on each
 	// revoked entry. Optional.
 	Reason string `json:"reason,omitempty"`
@@ -45,7 +45,7 @@ type RevokeSPIFFEIDRequest struct {
 
 // RevokeSPIFFEIDResponse is the response body of POST /admin/v1/revocations.
 type RevokeSPIFFEIDResponse struct {
-	SPIFFEID       string   `json:"spiffe_id"`
-	RevokedSerials []string `json:"revoked_serials"`
-	AlreadyRevoked []string `json:"already_revoked,omitempty"`
+	SPIFFEID       string   `json:"spiffeId"`
+	RevokedSerials []string `json:"revokedSerials"`
+	AlreadyRevoked []string `json:"alreadyRevoked,omitempty"`
 }

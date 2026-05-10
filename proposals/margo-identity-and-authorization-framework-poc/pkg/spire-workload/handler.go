@@ -11,8 +11,8 @@ import (
 
 // Response is the JSON payload the echo handler writes back to the peer.
 type Response struct {
-	PeerSPIFFEID   string `json:"peer_spiffe_id"`
-	ServerSPIFFEID string `json:"server_spiffe_id"`
+	PeerSPIFFEID   string `json:"peerSpiffeId"`
+	ServerSPIFFEID string `json:"serverSpiffeId"`
 }
 
 // HandleConnection reads a single line of JSON (or EOF) from in, then writes

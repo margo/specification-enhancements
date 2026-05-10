@@ -9,20 +9,19 @@ import (
 
 // Mirrors the SUP §5 "Example: Discovery Document" response.
 const sampleDiscovery = `{
-  "trust_domain": "northstar-ida.com",
-  "trust_bundle_uri": "https://mis.northstar-ida.com/.well-known/spiffe/bundle.json",
-  "margo_identity_service_base_uri": "https://mis.northstar-ida.com",
-  "supported_bootstrap_methods": [
+  "trustDomain": "northstar-ida.com",
+  "trustBundleUri": "https://mis.northstar-ida.com/.well-known/spiffe/bundle.json",
+  "margoIdentityServiceBaseUri": "https://mis.northstar-ida.com",
+  "supportedBootstrapMethods": [
     "urn:margo:bootstrap:factory-cert-mtls:v1",
     "urn:margo:bootstrap:factory-cert-jwt:v1",
     "urn:margo:bootstrap:fdo:v1",
     "urn:margo:bootstrap:enrollment-token:v1"
   ],
-  "svid_profiles_supported": [
-    {"type": "x509-svid", "versions": ["https://margo.org/profiles/spiffe/x509-svid/v1"]},
-    {"type": "jwt-svid",  "versions": ["https://margo.org/profiles/spiffe/jwt-svid/v1"]}
-  ],
-  "recommended_svid_profile_uri": "https://margo.org/profiles/spiffe/x509-svid/v1"
+  "svidProfilesSupported": [
+    "https://margo.org/profiles/spiffe/x509-svid/v1",
+    "https://margo.org/profiles/spiffe/jwt-svid/v1"
+  ]
 }`
 
 func TestDiscoveryResponseDTO_RoundTrip(t *testing.T) {
@@ -32,19 +31,19 @@ func TestDiscoveryResponseDTO_RoundTrip(t *testing.T) {
 	}
 
 	if got, want := dto.TrustDomain, "northstar-ida.com"; got != want {
-		t.Errorf("trust_domain = %q, want %q", got, want)
+		t.Errorf("trustDomain = %q, want %q", got, want)
 	}
 	if got, want := dto.MargoIdentityServiceBaseURI, "https://mis.northstar-ida.com"; got != want {
-		t.Errorf("margo_identity_service_base_uri = %q, want %q", got, want)
+		t.Errorf("margoIdentityServiceBaseUri = %q, want %q", got, want)
 	}
 	if len(dto.SupportedBootstrapMethods) != 4 {
-		t.Errorf("supported_bootstrap_methods len = %d, want 4", len(dto.SupportedBootstrapMethods))
+		t.Errorf("supportedBootstrapMethods len = %d, want 4", len(dto.SupportedBootstrapMethods))
 	}
 	if len(dto.SVIDProfilesSupported) != 2 {
-		t.Fatalf("svid_profiles_supported len = %d, want 2", len(dto.SVIDProfilesSupported))
+		t.Fatalf("svidProfilesSupported len = %d, want 2", len(dto.SVIDProfilesSupported))
 	}
-	if got, want := dto.SVIDProfilesSupported[0].Type, "x509-svid"; got != want {
-		t.Errorf("profile[0].type = %q, want %q", got, want)
+	if got, want := dto.SVIDProfilesSupported[0], common.SVIDProfileURIX509V1; got != want {
+		t.Errorf("profile[0] = %q, want %q", got, want)
 	}
 
 	// Marshal back and ensure the JSON is structurally equivalent (order-insensitive).

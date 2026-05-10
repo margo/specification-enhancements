@@ -207,11 +207,10 @@ func run(ctx context.Context, cmd *cli.Command) error {
 		TrustBundleURI:              baseURL + "/.well-known/spiffe/bundle.json",
 		MargoIdentityServiceBaseURI: baseURL,
 		SupportedBootstrapMethods:   registry.Methods(),
-		SVIDProfilesSupported: []common.SVIDProfileDescriptor{
-			{Type: common.SVIDProfileTypeX509, Versions: []string{common.SVIDProfileURIX509V1}},
-			{Type: common.SVIDProfileTypeJWT, Versions: []string{common.SVIDProfileURIJWTV1}},
+		SVIDProfilesSupported: []string{
+			common.SVIDProfileURIX509V1,
+			common.SVIDProfileURIJWTV1,
 		},
-		RecommendedSVIDProfileURI: common.SVIDProfileURIX509V1,
 	}
 
 	revocationsHandler := mishttp.NewRevocationsHandler(mishttp.RevocationsConfig{

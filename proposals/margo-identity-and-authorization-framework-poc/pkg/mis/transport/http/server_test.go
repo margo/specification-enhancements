@@ -39,10 +39,7 @@ func TestServer_NotImplementedEndpoints_ReturnProblemDetails(t *testing.T) {
 			TrustBundleURI:              "https://mis.example.test/.well-known/spiffe/bundle.json",
 			MargoIdentityServiceBaseURI: "https://mis.example.test",
 			SupportedBootstrapMethods:   []string{common.BootstrapMethodFactoryCertMTLS},
-			SVIDProfilesSupported: []common.SVIDProfileDescriptor{
-				{Type: common.SVIDProfileTypeX509, Versions: []string{common.SVIDProfileURIX509V1}},
-			},
-			RecommendedSVIDProfileURI: common.SVIDProfileURIX509V1,
+			SVIDProfilesSupported: []string{common.SVIDProfileURIX509V1},
 		}),
 		BundleMapHandler:   stubAny,
 		EnrollmentHandler:  stub501,

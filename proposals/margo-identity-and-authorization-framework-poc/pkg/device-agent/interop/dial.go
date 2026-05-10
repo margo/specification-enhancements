@@ -24,8 +24,8 @@ type DialInput struct {
 
 // Response mirrors the JSON shape the spire-workload handler emits.
 type Response struct {
-	PeerSPIFFEID   string `json:"peer_spiffe_id"`
-	ServerSPIFFEID string `json:"server_spiffe_id"`
+	PeerSPIFFEID   string `json:"peerSpiffeId"`
+	ServerSPIFFEID string `json:"serverSpiffeId"`
 }
 
 // Dial performs a mutual mTLS connection to in.ServerAddr using in.ClientSVID
@@ -55,7 +55,7 @@ func Dial(ctx context.Context, in DialInput) (*Response, error) {
 	}
 
 	var echo struct {
-		ServerSPIFFEID string `json:"server_spiffe_id"`
+		ServerSPIFFEID string `json:"serverSpiffeId"`
 	}
 	if err := json.NewDecoder(bufio.NewReader(conn)).Decode(&echo); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)

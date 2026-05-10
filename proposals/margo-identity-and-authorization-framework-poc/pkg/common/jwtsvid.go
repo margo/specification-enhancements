@@ -14,7 +14,7 @@ type JWTSVIDExchangeRequestDTO struct {
 	// is not used. Per SUP §5 "JWT SVID Exchange Endpoint" the assertion's
 	// iss/sub MUST equal the SPIFFE ID, aud MUST equal the exchange endpoint
 	// URL, exp MUST NOT exceed iat + 5 minutes, and jti MUST be unique.
-	ClientAssertion string `json:"client_assertion,omitempty"`
+	ClientAssertion string `json:"clientAssertion,omitempty"`
 }
 
 // JWTSVIDExchangeResponseDTO is the response body on 201 Created.
@@ -25,5 +25,5 @@ type JWTSVIDExchangeResponseDTO struct {
 	// ExpiresAt is the UTC timestamp when the JWT SVID expires (ISO 8601).
 	// Optional per SUP; clients may instead derive expiry from the JWT's
 	// exp claim. The PoC always populates it for client convenience.
-	ExpiresAt string `json:"expires_at,omitempty"`
+	ExpiresAt string `json:"expiresAt,omitempty"`
 }

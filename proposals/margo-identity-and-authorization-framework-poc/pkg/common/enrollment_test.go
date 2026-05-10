@@ -11,8 +11,8 @@ import (
 // The CSR base64 and bootstrap proof values are placeholders with the same
 // structure as the SUP example (not intended to be a real CSR).
 const sampleEnrollmentRequest = `{
-  "svid_profile_uri": "https://margo.org/profiles/spiffe/x509-svid/v1",
-  "svid_request": {
+  "svidProfileUri": "https://margo.org/profiles/spiffe/x509-svid/v1",
+  "svidRequest": {
     "csr": "MIICVzCCAT8CAQAwEjEQMA4GA1UEAwwHbWFyZ28="
   },
   "bootstrapCredential": {
@@ -21,9 +21,9 @@ const sampleEnrollmentRequest = `{
 }`
 
 const sampleEnrollmentResponse = `{
-  "svid_profile_uri": "https://margo.org/profiles/spiffe/x509-svid/v1",
+  "svidProfileUri": "https://margo.org/profiles/spiffe/x509-svid/v1",
   "svid": {
-    "certificate_chain_pem": [
+    "certificateChainPem": [
       "-----BEGIN CERTIFICATE-----\nMIIC4TCCAcigAwIBAgIUFsO2...\n-----END CERTIFICATE-----",
       "-----BEGIN CERTIFICATE-----\nMIIDdTCCAl2gAwIBAgIURv7O...\n-----END CERTIFICATE-----"
     ]
@@ -36,7 +36,7 @@ func TestEnrollmentRequestDTO_RoundTrip(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if got, want := req.SVIDProfileURI, common.SVIDProfileURIX509V1; got != want {
-		t.Errorf("svid_profile_uri = %q, want %q", got, want)
+		t.Errorf("svidProfileUri = %q, want %q", got, want)
 	}
 	if got, want := req.BootstrapCredential.Method, common.BootstrapMethodFactoryCertMTLS; got != want {
 		t.Errorf("bootstrapCredential.method = %q, want %q", got, want)
@@ -45,7 +45,7 @@ func TestEnrollmentRequestDTO_RoundTrip(t *testing.T) {
 		t.Errorf("replacementAuthorization must be nil by default, got %+v", req.ReplacementAuthorization)
 	}
 	if req.SVIDRequest.CSR == "" {
-		t.Error("svid_request.csr missing")
+		t.Error("svidRequest.csr missing")
 	}
 
 	// `proof` is omitempty; factory-cert-mtls omits it per SUP Appendix A.
@@ -64,17 +64,17 @@ func TestEnrollmentResponseDTO_RoundTrip(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if got, want := resp.SVIDProfileURI, common.SVIDProfileURIX509V1; got != want {
-		t.Errorf("svid_profile_uri = %q, want %q", got, want)
+		t.Errorf("svidProfileUri = %q, want %q", got, want)
 	}
 	if got := len(resp.SVID.CertificateChainPEM); got != 2 {
-		t.Errorf("certificate_chain_pem len = %d, want 2", got)
+		t.Errorf("certificateChainPem len = %d, want 2", got)
 	}
 }
 
 func TestReplacementAuthorizationDTO_OperatorTicket(t *testing.T) {
 	const body = `{
-	  "svid_profile_uri": "https://margo.org/profiles/spiffe/x509-svid/v1",
-	  "svid_request": {"csr": "AAAA"},
+	  "svidProfileUri": "https://margo.org/profiles/spiffe/x509-svid/v1",
+	  "svidRequest": {"csr": "AAAA"},
 	  "bootstrapCredential": {"method": "urn:margo:bootstrap:factory-cert-mtls:v1"},
 	  "replacementAuthorization": {
 	    "method": "urn:margo:replacement-auth:operator-ticket:v1",

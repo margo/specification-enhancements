@@ -17,12 +17,11 @@ func TestFetch_Success(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{
-			"trust_domain": "t",
-			"trust_bundle_uri": "https://x/bundle",
-			"margo_identity_service_base_uri": "https://x",
-			"supported_bootstrap_methods": ["urn:margo:bootstrap:factory-cert-mtls:v1"],
-			"svid_profiles_supported": [{"type":"x509-svid","versions":["u"]}],
-			"recommended_svid_profile_uri": "u"
+			"trustDomain": "t",
+			"trustBundleUri": "https://x/bundle",
+			"margoIdentityServiceBaseUri": "https://x",
+			"supportedBootstrapMethods": ["urn:margo:bootstrap:factory-cert-mtls:v1"],
+			"svidProfilesSupported": ["u"]
 		}`))
 	}))
 	t.Cleanup(ts.Close)
@@ -32,7 +31,7 @@ func TestFetch_Success(t *testing.T) {
 		t.Fatalf("Fetch: %v", err)
 	}
 	if got.TrustDomain != "t" {
-		t.Errorf("trust_domain = %q", got.TrustDomain)
+		t.Errorf("trustDomain = %q", got.TrustDomain)
 	}
 }
 

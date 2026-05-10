@@ -108,7 +108,7 @@ func TestEnrollMTLS_Integration(t *testing.T) {
 	}
 
 	// Parse response using the actual EnrollmentResponseDTO shape:
-	//   { "svid_profile_uri": "...", "svid": { "certificate_chain_pem": ["..."] } }
+	//   { "svidProfileUri": "...", "svid": { "certificateChainPem": ["..."] } }
 	var resp common.EnrollmentResponseDTO
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
@@ -116,7 +116,7 @@ func TestEnrollMTLS_Integration(t *testing.T) {
 
 	chain := resp.SVID.CertificateChainPEM
 	if len(chain) != 2 {
-		t.Fatalf("certificate_chain_pem length = %d, want 2 (leaf + intermediate)", len(chain))
+		t.Fatalf("certificateChainPem length = %d, want 2 (leaf + intermediate)", len(chain))
 	}
 
 	// Decode leaf cert from chain[0]

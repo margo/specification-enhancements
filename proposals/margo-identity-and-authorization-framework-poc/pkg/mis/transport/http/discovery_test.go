@@ -22,11 +22,10 @@ func TestDiscoveryHandler_ReturnsSUPExample(t *testing.T) {
 			common.BootstrapMethodFDO,
 			common.BootstrapMethodEnrollmentToken,
 		},
-		SVIDProfilesSupported: []common.SVIDProfileDescriptor{
-			{Type: common.SVIDProfileTypeX509, Versions: []string{common.SVIDProfileURIX509V1}},
-			{Type: common.SVIDProfileTypeJWT, Versions: []string{common.SVIDProfileURIJWTV1}},
+		SVIDProfilesSupported: []string{
+			common.SVIDProfileURIX509V1,
+			common.SVIDProfileURIJWTV1,
 		},
-		RecommendedSVIDProfileURI: common.SVIDProfileURIX509V1,
 	}
 
 	ts := httptest.NewServer(mishttp.NewDiscoveryHandler(doc))

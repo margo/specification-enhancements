@@ -27,8 +27,8 @@ func TestStateRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
-	if strings.Contains(string(raw), "private_key_pem") {
-		t.Fatalf("state.json should not persist private_key_pem:\n%s", raw)
+	if strings.Contains(string(raw), "privateKeyPem") {
+		t.Fatalf("state.json should not persist privateKeyPem:\n%s", raw)
 	}
 	got, err := agentstate.Load(path)
 	if err != nil {
@@ -124,11 +124,11 @@ func TestState_LoadsLegacyFileWithMissingDaemonFields(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "state.json")
 	legacy := []byte(`{
-      "spiffe_id": "spiffe://td/margo/device/x",
+      "spiffeId": "spiffe://td/margo/device/x",
       "serial": "1",
-      "expires_at": "2026-04-30T00:00:00Z",
-      "private_key_pem": "PEM",
-      "last_enrolled_at": "2026-04-23T00:00:00Z"
+      "expiresAt": "2026-04-30T00:00:00Z",
+      "privateKeyPem": "PEM",
+      "lastEnrolledAt": "2026-04-23T00:00:00Z"
     }`)
 	if err := os.WriteFile(path, legacy, 0o600); err != nil {
 		t.Fatalf("seed: %v", err)

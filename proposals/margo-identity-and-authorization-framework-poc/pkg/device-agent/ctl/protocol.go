@@ -4,7 +4,7 @@ package ctl
 type Request struct {
 	Cmd        string   `json:"cmd"` // "status" | "exchange-jwt" | "force-renew" | "force-bundle-refresh" | "force-revocations-check"
 	Audiences  []string `json:"audiences,omitempty"`
-	TTLSeconds int      `json:"ttl_seconds,omitempty"`
+	TTLSeconds int      `json:"ttlSeconds,omitempty"`
 }
 
 // Response is what the daemon writes back. Data is a JSON-encoded handler-

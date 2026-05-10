@@ -25,14 +25,14 @@ func TestCtl_StatusRoundTrip(t *testing.T) {
 		defer c.Close()
 		var req ctl.Request
 		_ = json.NewDecoder(c).Decode(&req)
-		_ = json.NewEncoder(c).Encode(ctl.Response{OK: true, Data: map[string]string{"spiffe_id": "spiffe://td/x"}})
+		_ = json.NewEncoder(c).Encode(ctl.Response{OK: true, Data: map[string]string{"spiffeId": "spiffe://td/x"}})
 	}()
 
 	var out map[string]string
 	if err := ctl.Call(context.Background(), sock, ctl.Request{Cmd: "status"}, &out); err != nil {
 		t.Fatalf("Call: %v", err)
 	}
-	if out["spiffe_id"] != "spiffe://td/x" {
+	if out["spiffeId"] != "spiffe://td/x" {
 		t.Errorf("got %v", out)
 	}
 }

@@ -116,8 +116,8 @@ func TestHandleRenew_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile(state): %v", err)
 	}
-	if strings.Contains(string(rawState), "private_key_pem") {
-		t.Fatalf("state.json should not persist private_key_pem:\n%s", rawState)
+	if strings.Contains(string(rawState), "privateKeyPem") {
+		t.Fatalf("state.json should not persist privateKeyPem:\n%s", rawState)
 	}
 }
 

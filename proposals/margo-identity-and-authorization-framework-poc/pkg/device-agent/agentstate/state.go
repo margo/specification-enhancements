@@ -13,22 +13,22 @@ import (
 // files load with zero values for the daemon-only fields.
 type State struct {
 	// Core identity (set by enrollment / renewal).
-	SPIFFEID     string    `json:"spiffe_id"`
+	SPIFFEID     string    `json:"spiffeId"`
 	Serial       string    `json:"serial"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	LastEnrolled time.Time `json:"last_enrolled_at"`
+	ExpiresAt    time.Time `json:"expiresAt"`
+	LastEnrolled time.Time `json:"lastEnrolledAt"`
 
 	// Daemon-only cache validators (set by the IdentityManager).
-	BundleLastModified      string    `json:"bundle_last_modified,omitempty"`
-	RevocationsETag         string    `json:"revocations_etag,omitempty"`
-	RevocationsLastModified string    `json:"revocations_last_modified,omitempty"`
-	LastBundleRefreshAt     time.Time `json:"last_bundle_refresh_at,omitempty"`
-	LastRevocationsCheckAt  time.Time `json:"last_revocations_check_at,omitempty"`
-	LastRenewalAt           time.Time `json:"last_renewal_at,omitempty"`
+	BundleLastModified      string    `json:"bundleLastModified,omitempty"`
+	RevocationsETag         string    `json:"revocationsEtag,omitempty"`
+	RevocationsLastModified string    `json:"revocationsLastModified,omitempty"`
+	LastBundleRefreshAt     time.Time `json:"lastBundleRefreshAt,omitempty"`
+	LastRevocationsCheckAt  time.Time `json:"lastRevocationsCheckAt,omitempty"`
+	LastRenewalAt           time.Time `json:"lastRenewalAt,omitempty"`
 
 	// Self-revocation flag (set by the IdentityManager when own serial is
 	// observed in the revocation list). Zero value means not revoked.
-	RevokedAt time.Time `json:"revoked_at,omitempty"`
+	RevokedAt time.Time `json:"revokedAt,omitempty"`
 }
 
 // Save writes s to path with 0600 permissions, creating parent directories as

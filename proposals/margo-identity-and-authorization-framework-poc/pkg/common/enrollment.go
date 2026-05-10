@@ -3,8 +3,8 @@ package common
 // EnrollmentRequestDTO is the request body of POST /api/v1/identities as
 // defined in SUP §5 "Enrollment and Identity Issuance Endpoint".
 type EnrollmentRequestDTO struct {
-	SVIDProfileURI           string                       `json:"svid_profile_uri"`
-	SVIDRequest              SVIDRequestX509DTO           `json:"svid_request"`
+	SVIDProfileURI           string                       `json:"svidProfileUri"`
+	SVIDRequest              SVIDRequestX509DTO           `json:"svidRequest"`
 	BootstrapCredential      BootstrapCredentialDTO       `json:"bootstrapCredential"`
 	ReplacementAuthorization *ReplacementAuthorizationDTO `json:"replacementAuthorization,omitempty"`
 }
@@ -55,14 +55,14 @@ type ReplacementAuthorizationProof struct {
 // the X.509 SVID profile. 201 Created (initial) and 200 OK (re-enrollment,
 // replacement) both use this shape; the status code distinguishes them.
 type EnrollmentResponseDTO struct {
-	SVIDProfileURI string      `json:"svid_profile_uri"`
+	SVIDProfileURI string      `json:"svidProfileUri"`
 	SVID           X509SVIDDTO `json:"svid"`
 }
 
 // X509SVIDDTO wraps the PEM-encoded leaf + intermediates returned to the
 // device. Per SUP §5 the leaf is first and the root MAY be omitted.
 type X509SVIDDTO struct {
-	CertificateChainPEM []string `json:"certificate_chain_pem"`
+	CertificateChainPEM []string `json:"certificateChainPem"`
 }
 
 // Replacement authorization method URNs defined by the SUP.

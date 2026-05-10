@@ -65,8 +65,8 @@ func assertStateOmitsPrivateKey(t *testing.T, path string) {
 	if err != nil {
 		t.Fatalf("read state %s: %v", path, err)
 	}
-	if strings.Contains(string(raw), "private_key_pem") {
-		t.Fatalf("state.json should not persist private_key_pem:\n%s", raw)
+	if strings.Contains(string(raw), "privateKeyPem") {
+		t.Fatalf("state.json should not persist privateKeyPem:\n%s", raw)
 	}
 }
 

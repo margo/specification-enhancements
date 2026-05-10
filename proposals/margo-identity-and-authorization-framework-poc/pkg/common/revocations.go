@@ -8,8 +8,8 @@ package common
 //     "2025-10-25T14:12:31Z"), matching the SUP example.
 //   - RevokedSVIDs: always an empty array when no entries - never null.
 type RevocationListDTO struct {
-	LastUpdated  string             `json:"last_updated"`
-	RevokedSVIDs []RevokedSVIDEntry `json:"revoked_svids"`
+	LastUpdated  string             `json:"lastUpdated"`
+	RevokedSVIDs []RevokedSVIDEntry `json:"revokedSvids"`
 }
 
 // RevokedSVIDEntry is one entry in RevocationListDTO.RevokedSVIDs.
@@ -20,7 +20,7 @@ type RevocationListDTO struct {
 //     delimiters. SUP warns serials are not globally unique across issuers.
 //   - RevokedAt: ISO 8601 UTC, second precision.
 type RevokedSVIDEntry struct {
-	CertFingerprintSHA256 string `json:"cert_fingerprint_sha256"`
-	SerialNumber          string `json:"serial_number"`
-	RevokedAt             string `json:"revoked_at"`
+	CertFingerprintSHA256 string `json:"certFingerprintSha256"`
+	SerialNumber          string `json:"serialNumber"`
+	RevokedAt             string `json:"revokedAt"`
 }

@@ -21,17 +21,17 @@ func TestHandleConnection_EchoesPeerAndServerIDs(t *testing.T) {
 	}
 
 	var got struct {
-		PeerSPIFFEID   string `json:"peer_spiffe_id"`
-		ServerSPIFFEID string `json:"server_spiffe_id"`
+		PeerSPIFFEID   string `json:"peerSpiffeId"`
+		ServerSPIFFEID string `json:"serverSpiffeId"`
 	}
 	if err := json.Unmarshal(bytes.TrimSpace(out.Bytes()), &got); err != nil {
 		t.Fatalf("unmarshal response: %v (%q)", err, out.String())
 	}
 	if got.PeerSPIFFEID != peerID {
-		t.Errorf("peer_spiffe_id = %q, want %q", got.PeerSPIFFEID, peerID)
+		t.Errorf("peerSpiffeId = %q, want %q", got.PeerSPIFFEID, peerID)
 	}
 	if got.ServerSPIFFEID != serverID {
-		t.Errorf("server_spiffe_id = %q, want %q", got.ServerSPIFFEID, serverID)
+		t.Errorf("serverSpiffeId = %q, want %q", got.ServerSPIFFEID, serverID)
 	}
 }
 

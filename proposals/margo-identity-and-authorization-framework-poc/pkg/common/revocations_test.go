@@ -28,7 +28,7 @@ func TestRevocationListDTO_JSONRoundTrip(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if out.LastUpdated != in.LastUpdated {
-		t.Errorf("last_updated = %q, want %q", out.LastUpdated, in.LastUpdated)
+		t.Errorf("lastUpdated = %q, want %q", out.LastUpdated, in.LastUpdated)
 	}
 	if len(out.RevokedSVIDs) != 1 || out.RevokedSVIDs[0] != in.RevokedSVIDs[0] {
 		t.Errorf("RevokedSVIDs mismatch: got %+v", out.RevokedSVIDs)
@@ -44,7 +44,7 @@ func TestRevocationListDTO_EmptyListIsArrayNotNull(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	if !bytes.Contains(b, []byte(`"revoked_svids":[]`)) {
+	if !bytes.Contains(b, []byte(`"revokedSvids":[]`)) {
 		t.Errorf("expected empty array, got: %s", b)
 	}
 }

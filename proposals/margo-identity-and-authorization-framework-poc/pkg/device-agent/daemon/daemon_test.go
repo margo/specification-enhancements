@@ -71,7 +71,7 @@ func TestSocket_CtlClientStatusRoundTrip(t *testing.T) {
 		json.NewEncoder(c).Encode(ctl.Response{
 			OK: true,
 			Data: map[string]string{
-				"spiffe_id": "spiffe://td.example/margo/device/ctl-test",
+				"spiffeId": "spiffe://td.example/margo/device/ctl-test",
 			},
 		})
 	}()
@@ -81,7 +81,7 @@ func TestSocket_CtlClientStatusRoundTrip(t *testing.T) {
 		ctl.Request{Cmd: "status"}, &out); err != nil {
 		t.Fatalf("ctl.Call: %v", err)
 	}
-	if out["spiffe_id"] != "spiffe://td.example/margo/device/ctl-test" {
-		t.Errorf("spiffe_id = %q", out["spiffe_id"])
+	if out["spiffeId"] != "spiffe://td.example/margo/device/ctl-test" {
+		t.Errorf("spiffeId = %q", out["spiffeId"])
 	}
 }
