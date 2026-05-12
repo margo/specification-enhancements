@@ -126,8 +126,8 @@ PUT /api/v1/clients/{clientId}/capabilities
 
 | Attribute         | Type               | Required? | Description |
 |-------------------|--------------------|-----------|-------------|
-| wfmClient         | boolean         | Y         | Reports the WFM client present on the device. See [WfmClient Attributes](#wfmclient-attributes). |
-| otelCollector     | boolean     | Y         | Reports the OTEL collector present on the device. See [OtelCollector Attributes](#otelcollector-attributes). |
+| wfmClient         | boolean         | Y         | Reports the WFM client present on the device. |
+| otelCollector     | boolean     | Y         | Reports the OTEL collector present on the device. |
 | supportedRuntimes | array | Y        | Standard Margo OCI runtimes available on the device. See [SupportedRuntimes](#supportedruntime). |
 | supportedDeploymentTypess| array | Y    | Manifest/deployment formats the device can receive and process locally. See [supportedDeploymentTypes](#supportedDeploymentTypes). |
 
