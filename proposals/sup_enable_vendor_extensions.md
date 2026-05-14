@@ -26,7 +26,7 @@ This proposal addresses [feature #144](https://github.com/margo/specification/is
 
 ### Extension Types and Locations
 
-There are three types of specification extensions:
+There are four types of specification extensions:
 
 1. **Application supplier ↔ WFM specification Extensions**
 
