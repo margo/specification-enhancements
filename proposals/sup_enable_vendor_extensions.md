@@ -28,13 +28,13 @@ This proposal addresses [feature #144](https://github.com/margo/specification/is
 
 There are four types of specification extensions:
 
-1. **Application supplier ↔ WFM specification Extensions**
+1. **Application supplier ↔ WFM supplier specification Extensions**
 
     - Placed at the root of the Application Description YAML.
     - Used for information exchanged between the application supplier and the WFM supplier.
     - **MUST NOT** be propagated to the device in the Application Deployment YAML.
 
-2. **Application supplier ↔ Device specification Extensions**
+2. **Application supplier ↔ Device supplier specification Extensions**
   
     - Placed in the Application Description YAML **within** the `deploymentProfiles` array, either:
       - At the root of a `DeploymentProfile` object (for deployment-profile-wide extensions)
@@ -43,13 +43,13 @@ There are four types of specification extensions:
       - At the root of the `deploymentProfile` object (for deployment-profile-wide extensions)
       - At the root of a `deploymentProfile.components` object (for component-specific extensions)
 
-3. **WFM supplier ↔ Device specification Extensions**
+3. **WFM supplier ↔ Device supplier specification Extensions**
 
     - Placed in the Application Deployment YAML at the root of the `spec` object
     - Used for information exchanges between the WMF supplier and the device supplier.
     - WFM suppliers may also add their own extensions to the `deploymentProfiles` or `deploymentProfiles.components` roots as well.
   
-4. **Device supplier ↔ WFM specification Extensions**
+4. **Device supplier ↔ WFM supplier specification Extensions**
 
     - Placed at the root of the Device Capabilities JSON
     - Used for information exchanges between the device supplier and the WFM supplier.
@@ -61,7 +61,7 @@ There are four types of specification extensions:
   - Must start with a lowercase letter
   - May contain lowercase letters, digits, and dashes
   - No spaces or special characters
-- Any valid YAML oR JSON (depending on the document format) structure is allowed under the extension key
+- Any valid YAML or JSON (depending on the document format) structure is allowed under the extension key
 
 **Examples of valid extension keys:**
 
