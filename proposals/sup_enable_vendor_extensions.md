@@ -1,4 +1,4 @@
-# Specification Update Proposal: supplier Extensions in Margo Specification
+# Specification Update Proposal: Specification extensions support in the Margo Specification
 
 ## Owner
 
@@ -6,17 +6,17 @@
 
 ## Summary
 
-This SUP proposes a standardized mechanism for enabling supplier-specific extensions in the Margo specification. It introduces a convention for extension fields using the format `x-<company>-extensions:` (with a recommended naming convention and regex), allowing any valid YAML content. The proposal targets both the [Application Description YAML](https://docs.margo.org/specification/applications/application-description) and [Application Deployment YAML](https://docs.margo.org/specification/margo-management-interface/desired-state#applicationdeployment-yaml-definition), supporting extensions for both Workload Fleet Manager (WFM) suppliers and device suppliers, and provides schema and implementation guidance to ensure robust interoperability.
+This SUP proposes a standardized mechanism for enabling specification extensions in the Margo specification. It introduces a convention for extension fields using the format `x-<company>-extensions:` (with a recommended naming convention and regex), allowing any valid YAML or JSON content. The proposal targets the [Application Description YAML](https://docs.margo.org/specification/applications/application-description), [Application Deployment YAML](https://docs.margo.org/specification/margo-management-interface/desired-state#applicationdeployment-yaml-definition), and [Device Capabilities](https://docs.margo.org/specification/margo-management-interface/device-capabilities) documents to support specification extensions for both application,  Workload Fleet Manager (WFM) and device suppliers. This proposal provides schema and implementation guidance to ensure robust interoperability.
 
 ## Reason for proposal
 
-As Margo adoption grows, suppliers require a way to add custom metadata, configuration, or integration hooks to Margo artifacts without waiting for core specification changes. These extensions may be needed for:
+As Margo adoption grows, suppliers require a way to add custom metadata, configuration, or integration hooks to add custom functionality to Margo artifacts that go beyond what is defined in the Margo specification. These extensions may be needed for:
 
 - Collaboration between application suppliers and WFM suppliers (e.g., for WFM-specific deployment logic, cataloging, or analytics)
 - Collaboration between application suppliers and device suppliers (e.g., for device-specific configuration, hardware integration, or custom runtime features)
 - Collaboration between WFM suppliers and device suppliers (e.g., for WFM-specific deployment logic, custom configuration, extended WFM client functionality)
 
-A standardized extension mechanism ensures that such customizations do not break interoperability or conformance for other suppliers, and that unknown extensions are safely ignored.
+A standardized extension mechanism ensures that such customizations do not break interoperability or conformance for other suppliers, that unknown extensions are safely ignored, and that the Margo specification can evolve without breaking supplier-specific customizations.
 
 ## Requirements alignment acknowledgement
 
@@ -26,15 +26,15 @@ This proposal addresses [feature #144](https://github.com/margo/specification/is
 
 ### Extension Types and Locations
 
-There are three types of supplier extensions:
+There are three types of specification extensions:
 
-1. **Application supplier ↔ WFM supplier Extensions**
+1. **Application supplier ↔ WFM specification Extensions**
 
-    - Placed in the Application Description YAML.
+    - Placed at the root of the Application Description YAML.
     - Used for information exchanged between the application supplier and the WFM supplier.
     - **MUST NOT** be propagated to the device in the Application Deployment YAML.
 
-2. **Application supplier ↔ Device supplier Extensions**
+2. **Application supplier ↔ Device specification Extensions**
   
     - Placed in the Application Description YAML **within** the `deploymentProfiles` array, either:
       - At the root of a `DeploymentProfile` object (for deployment-profile-wide extensions)
@@ -43,15 +43,15 @@ There are three types of supplier extensions:
       - At the root of the `deploymentProfile` object (for deployment-profile-wide extensions)
       - At the root of a `deploymentProfile.components` object (for component-specific extensions)
 
-3. **WFM supplier ↔ Device supplier Extensions**
+3. **WFM supplier ↔ Device specification Extensions**
 
     - Placed in the Application Deployment YAML at the root of the `spec` object
     - Used for information exchanges between the WMF supplier and the device supplier.
     - WFM suppliers may also add their own extensions to the `deploymentProfiles` or `deploymentProfiles.components` roots as well.
   
-4. **Device supplier ↔ WFM supplier Extensions**
+4. **Device supplier ↔ WFM specification Extensions**
 
-    - Placed in the Device Capabilities JSON at the root
+    - Placed at the root of the Device Capabilities JSON
     - Used for information exchanges between the device supplier and the WFM supplier.
 
 ### Extension Field Format
@@ -61,7 +61,7 @@ There are three types of supplier extensions:
   - Must start with a lowercase letter
   - May contain lowercase letters, digits, and dashes
   - No spaces or special characters
-- Any valid YAML structure is allowed under the extension key
+- Any valid YAML oR JSON (depending on the document format) structure is allowed under the extension key
 
 **Examples of valid extension keys:**
 
@@ -71,7 +71,7 @@ There are three types of supplier extensions:
 
 ### YAML Examples
 
-#### 1. Application Description YAML (application ↔ WFM supplier extension)
+#### 1. Application Description YAML (application ↔ WFM specification extension)
 
 ```yaml
 apiVersion: margo.org/v1-alpha1
@@ -86,7 +86,7 @@ x-acme-extensions:
   compliance: true
 ```
 
-#### 2. Application Description YAML (application ↔ device supplier extension at DeploymentProfile root)
+#### 2. Application Description YAML (application ↔ device specification extension at DeploymentProfile root)
 
 ```yaml
 apiVersion: margo.org/v1-alpha1
@@ -109,7 +109,7 @@ deploymentProfiles:
       revision: 1.0.9
 ```
 
-#### 3. Application Description YAML (application ↔ device supplier extension at DeploymentProfile.Component root)
+#### 3. Application Description YAML (application ↔ device specification extension at DeploymentProfile.Component root)
 
 ```yaml
 apiVersion: margo.org/v1-alpha1
@@ -132,7 +132,7 @@ deploymentProfiles:
           custom-init: /opt/northstar/init.sh
 ```
 
-#### 4. Application Deployment YAML (application ↔ device supplier extension at deploymentProfile root)
+#### 4. Application Deployment YAML (application ↔ device specification extension at deploymentProfile root)
 
 ```yaml
 apiVersion: application.margo.org/v1alpha1
@@ -157,7 +157,7 @@ spec:
         custom-init: /opt/northstar/init.sh
 ```
 
-#### 5. Application Deployment YAML (application ↔ device supplier extension at deploymentProfile.components root)
+#### 5. Application Deployment YAML (application ↔ device specification extension at deploymentProfile.components root)
 
 ```yaml
 spec:
@@ -174,7 +174,7 @@ spec:
           custom-init: /opt/northstar/init.sh
 ```
 
-#### 6. Application Deployment YAML (WFM ↔ device supplier extension at spec root)
+#### 6. Application Deployment YAML (WFM ↔ device specification extension at spec root)
 
 ```yaml
 spec:
@@ -189,7 +189,7 @@ spec:
     cm-store-id: ABBC123JELZ
 ```
 
-#### 7. Device Capabilities JSON (device ↔ WFM supplier extension at root)
+#### 7. Device Capabilities JSON (device ↔ WFM specification extension at root)
 
 ```json
 {
@@ -232,9 +232,9 @@ To support unknown extension fields, the Margo schemas (YAML/JSON Schema) should
 ### Implementation Guidance
 
 - **WFM and device suppliers**:  
-  - MUST ignore unknown `x-<company>-extensions:` fields unless they have a collaboration agreement with the extension author.
+  - MUST ignore unknown `x-<company>-extensions:` fields.
   - MUST NOT fail validation or runtime processing due to unknown extensions.
-  - MAY use extension fields if they have a documented agreement with the extension author.
+  - SHOULD apply implement fields if they have an agreement with the extension author.
 
 - **Application suppliers**:  
   - SHOULD only use extensions when collaborating with a specific WFM or device supplier.
