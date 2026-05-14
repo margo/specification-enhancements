@@ -56,8 +56,6 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |Owner|Description|Stage|LINK|
 |-----|-----------|-----|----|
 |@julienduquesnay-se | Device gateway | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/gateway.md) |
-|@phil-abb | Add support for Helm V4 | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_add_helm_v4_support.md) |
-|@phil-abb | Limit Helm to feature not requiring direct Kubernetes API interactions | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_helm_api_restriction.md) |
 |@silvanoc | Data model single source of truth with LinkML | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/data-model_linkml.md)
 |@ajcraig | Moving away from Device Roles to capabilities | P2 | [PR](https://github.com/margo/specification-enhancements/pull/50) |
 |@phil-abb | Supporting specification extensions | P2 | [PR](https://github.com/margo/specification-enhancements/pull/56) |
