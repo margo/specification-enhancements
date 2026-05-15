@@ -78,7 +78,7 @@ The non-functional requirement to integrate with the existing PR1 `clientId` mod
 
 This SUP defines the **MIAF framework**: the Trust Domain model, identity formats, trust material distribution, cryptographic baseline, the MIS role, and the authentication model. The framework is intentionally generic — it does not define an enrollment or renewal protocol, nor a specific identity profile. Those are layered on top:
 
-- The active sibling SUP, **[Margo WFM Identity Profile and Management Interface Update](./wfm-identity-profile.md)**, defines the SPIFFE path conventions for WFMs and WFM Clients and updates the Management Interface to consume MIAF identities.
+- The active sibling SUP, **[Margo WFM Identity Profile and Management Interface Update](https://github.com/margo/specification-enhancements/blob/feat/miaf-wfm-identity-sup/proposals/wfm-identity-profile.md)**, defines the SPIFFE path conventions for WFMs and WFM Clients and updates the Management Interface to consume MIAF identities.
 - Automated **enrollment, renewal, and revocation** are deferred to PR3 (see [Roadmap](#8-roadmap-and-forward-extensibility-informative)).
 - A normative **device identity profile** is deferred (see [Roadmap](#8-roadmap-and-forward-extensibility-informative)).
 
@@ -196,7 +196,7 @@ How the component *gets* an SVID in PR2 is operator-driven (see [Operator provis
 #### Identity model
 
 - **Identity representation.** An identity is named by a **SPIFFE ID** and represented by an **SVID** issued under the Trust Domain's MIS.
-- **Path namespace.** SPIFFE IDs issued under a MIAF identity profile **MUST** have a path beginning with `/margo/`. Each identity profile claims a non-conflicting sub-prefix and defines its structure (path conventions for WFMs and WFM Clients are in the [Margo WFM Identity Profile](./wfm-identity-profile.md)). To keep `/margo/` a reliable signal of MIAF provenance, non-MIAF SVIDs in the same Trust Domain **MUST NOT** use it.
+- **Path namespace.** SPIFFE IDs issued under a MIAF identity profile **MUST** have a path beginning with `/margo/`. Each identity profile claims a non-conflicting sub-prefix and defines its structure (path conventions for WFMs and WFM Clients are in the [Margo WFM Identity Profile](https://github.com/margo/specification-enhancements/blob/feat/miaf-wfm-identity-sup/proposals/wfm-identity-profile.md)). To keep `/margo/` a reliable signal of MIAF provenance, non-MIAF SVIDs in the same Trust Domain **MUST NOT** use it.
 - **Uniqueness.** Each SPIFFE ID uniquely identifies one component within its Trust Domain.
 - **Lifecycle.** All identities follow the [Lifecycle Vocabulary](#lifecycle-vocabulary). In PR2 only the **Active** phase has a fully normative protocol surface.
 - **Extensibility.** The MIS, Trust Domain, SVID, and Trust Bundle concepts are intentionally generic; future SUPs may add profiles for new principal classes without redefining the framework.
@@ -456,7 +456,7 @@ MIAF assumes an adversarial network and the possibility of compromised individua
 
 #### Active sibling SUP <!-- omit from toc -->
 
-One active sibling SUP ships alongside this one for PR2: the **[Margo WFM Identity Profile and Management Interface Update](./wfm-identity-profile.md)**. It defines the SPIFFE path conventions for WFMs and WFM Clients, the rules each side uses to recognize the other, and the application of MIAF authentication to the existing PR1 Management Interface — dropping `{clientId}` from URL paths, replacing RFC 9421 HTTP Message Signatures with mTLS, and removing the PR1 onboarding and certificate-distribution endpoints. It depends on this SUP for the identity foundation, X.509-SVID profile, Trust Bundle distribution, and mTLS baseline.
+One active sibling SUP ships alongside this one for PR2: the **[Margo WFM Identity Profile and Management Interface Update](https://github.com/margo/specification-enhancements/blob/feat/miaf-wfm-identity-sup/proposals/wfm-identity-profile.md)**. It defines the SPIFFE path conventions for WFMs and WFM Clients, the rules each side uses to recognize the other, and the application of MIAF authentication to the existing PR1 Management Interface — dropping `{clientId}` from URL paths, replacing RFC 9421 HTTP Message Signatures with mTLS, and removing the PR1 onboarding and certificate-distribution endpoints. It depends on this SUP for the identity foundation, X.509-SVID profile, Trust Bundle distribution, and mTLS baseline.
 
 #### Work deferred beyond PR2 <!-- omit from toc -->
 
