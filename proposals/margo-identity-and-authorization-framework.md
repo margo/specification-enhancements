@@ -472,7 +472,7 @@ PR2 is written to stay forward-compatible with however a later release resolves 
 
 #### Catalog of PR3 inputs <!-- omit from toc -->
 
-Exploratory sketches that feed into PR3 deliberations — early design fragments from prior MIAF drafts, candidate bootstrap methods, and related design notes — are collected under [`proposals/pr3-inputs/`](./pr3-inputs/). They are not committed direction; PR3 may engage with, replace, or set aside each as it makes its decisions. See the [pr3-inputs index](./pr3-inputs/README.md) for the topic-organized catalog.
+Exploratory sketches that feed into PR3 deliberations — early design fragments from prior MIAF drafts, candidate bootstrap methods, and related design notes — are collected under [`proposals/miaf-pr3-inputs/`](./miaf-pr3-inputs/). They are not committed direction; PR3 may engage with, replace, or set aside each as it makes its decisions. See the [miaf-pr3-inputs index](./miaf-pr3-inputs/README.md) for the topic-organized catalog.
 
 ## Alternatives considered
 

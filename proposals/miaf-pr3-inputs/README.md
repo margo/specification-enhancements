@@ -65,4 +65,4 @@ Items below are not tied to any specific PR3 decision; they could be promoted th
 
 ## Document status
 
-Documents in this directory are not on the TWG decision path until material is promoted out of `pr3-inputs/` and through the standard SUP workflow (typically as part of PR3). They may be edited, split, merged, or removed as PR3 work progresses.
+Documents in this directory are not on the TWG decision path until material is promoted out of `miaf-pr3-inputs/` and through the standard SUP workflow (typically as part of PR3). They may be edited, split, merged, or removed as PR3 work progresses.
