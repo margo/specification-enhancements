@@ -34,7 +34,7 @@ Clients and services use it to check SVID status and enforce revocation, without
 | **Body schema (request)** | None |
 | **Body schema (response)** | See below |
 | **Responses** | `200 OK` - list of revoked SVIDs<br>`304 Not Modified` - list unchanged<br>`404 Not Found` - revocation list unavailable |
-| **Errors** | RFC 9457 Problem Details as per [Appendix B](../margo-identity-and-authorization-framework.md#appendix-b-error-responses-normative) |
+| **Errors** | RFC 9457 Problem Details as per [Appendix B](miaf-margo-json-enrollment-protocol.md#6-error-responses) |
 
 **Response body schema (`200 OK`, `application/json`):**
 
@@ -113,7 +113,7 @@ The Margo Identity Service (MIS) **MUST** maintain a consistent revocation model
 
 3. **Standard PKI revocation (optional)**
 
-   - Deployments integrating with external CAs (see [MIS Deployment Modes](../margo-identity-and-authorization-framework.md#mis-deployment-modes-informative)) **MAY** also rely on standard PKI revocation mechanisms (for example, OCSP, CRLs).
+   - Deployments integrating with external CAs (see [MIS deployment patterns](../margo-identity-and-authorization-framework.md#deployment-patterns-informative)) **MAY** also rely on standard PKI revocation mechanisms (for example, OCSP, CRLs).
    - These are **optional** extensions for hybrid or enterprise environments.
 
 > **Scalability Note (Informative):**

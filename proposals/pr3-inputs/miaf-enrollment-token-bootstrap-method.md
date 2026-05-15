@@ -6,7 +6,7 @@
 
 ## Summary
 
-Defines the Enrollment Token bootstrap method for MIAF — a principal-agnostic method usable by any Margo principal that lacks a pre-provisioned X.509 client certificate suitable for bootstrap. Operator-issued, single-use, time-bounded, high-entropy tokens are delivered out-of-band to the candidate principal, which presents them on the standard MIAF enrollment endpoint. Originally drafted as part of the active MIAF SUP; deferred for PR 2 since baseline interoperability uses Factory Certificate mTLS for devices, and the active WFM Client Identity Profile assumes the WFM Server identity is operator-pre-provisioned at deployment time. Purely additive — registering this method later requires no breaking changes to the v0 enrollment surface, since `bootstrapCredential.method` already accepts new URN values.
+Defines the Enrollment Token bootstrap method for MIAF — a principal-agnostic method usable by any Margo principal that lacks a pre-provisioned X.509 client certificate suitable for bootstrap. Operator-issued, single-use, time-bounded, high-entropy tokens are delivered out-of-band to the candidate principal, which presents them on the standard MIAF enrollment endpoint. Originally drafted as part of the active MIAF SUP; deferred for PR 2 since baseline interoperability uses Factory Certificate mTLS for devices, and the active Margo WFM Identity Profile assumes the WFM identity is operator-pre-provisioned at deployment time. Purely additive — registering this method later requires no breaking changes to the v0 enrollment surface, since `bootstrapCredential.method` already accepts new URN values.
 
 This content was originally drafted as part of the active [MIAF SUP](../margo-identity-and-authorization-framework.md) and was deferred when the SUP was split for PR 2. It is preserved here as a single consolidated draft so that it can be promoted to an active SUP independently when operator-issued enrollment tokens become a delivery priority.
 
@@ -68,7 +68,7 @@ The format and structure of the enrollment token are defined by the MIS implemen
 
 - The enrollment token authenticates the `POST /api/v1/identities` request only; the MIS HTTPS server **MUST** be authenticated separately per [Initial Trust Bootstrap](../margo-identity-and-authorization-framework.md#initial-trust-bootstrap).
 - The MIS **MUST** validate the enrollment token by verifying that it is **known** and **unexpired** before accepting the enrollment request.
-- If the token is unknown or expired, the MIS **MUST** reject the request with `401 Unauthorized` using the `https://margo.org/docs/errors/invalid-enrollment-token` error type (see [Appendix B](../margo-identity-and-authorization-framework.md#appendix-b-error-responses-normative)).
+- If the token is unknown or expired, the MIS **MUST** reject the request with `401 Unauthorized` using the `https://margo.org/docs/errors/invalid-enrollment-token` error type (see [Appendix B](miaf-margo-json-enrollment-protocol.md#6-error-responses)).
 - If the token is already consumed, the MIS **MUST** reject the request with `401 Unauthorized` using the `https://margo.org/docs/errors/invalid-enrollment-token` error type unless it can unambiguously determine that the request is an idempotent retry of a previously successful enrollment operation under this method, as described below.
 - Upon successful validation of an unused token, the MIS **MUST** atomically mark the token as consumed, record the resulting LDI binding, and prevent concurrent reuse.
 - If a consumed token is replayed after a previously successful enrollment operation and the MIS can unambiguously determine that the request is a retried submission of that same successful enrollment operation - using the same bootstrap method, token, requested SVID profile, and CSR public key, with no material change to the request payload - within the retry window defined below, the MIS **SHOULD** treat the request as an idempotent retry by returning the same successful enrollment outcome as the original operation (for example, `201 Created` when the original operation created a new identity record, or `200 OK` when it completed a policy-authorized rebinding to an existing identity) instead of `invalid-enrollment-token`.
@@ -85,7 +85,7 @@ The format and structure of the enrollment token are defined by the MIS implemen
 
 #### Registered error types (normative)
 
-This SUP extends the Problem Details error registry defined in [Appendix B of the active MIAF SUP](../margo-identity-and-authorization-framework.md#appendix-b-error-responses-normative) with the following error type:
+This SUP extends the Problem Details error registry defined by the [Margo JSON enrollment protocol's error model](miaf-margo-json-enrollment-protocol.md#6-error-responses) with the following error type:
 
 | Title | Status | Type URI |
 | :---- | :----- | :------- |

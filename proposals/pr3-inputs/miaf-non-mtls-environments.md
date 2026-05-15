@@ -13,7 +13,7 @@ Two complementary mechanisms are introduced under a single SUP because deploymen
 1. **JWT-SVID Profile + JWT SVID Exchange Endpoint** — a derived bearer credential format. An already-enrolled holder of an X.509 SVID may exchange it for a short-lived JWT-SVID and present it as `Authorization: Bearer <jwt-svid>` to Resource Servers behind TLS-terminating proxies. Holders **MAY** also use a JWT-SVID to authenticate at the MIS SVID Renewal Endpoint when end-to-end mTLS is not feasible.
 2. **Factory Certificate Method (JWT Assertion)** — a bootstrap method that uses a JWT assertion signed with the device's factory private key, suitable for initial enrollment when end-to-end mTLS to the MIS is not feasible.
 
-This content was originally drafted as part of the active [MIAF SUP](../margo-identity-and-authorization-framework.md) and was deferred when the SUP was split for PR 2 (PR 2 deployments use end-to-end mTLS for both enrollment and operations). Both mechanisms are purely additive on top of v0: the JWT-SVID profile registers a new `svidProfileUri`, the Factory JWT Assertion method registers a new `bootstrapCredential.method` URN, and v0 implementations cleanly reject any request fields they do not recognize per the strict-validation rule in [§5 APIs](../margo-identity-and-authorization-framework.md#5-apis).
+This content was originally drafted as part of the active [MIAF SUP](../margo-identity-and-authorization-framework.md) and was deferred when the SUP was split for PR 2 (PR 2 deployments use end-to-end mTLS for both enrollment and operations). Both mechanisms are purely additive on top of v0: the JWT-SVID profile registers a new `svidProfileUri`, the Factory JWT Assertion method registers a new `bootstrapCredential.method` URN, and v0 implementations cleanly reject any request fields they do not recognize per the strict-validation rule in the [Margo JSON enrollment protocol](miaf-margo-json-enrollment-protocol.md#1-common-api-rules).
 
 ## Reason for proposal
 
@@ -94,12 +94,12 @@ It is intended for environments where end-to-end mTLS is not feasible (for examp
 | Item | Value |
 | :--- | :---- |
 | **Endpoint** | `POST /api/v1/identities/{spiffeIdEncoded}/jwt-svid` |
-| **Authentication** | The client **MUST** authenticate using one of the following mechanisms:<br>- **Mutual TLS** - Present its current X.509 SVID as the TLS client certificate. MIS **MUST** verify that the SPIFFE ID in the URI SAN matches `{spiffeIdEncoded}`.<br>- **Client Assertion JWT** - Include a `clientAssertion` JWT in the request body (see below), signed with the private key corresponding to the current X.509 SVID. MIS **MUST** validate the signature and verify that the `sub` claim matches `{spiffeIdEncoded}`.<br>For this endpoint, MIS **MUST NOT** accept authentication using a JWT SVID in `Authorization: Bearer ...`.<br>`{spiffeIdEncoded}` **MUST** be computed as defined in the [Common URI and Encoding Rules](../margo-identity-and-authorization-framework.md#common-uri-and-encoding-rules). |
+| **Authentication** | The client **MUST** authenticate using one of the following mechanisms:<br>- **Mutual TLS** - Present its current X.509 SVID as the TLS client certificate. MIS **MUST** verify that the SPIFFE ID in the URI SAN matches `{spiffeIdEncoded}`.<br>- **Client Assertion JWT** - Include a `clientAssertion` JWT in the request body (see below), signed with the private key corresponding to the current X.509 SVID. MIS **MUST** validate the signature and verify that the `sub` claim matches `{spiffeIdEncoded}`.<br>For this endpoint, MIS **MUST NOT** accept authentication using a JWT SVID in `Authorization: Bearer ...`.<br>`{spiffeIdEncoded}` **MUST** be computed as defined in the [Common URI and Encoding Rules](miaf-margo-json-enrollment-protocol.md#common-uri-and-encoding-rules). |
 | **Headers** | `Content-Type: application/json` |
 | **Body schema (request)** | See below |
 | **Body schema (response)** | See below |
 | **Responses** | `201 Created` on success<br>`400`, `401`, `422`, `429` - RFC 9457 errors |
-| **Errors** | RFC 9457 Problem Details as per [Appendix B](../margo-identity-and-authorization-framework.md#appendix-b-error-responses-normative) |
+| **Errors** | RFC 9457 Problem Details as per [Appendix B](miaf-margo-json-enrollment-protocol.md#6-error-responses) |
 
 **Client Assertion JWT (Normative Definition)**
 A `clientAssertion` JWT used for this endpoint **MUST** conform to the following claims and constraints:
@@ -182,7 +182,7 @@ Content-Type: application/json
 
 ### 4. Profile-Specific Renewal Authentication
 
-The active MIAF SUP defines the [SVID Renewal Endpoint](../margo-identity-and-authorization-framework.md#svid-renewal-endpoint) which accepts only mutual TLS authentication using the current X.509 SVID. When this SUP is promoted, the SVID Renewal Endpoint authentication is extended to also accept a JWT SVID as an HTTP Bearer token. The full set of accepted authentication mechanisms becomes:
+The active MIAF SUP defines the [SVID Renewal Endpoint](miaf-margo-json-enrollment-protocol.md#4-svid-renewal-endpoint) which accepts only mutual TLS authentication using the current X.509 SVID. When this SUP is promoted, the SVID Renewal Endpoint authentication is extended to also accept a JWT SVID as an HTTP Bearer token. The full set of accepted authentication mechanisms becomes:
 
 - **Mutual TLS:** The client **MUST** present its current X.509 SVID as the TLS client certificate. The MIS **MUST** extract the SPIFFE ID from the URI SAN and verify that it matches `{spiffeIdEncoded}`. (Defined by the active MIAF SUP.)
 - **JWT SVID (Bearer):** The client **MUST** present a valid JWT SVID using `Authorization: Bearer <jwt-svid>`. The MIS **MUST** validate the JWT SVID according to the [JWT-SVID Profile](#1-jwt-svid-profile), and **MUST** verify that the `sub` claim's SPIFFE ID matches `{spiffeIdEncoded}`.
@@ -199,7 +199,7 @@ JWT SVID renewal behavior depends on the applicable **identity profile under MIA
 
 ### 5. Profile-Specific Enrollment Payload Formats
 
-This section defines the JWT-SVID profile payload formats for the [Enrollment and Identity Issuance Endpoint](../margo-identity-and-authorization-framework.md#enrollment-and-identity-issuance-endpoint).
+This section defines the JWT-SVID profile payload formats for the [Enrollment and Identity Issuance Endpoint](miaf-margo-json-enrollment-protocol.md#3-enrollment-and-identity-issuance-endpoint).
 
 These formats apply to **future identity profiles** that directly issue JWT-SVIDs at enrollment time. The Edge Compute Device Identity Profile defined in the active MIAF SUP **MUST NOT** use the JWT-SVID profile at the enrollment endpoint; device-issued JWT-SVIDs are obtained via exchange (see [§3 JWT SVID Exchange Endpoint](#3-jwt-svid-exchange-endpoint)). MIS **MUST** reject device enrollment requests that specify the JWT-SVID profile with `422` and the `unsupported-svid-profile` error type.
 
@@ -239,7 +239,7 @@ When used with HTTP APIs defined by the active MIAF SUP or by this SUP, a JWT SV
 
 ### 6. Workflows (informative)
 
-The following flows are **informative only** and do not introduce additional normative requirements. They expand on the [Enrollment and Identity Issuance Endpoint](../margo-identity-and-authorization-framework.md#enrollment-and-identity-issuance-endpoint) and the JWT SVID Exchange Endpoint defined above to illustrate end-to-end behavior in TLS-terminating-proxy environments.
+The following flows are **informative only** and do not introduce additional normative requirements. They expand on the [Enrollment and Identity Issuance Endpoint](miaf-margo-json-enrollment-protocol.md#3-enrollment-and-identity-issuance-endpoint) and the JWT SVID Exchange Endpoint defined above to illustrate end-to-end behavior in TLS-terminating-proxy environments.
 
 #### Example: Factory Certificate Method (JWT Assertion) <!-- omit from toc -->
 

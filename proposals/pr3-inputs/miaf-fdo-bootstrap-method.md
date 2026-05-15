@@ -106,7 +106,7 @@ The module uses the following key-value pairs:
 
 ### Informative Workflow
 
-The following flow expands on the [Enrollment and Identity Issuance Endpoint](../margo-identity-and-authorization-framework.md#enrollment-and-identity-issuance-endpoint) of the active MIAF SUP and illustrates this bootstrap method.
+The following flow expands on the [Enrollment and Identity Issuance Endpoint](miaf-margo-json-enrollment-protocol.md#3-enrollment-and-identity-issuance-endpoint) of the active MIAF SUP and illustrates this bootstrap method.
 It is **informative only** and does not introduce additional normative requirements.
 
 #### Example: FIDO Device Onboard (MIS-integrated OOS)
