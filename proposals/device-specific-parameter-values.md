@@ -32,11 +32,11 @@ This SUP is needed because the current Margo specification already recognizes ap
 
 Today, a parameter can target Helm values using dot notation or Compose environment variables, which is good because it lets an application developer say where the value must land during deployment. But the spec does not define a standard mechanism for saying that a value should come from the device itself rather than from manual user input. That means the spec handles parameter injection **but does not handle parameter resolution from device context**.
 
-The device capabilities model already requires the device to report characteristics such as role, CPU, memory, storage, peripherals, and interfaces to the Workload Fleet Manager (WFM), and it says the device client must update this information if it changes. However, those reported capabilities are primarily for describing the device and matching workloads, not for supplying install-time values like a hostname or the default storage class name. 
+The device capabilities model already requires the device to report characteristics such as role, CPU, memory, storage, peripherals, and interfaces to the Workload Fleet Manager (WFM), and it says the device client must update this information if it changes. However, those reported capabilities are primarily for describing the device and matching workloads, not for supplying install-time values like a hostname or the storage class name to be used by devices. 
 
 Examples of such device-supplied parameter values are related to its communication or computation specifics:
 * The application needs to know which **hostname** or **IP address** the device uses. Then the application is able to use it as external endpoint (ingress) or within a TLS certificate. If Margo had a device-supplied parameter for the device's hostname (or IP), the device could resolve it once and use it for deployment. That would spare the user from having to discover and enter the value manually.
-* The user deploying a Margo Helm-based application may not know which Kubernetes **storage class** (e.g., standard, fast-ssd) exists on a device, or which one is marked as the default. That is why the device can often discover the default storage class more reliably than the user.
+* The user deploying a Margo Helm-based application may not know which Kubernetes **storage class** (e.g., standard, fast-ssd) exists on a device, or which one the device vendor wants apps to use. That is why the device can often discover the storage class more reliably than the user.
 * The user deploying a Margo Compose-based application may not know default **host path for app data**, or the default **named volume**, and those values could be device-supplied.
 
 
@@ -119,9 +119,7 @@ parameters:
 
 The `DeviceCapabilitiesManifest` is extended by adding an element called `installContext`. This element lists the device supplied parameters.
 
-Before the device installs or updates an application, the device’s Workload Fleet Management Client resolves all parameters that use `valueFrom.device`. This is done prior to invoking the deployment provider (e.g., Helm or Compose). The device MUST resolve all `valueFrom.device` references to concrete values.
-
-The resolved value MUST satisfy the schema referenced by the configuration setting exactly as if the value had been provided by the user. This keeps the current validation model unchanged. 
+Before the device installs or updates an application, the device’s Workload Fleet Management Client (WFMC) resolves all parameters that use `valueFrom.device`. This is done prior to invoking the deployment provider (e.g., Helm or Compose). The device MUST resolve all `valueFrom.device` references to concrete values.
 
 If a referenced device key cannot be resolved, then the `value` is used as a fallback, if it is defined, otherwise installation/update MUST fail with a clear validation/resolution error.
 
@@ -151,7 +149,7 @@ If a referenced device key cannot be resolved, then the `value` is used as a fal
 ### Margo-reserved Keys
 
 * `margo.cluster.hostname` - For ingress hosts, cert DNS names, externally reachable application URLs.
-* `margo.cluster.defaultStorageClass` - For PersistentVolume/PersistentVolumeClaim defaults on Kubernetes devices.
+* `margo.cluster.storageClass` - For PersistentVolume/PersistentVolumeClaim on Kubernetes devices.
 
 Could be extended by further semantically-enriched keys, such as:
 
@@ -173,7 +171,7 @@ The device has already reported its capabilities, now including the proposed `in
 Before installation, the device-side WFMC resolves:
 
 * `ingressHost` from `margo.cluster.hostname`
-* `storageClass` from `margo.cluster.defaultStorageClass`
+* `storageClass` from `margo.cluster.storageClass`
 
 The resolved values are then injected into:
 
