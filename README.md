@@ -61,8 +61,9 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@phil-abb | Supporting specification extensions | P2 | [PR](https://github.com/margo/specification-enhancements/pull/56) |
 |@matlec | Margo Identity and Authorization Framework | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/38) |
 |@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40) |
-|@arne-broering | Device specific parameter values | P1 | [DRAFT PR](https://github.com/margo/specification-enhancements/pull/54) |
-|@arne-broering | Supporting device specific runtimes | P1 | [DRAFT PR](https://github.com/margo/specification-enhancements/pull/55) |
+|@arne-broering | Device specific parameter values | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/54) |
+|@arne-broering | Supporting device specific runtimes | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/55) |
+|@matlec | WFM Identity Profile | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/58) |
 
 ## SUP Owner SUP Checklist
 
