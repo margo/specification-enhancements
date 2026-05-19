@@ -369,6 +369,7 @@ configuration: ...
         "capabilities": {
             "wfmClient": true,
             "otelCollector": true,
+            "supportedRuntimes": ["custom"],
             "supportedDeploymentTypes": ["custom"]
         }
     },
@@ -464,6 +465,7 @@ configuration: ...
         "capabilities": {
             "wfmClient": true,
             "otelCollector": false,
+            "supportedRuntimes": ["custom"],
             "supportedDeploymentTypes": ["custom"]
         }
     },
@@ -609,6 +611,7 @@ The device capabilities has the combination of all three hardware devices
         "capabilities": {
             "wfmClient": true,
             "otelCollector": true,
+            "supportedRuntimes": ["oci","custom"],
             "supportedDeploymentTypes": ["helm", "compose", "custom"]
         }
     },
