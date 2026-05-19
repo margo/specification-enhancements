@@ -202,17 +202,25 @@ To make the application-side requirement enforceable, the device capability mode
 
 Adding a new optional field `runtimeEnvironments`:
 
-```yaml
-runtimeEnvironments:
-  - runtimeRef: string        # required
-    vendor: string            # optional
-    vendorId: string          # optional
-    modelNumberId: string     # optional
-    version: string           # optional
-    runtimeCapabilities:      # optional
-      - string
-    properties:               # optional
-      <string>: <string | number | boolean | array>
+```json
+{
+  "runtimeEnvironments": [
+    {
+      "runtimeRef": "string",        // required
+      "vendor": "string",            // optional
+      "vendorId": "string",          // optional
+      "modelNumberId": "string",     // optional
+      "version": "string",           // optional
+      "runtimeCapabilities": [       // optional
+        "string"
+      ],
+      "properties": {                // optional
+        "<string>": "<string | number | boolean | array>" // optional
+      }
+    }
+  ]
+}
+
 ```
 
 
@@ -229,47 +237,66 @@ If a ``runtimeEnvironment``, their ``version``, or their ``runtimeCapabilities``
 
 #### Example DeviceCapabilitiesManifest:
 
-```yaml
-apiVersion: device.margo.org/v1alpha1
-kind: DeviceCapabilitiesManifest
+```json
+{
+  "apiVersion": "device.margo.org/v1alpha1",
+  "kind": "DeviceCapabilitiesManifest",
 
-properties:
-  id: ie-device-bx59a-001
-  vendor: Northstar-IDA Inc.
-  modelNumber: EdgeServer-A
-  serialNumber: ABC-EXAMPLE-001
-  roles:
-    - standalone device
+  "properties": {
+    "id": "ie-device-bx59a-001",
+    "vendor": "Northstar-IDA Inc.",
+    "modelNumber": "EdgeServer-A",
+    "serialNumber": "ABC-EXAMPLE-001",
+    "roles": [
+      "standalone device",
+    ],
 
-  resources:
-    cpu:
-      - cores: 24
-        architecture: x86_64
-    memory: 30Gi
-    storage: 900Gi
-    peripherals:
-      - type: gpu
-        manufacturer: NVIDIA
-        model: L4
-    interfaces:
-      - type: ethernet
+    "resources": {
+      "cpu": [
+        {
+          "cores": 24,
+          "architecture": "x86_64",
+        },
+      ],
+      "memory": "30Gi",
+      "storage": "900Gi",
+      "peripherals": [
+        {
+          "type": "gpu",
+          "manufacturer": "NVIDIA",
+          "model": "L4",
+        },
+      ],
+      "interfaces": [
+        {
+          "type": "ethernet",
+        },
+      ],
+    },
 
-  # --- Proposed extension ---
-  runtimeEnvironments:
-    - id: com.northstar-ida.industry.edge-os
-      vendor: Northstar-IDA Inc.
-      vendorId: com.northstar-ida
-      modelNumberId: com.northstar-ida.edge-devices.EdgeServer-A
-      version: 3.1.1-3-x86-64
-      capabilities:
-        - com.northstar-ida.industry.app.camera-connector # app to enable connectivity to a connected camera 
-        - com.northstar-ida.industry.app.opcua-connetor # app to access OPC UA servers 
-      properties:
-        iedkVersion: 1.24.2-1
-        dockerVersion: 20.10.24
-        operatingSystem: "Debian 12 (Bookworm)"
-        nvidiaDriverVersion: "525.85.12-1"
-        cudaDriverVersion: "12.0"
+    // --- Proposed extension ---
+    "runtimeEnvironments": [
+      {
+        "id": "com.northstar-ida.industry.edge-os",
+        "vendor": "Northstar-IDA Inc.",
+        "vendorId": "com.northstar-ida",
+        "modelNumberId": "com.northstar-ida.edge-devices.EdgeServer-A",
+        "version": "3.1.1-3-x86-64",
+        "capabilities": [
+          "com.northstar-ida.industry.app.camera-connector", // app to enable connectivity to a connected camera
+          "com.northstar-ida.industry.app.opcua-connetor",   // app to access OPC UA servers
+        ],
+        "properties": {
+          "iedkVersion": "1.24.2-1",
+          "dockerVersion": "20.10.24",
+          "operatingSystem": "Debian 12 (Bookworm)",
+          "nvidiaDriverVersion": "525.85.12-1",
+          "cudaDriverVersion": "12.0",
+        },
+      },
+    ],
+  },
+}
 ```
 
 ## Alternatives considered (optional)
