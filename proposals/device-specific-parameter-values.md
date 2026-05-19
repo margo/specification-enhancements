@@ -28,7 +28,7 @@ A new element called `installContext` is added to the `DeviceCapabilitiesManifes
 > 
 > Complete as part of Phase 2: Proposal Creation
 
-This SUP is needed because the current Margo specification already recognizes application parameters as a first-class concept, but it models them almost entirely as values that are provided by the user at install/update time. Currently, configurable parameters are defined so the end user can specify values. 
+This SUP is needed because the current Margo specification already recognizes application parameters as a first-class concept, but it models them as values that are provided by the user at install time. Currently, configurable parameters are defined so the end user can specify values. 
 
 Today, a parameter can target Helm values using dot notation or Compose environment variables, which is good because it lets an application developer say where the value must land during deployment. But the spec does not define a standard mechanism for saying that a value should come from the device itself rather than from manual user input. That means the spec handles parameter injection **but does not handle parameter resolution from device context**.
 
@@ -82,7 +82,6 @@ Extension of `parameters`:
 * For GA1, the only standard source is `device`.
 * `device.key` (required): Identifier of the device-supplied parameter to resolve.
 * `device.required` (optional): If true, installation MUST fail if the key cannot be resolved. Default is true.
-* The resolved `value` MUST still be validated against the parameter’s configured schema.
 * If both, `value` and `valueFrom`, are defined, `value` acts as the fallback and will be used if resolution of `valueFrom` fails.
 
 That keeps the existing parameter/configuration model intact and simply adds a second source of values.
@@ -150,11 +149,9 @@ If a referenced device key cannot be resolved, then the `value` is used as a fal
 
 * `margo.cluster.hostname` - For ingress hosts, cert DNS names, externally reachable application URLs.
 * `margo.cluster.storageClass` - For PersistentVolume/PersistentVolumeClaim on Kubernetes devices.
-
-Could be extended by further semantically-enriched keys, such as:
-
 * `margo.network.defaultExternalHostname` - concrete full hostname (FQDN) that the platform recommends or provides as the default external hostname. E.g., hostname = `edge01.plant-a.example.com`.
 * `margo.network.ingressBaseDomain` - base domain under which application-specific hostnames are created. In case an application needs a distinct hostname by extending the base domain. E.g., base domain = `apps.plant-a.example.com` and application can derive concrete hostname = `factory-insights.apps.plant-a.example.com`.
+* `margo.device.dataPath` - Device-defined path to a directory where the app should store its data.
 
 _Alternatively:_ defining environment specific keys:
 
@@ -165,8 +162,7 @@ _Alternatively:_ defining environment specific keys:
 
 ### Example 
 
-In the `ApplicationDescription` and `DeviceCapabilitiesManifest` examples below, the WFM has through the `ApplicationDescription` the parameters that use `valueFrom.device.key`. The current specification already defines the overall deployment model in which applications are described via `ApplicationDescription` and then deployed with chosen parameters.
-The device has already reported its capabilities, now including the proposed `installContext` dictionary. The current spec already has the device capability reporting flow.
+In the `ApplicationDescription` and `DeviceCapabilitiesManifest` examples below, the device reports its capabilities, now including the proposed `installContext` dictionary. The current spec already has the device capability reporting flow.
 
 Before installation, the device-side WFMC resolves:
 
@@ -304,7 +300,7 @@ parameters:
     # PROPOSED EXTENSION
     valueFrom:
       device:
-        key: margo.cluster.defaultStorageClass
+        key: margo.cluster.storageClass
         required: false
     targets:
       - pointer: persistence.storageClass
@@ -394,16 +390,22 @@ Inclusion of new `installContext` element, as a dictionary of device-supplied pa
         "description": "Hostname/FQDN that applications should use for ingress, public URL generation, and certificate DNS names.",
         "mutable": true
       },
+      "margo.device.dataPath": {
+        "type": "string",
+        "value": "/srv/margo/app-data/factory-insights",
+        "description": "Device-defined path to a directory where the app should store its data.",
+        "mutable": true
+      },
       "margo.cluster.defaultIngressClass": {
         "type": "string",
         "value": "nginx",
         "description": "Default ingress class to use for applications that expose HTTP/HTTPS endpoints through Kubernetes ingress.",
         "mutable": true
       },
-      "margo.cluster.defaultStorageClass": {
+      "margo.cluster.storageClass": {
         "type": "string",
         "value": "standard",
-        "description": "Default Kubernetes StorageClass to use for application PVCs when the application requests persistent storage.",
+        "description": "Kubernetes preferred StorageClass  when the application requests persistent storage.",
         "mutable": true
       }    
     }
@@ -413,7 +415,10 @@ Inclusion of new `installContext` element, as a dictionary of device-supplied pa
 
 #### Compose File Example
 
-This example assumes the application is a simple web service plus an NGINX reverse proxy. The important part is that the device-supplied values are consumed through environment variables. Compose supports defining persistent storage through named volumes or bind mounts, and unlike Kubernetes there is no real StorageClass equivalent in Compose, so this example uses a named volume for persistence.
+This example assumes the application is a simple web service plus an NGINX reverse proxy. The important part is that the device-supplied values are consumed through environment variables. 
+
+The ``APP_HOSTNAME`` is resolved from the `margo.cluster.hostname` as specified in DeviceCapabilitiesManifest.
+The ``APP_DATA_HOST_PATH`` is resolved from the `margo.device.dataPath` as specified in DeviceCapabilitiesManifest. This is the directory inside the container where the application writes its persistent data. As this is modelled as a device supplied parameter, the WMFC decides where data lives on the device.
 
 ```yaml
 services:
@@ -425,7 +430,7 @@ services:
       APP_HOSTNAME: ${APP_HOSTNAME}
       APP_DATA_DIR: /var/lib/factory-insights
     volumes:
-      - fi-data:/var/lib/factory-insights
+      - ${APP_DATA_HOST_PATH}:/var/lib/factory-insights
     expose:
       - "8080"
 
@@ -441,10 +446,31 @@ services:
       APP_HOSTNAME: ${APP_HOSTNAME}
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
-
-volumes:
-  fi-data:
 ```
+
+The values for these environment variables are resolved before Compose starts the container.
+Below is an example of an .env file that the WMFC would generate after resolving the device-supplied parameters:
+
+```
+APP_HOSTNAME=edge01.plant-a.example.com
+APP_DATA_HOST_PATH=/srv/margo/app-data/factory-insights
+```
+
+#### Helm Chart Example
+
+Using Compose (see above), we inject environment variables. 
+
+```
+factory-insights/
+  Chart.yaml
+  values.yaml
+  templates/
+    deployment.yaml
+    service.yaml
+    ingress.yaml
+    pvc.yaml
+```
+
 
 
 
