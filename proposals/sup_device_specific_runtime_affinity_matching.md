@@ -115,6 +115,13 @@ Examples:
 }
 ```
 
+#### Add "Custom" runtime and deploymentType options
+
+* The `supportRuntimes` array is updated to allow for "oci" and "custom". Using "custom" indicates the device has a runtime that is not officially supported by Margo.
+* The `supportDeploymentTypes` array is updated to allow for "compose", "helm", and "custom". Using "custom" indicates the device is capable of deploying applications using a deployment type that is not officially supported by Margo.
+
+> **Note:** This is based on the current proposal to [move device roles to capabilities](https://github.com/margo/specification-enhancements/pull/50). Any changes made to that proposal before it is approve may impact this section so the intention is for this to be compatible with what is approved for that SUP.
+
 ### 2. Device affinity model
 
 Each deployment profile in `ApplicationDescription` and `ApplicationDeployment` MAY define a `deviceAffinity` field.
@@ -251,6 +258,10 @@ Normative behavior:
 * A WFM MUST evaluate `deviceAffinity` before selecting a target device for a deployment profile.
 * A device that does not satisfy the `deviceAffinity` constraints for a deployment profile MUST NOT be selected for that profile.
 * If no available device satisfies the profile's required affinity, the deployment MUST be reported as not placeable according to the implementation's existing status model.
+
+#### Supporting "custom" deployment types
+
+If the application is packaged using something other than the officially supported deployment types of "helm" or "compose" the deployment type is set to "custom" to indicate the application package is using an unofficially deployment type. When using the "custom" deployment type, there MUST be a "deviceAffinity" rule.
 
 ### 4. Application Deployment changes
 
