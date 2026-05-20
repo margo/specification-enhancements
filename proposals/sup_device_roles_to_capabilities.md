@@ -127,10 +127,9 @@ PUT /api/v1/clients/{clientId}/capabilities
 
 | Attribute         | Type               | Required? | Description |
 |-------------------|--------------------|-----------|-------------|
-| wfmClient         | boolean         | Y         | Reports the WFM client present on the device. |
 | otelCollector     | boolean     | Y         | Reports the OTEL collector present on the device. |
 | supportedRuntimes | array | Y        | Standard Margo OCI runtimes available on the device. See [SupportedRuntimes](#supportedruntime). |
-| supportedDeploymentTypess| array | Y    | Manifest/deployment formats the device can receive and process locally. See [supportedDeploymentTypes](#supportedDeploymentTypes). |
+| supportedDeploymentTypes| array | Y    | Manifest/deployment formats the device can receive and process locally. See [supportedDeploymentTypes](#supportedDeploymentTypes). |
 
 ## Enumerations
 
@@ -173,7 +172,9 @@ PUT /api/v1/clients/{clientId}/capabilities
 |--------------------|-------------|
 | oci            | OCI container runtime |
 
-### supportedDeploymentTypess
+> Note: Discussions are ongoing for vendor specific runtimes. Creation of "custom" runtimes or further expansions will come in the form of seperate SUP submissions.e 
+
+### supportedDeploymentTypes
 
 | Permissible Values | Description |
 |--------------------|-------------|
@@ -218,7 +219,6 @@ PUT /api/v1/clients/{clientId}/capabilities
             ]
         },
         "capabilities": {
-            "wfmClient": true,
             "otelCollector": true,
             "supportedRuntimes": [
                 "oci"
