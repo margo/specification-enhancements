@@ -49,14 +49,13 @@ body:
       label: Specification Area
       description: Which area of the Margo specification does this enhancement affect?
       options:
-        - Device Management
-        - Workload Management & Orchestration
+        - Workload Fleet Management & Orchestration
         - Application Packaging & Registry
-        - Networking & Connectivity
+        - Device requirements and capabilities
         - Security & Identity
         - Observability & Telemetry
-        - Edge-Cloud Interaction
         - Data Models & APIs
+        - Device Management
         - Cross-cutting / Multiple areas
         - Other (describe in proposal)
       multiple: false
