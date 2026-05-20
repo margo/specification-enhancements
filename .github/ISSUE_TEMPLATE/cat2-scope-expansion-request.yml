@@ -1,0 +1,193 @@
+name: "Cat 2: Scope Expansion Request"
+description: >
+  Propose an expansion of the Margo specification scope. Submissions are
+  reviewed by the Product Management group for roadmap alignment before a
+  Specification Update Proposal (SUP) is initiated.
+title: "[Scope Expansion]: "
+labels:
+  - "cat-2"
+  - "scope-expansion"
+  - "pm-review"
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Category 2 — Scope Expansion Request
+
+        Use this form to propose expanding the scope of the Margo specification.
+        Your submission will be reviewed by the **Product Management group** to assess
+        roadmap alignment before any technical work begins.
+
+        > **Before submitting**, review:
+        > - [In-progress & rejected SUPs](https://github.com/margo/specification-enhancements) to avoid duplicates
+        > - [TWG Feature Backlog](https://github.com/orgs/margo/projects/22/views/3) to check whether a related feature already exists
+        > - [Specification Update Proposal process](https://github.com/margo/Margo-collaboration/blob/main/specification_update_processes/process-overview.md)
+
+  - type: input
+    id: submitter
+    attributes:
+      label: Submitter
+      description: Your GitHub username or full name.
+      placeholder: "@github-username"
+    validations:
+      required: true
+
+  - type: input
+    id: organization
+    attributes:
+      label: Organization / Company
+      description: The Margo member organization you represent.
+      placeholder: "Acme Corp"
+    validations:
+      required: true
+
+  - type: input
+    id: title_summary
+    attributes:
+      label: Short Title
+      description: A concise name for the scope expansion (5–10 words).
+      placeholder: "e.g., Add multi-cluster deployment support"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: spec_area
+    attributes:
+      label: Specification Area
+      description: Which area of the Margo specification does this expansion affect?
+      options:
+        - Device Management
+        - Workload Management & Orchestration
+        - Application Packaging & Registry
+        - Networking & Connectivity
+        - Security & Identity
+        - Observability & Telemetry
+        - Edge-Cloud Interaction
+        - Data Models & APIs
+        - Cross-cutting / Multiple areas
+        - Other (describe in proposal)
+      multiple: false
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem_statement
+    attributes:
+      label: Problem Statement
+      description: >
+        Describe the gap or limitation in the current specification that this expansion
+        addresses. Be specific about what cannot be done today.
+      placeholder: |
+        Currently, Margo does not define a mechanism for…
+        This gap prevents members from…
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_scope
+    attributes:
+      label: Proposed Scope Expansion
+      description: >
+        Describe what new capabilities, behaviors, or requirements you want added to
+        the specification. Focus on the *what*, not the *how* — technical details
+        come later in the SUP phase.
+      placeholder: |
+        This expansion would introduce…
+        It would allow devices/workloads/applications to…
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_cases
+    attributes:
+      label: Use Cases & Business Justification
+      description: >
+        Provide one or more concrete use cases that demonstrate member need. Explain
+        the business value or customer impact.
+      placeholder: |
+        Use case 1: As a [role], I need to…
+        Use case 2: …
+
+        Business value: This change enables…
+    validations:
+      required: true
+
+  - type: textarea
+    id: margo_alignment
+    attributes:
+      label: Margo Vision Alignment
+      description: >
+        Explain how this scope expansion aligns with Margo's goals and interoperability
+        mission. Reference any relevant architectural principles or existing features.
+      placeholder: |
+        This proposal aligns with Margo's goal of… because…
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact_level
+    attributes:
+      label: Estimated Impact on Existing Implementations
+      description: >
+        How disruptive would this expansion be to existing Margo-compliant implementations?
+      options:
+        - "None — purely additive, no breaking changes"
+        - "Low — optional extension, backward compatible"
+        - "Medium — requires opt-in changes from implementors"
+        - "High — introduces breaking or mandatory changes"
+        - "Unknown — needs PM / TWG assessment"
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact_details
+    attributes:
+      label: Impact Details
+      description: >
+        Briefly explain the impact selection above. If "High", describe what would
+        break and for whom.
+      placeholder: |
+        Existing implementations would need to…
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Submission Checklist
+      description: Confirm the following before submitting.
+      options:
+        - label: >
+            I have reviewed existing in-progress and rejected SUPs and this
+            expansion is not a duplicate.
+          required: true
+        - label: >
+            I have reviewed the TWG Feature Backlog and referenced any related
+            features above.
+          required: true
+        - label: >
+            I understand this submission will be reviewed by the Product
+            Management group and may be accepted, deferred, or declined.
+          required: true
+        - label: >
+            If I am a non-member individual contributor, I acknowledge I must
+            sign the [Contributor License Agreement](https://github.com/margo/EasyCLA-public-feedback)
+            before any contribution can be merged.
+          required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        ### What happens next?
+
+        1. The **Product Management group** will review this request for roadmap and
+           vision alignment, typically within two weeks.
+        2. You may be contacted to clarify details or present the proposal during a
+           weekly PM meeting.
+        3. If accepted for further exploration, you will be invited to initiate a
+           **Specification Update Proposal (SUP)** following the
+           [full SUP process](https://github.com/margo/Margo-collaboration/blob/main/specification_update_processes/process-overview.md).
+        4. If the scope expansion is declined, the reason will be recorded on this issue.
