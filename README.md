@@ -59,12 +59,12 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@silvanoc | Data model single source of truth with LinkML | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/data-model_linkml.md)
 |@ajcraig | Moving away from Device Roles to capabilities | P2 | [PR](https://github.com/margo/specification-enhancements/pull/50) |
 |@phil-abb | Supporting specification extensions | P2 | [PR](https://github.com/margo/specification-enhancements/pull/56) |
-|@matlec | Margo Identity and Authorization Framework | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/38) |
+|@matlec | Margo Identity and Authorization Framework | P2 | [PR](https://github.com/margo/specification-enhancements/pull/38) |
+|@matlec | WFM Identity Profile | P2 | [PR](https://github.com/margo/specification-enhancements/pull/58) |
 |@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40) |
 |@arne-broering | Device specific parameter values | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/54) |
 |@arne-broering | Supporting device specific runtimes | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/55) |
 |@phil-abb | Alternative proposal for supporting device specific runtimes | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/59) |
-|@matlec | WFM Identity Profile | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/58) |
 
 ## SUP Owner SUP Checklist
 
