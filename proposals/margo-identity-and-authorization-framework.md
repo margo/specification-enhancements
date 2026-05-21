@@ -346,9 +346,10 @@ There's a chicken-and-egg problem: clients can't validate MIAF-issued SVIDs agai
 
 Clients **MUST** authenticate both HTTPS connections using at least one of:
 
-1. **Web PKI or enterprise PKI:** validate the MIS server certificate chain to a configured set of trust anchors, with DNS name validation per [RFC 6125](https://datatracker.ietf.org/doc/html/rfc6125).
+1. **PKI-anchored validation:** validate the MIS server certificate chain to a configured set of trust anchors (web PKI, enterprise PKI, or an operator-configured private CA), with DNS name validation per [RFC 6125](https://datatracker.ietf.org/doc/html/rfc6125).
 2. **Pinned trust:** validate the MIS server certificate chain or public key against operator-provisioned pins (for example, a pinned CA certificate).
-3. **Operator-provisioned trust anchor:** validate the server certificate against a trust anchor delivered by the same operator channel that installs the principal's SVID.
+
+Operators **MAY** deliver the trust material for either option — the configured anchors for (1) or the pins for (2) — via the same channel used to provision the principal's SVID.
 
 After authenticated retrieval, the discovery document (if used) and the Bundle Map are MIAF's authoritative sources; the bundle they select then validates SVIDs within the Trust Domain.
 
