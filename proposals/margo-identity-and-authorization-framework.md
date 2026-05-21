@@ -380,6 +380,7 @@ Validation **MUST** include the following, depending on context:
   - The verifier **MUST** validate any presented X.509-SVID chain against the Trust Domain's Trust Bundle.
   - The verifier **MUST** extract the SPIFFE ID from the **URI SAN** and treat it as the **authoritative identity claim**.
   - DNS hostname matching is not applicable to SVID identity validation and **MUST NOT** override SPIFFE ID validation.
+  - The structural SVID constraints from the [X.509 SVID profile](#x509-svid-profile) and the referenced SPIFFE X.509-SVID specification (URI SAN cardinality, path constraints, etc.) also apply during validation.
 
   PR2 does not standardize a revocation status endpoint for X.509-SVIDs; deployments use the [Operator Revocation Playbook](#operator-revocation-playbook-pr2). A standardized status mechanism is on the [Roadmap](#8-roadmap-and-forward-extensibility-informative).
 
