@@ -100,6 +100,8 @@ The Trust Domain-scoped identity of a WFM, expressed as a SPIFFE URI of the form
 - **SHOULD** be assigned by the operator deploying the WFM into the Trust Domain (not unilaterally by the WFM vendor), so operators can prevent namespace collisions in multi-vendor deployments; and
 - **MUST** be stable for the life of the WFM identity it names. Rebinding a `wfm-id` to a different WFM identity is not defined by this profile and **MUST NOT** be performed silently; replacement requires a new `wfm-id`.
 
+Operators **MAY** assign one shared `wfm-id` across multiple WFM instances to present a single logical identity, or distinct `wfm-id`s per instance for finer-grained per-instance [lifecycle management](#5-lifecycle-and-operator-playbook).
+
 #### WFM Client Identity (`wfm-client-id`) <!-- omit from toc -->
 
 The stable, verifiable identity of a WFM Client relationship within a Trust Domain, expressed as a SPIFFE URI of the form `spiffe://<trust-domain>/margo/wfm/<wfm-id>/client/<wfm-client-id>` and represented by an X.509-SVID (canonical format and recognition rules in [§3](#3-identity-model)). The `wfm-client-id` segment:
