@@ -41,19 +41,19 @@ This proposal builds on the current device capability reporting specification. S
 
 ---
 
-## Device Model: Resources vs. Capabilities
+## Device Model: Properties Structure
 
-Devices MUST provide the Workload Fleet Management service with both their resources and their capabilities. Resources are quantitative attributes (CPU, memory, storage) used for workload scheduling. Capabilities describe what the device can do — which runtimes it supports, and which manifest types it can process.
+Devices MUST provide the Workload Fleet Management service with their full device description via the `DeviceCapabilitiesManifest`. All fields are reported as direct properties within the `properties` object — compute attributes (cpu, memory, storage), physical presence attributes (peripherals, interfaces), and workload compatibility attributes (otelCollector, supportedRuntimes, supportedDeploymentTypes) are peers at the same level.
 
-This proposal replaces the `roles` field in the current `DeviceCapabilitiesManifest` with a `capabilities` object, while keeping the `resources` object unchanged.
+This proposal removes the `roles` field and the nested `resources` and `capabilities` sub-objects from the current `DeviceCapabilitiesManifest`. Their constituent fields are promoted to the `properties` root.
 
 ## Requirements Changes
 
-The `roles` field in the current `DeviceCapabilitiesManifest` `properties` schema is replaced by a `capabilities` object. All references to static device roles (Standalone Cluster, Cluster Leader, Standalone Device) in the specification will be updated following this SUP.
+The `roles` field and the nested `resources` and `capabilities` sub-objects in the current `DeviceCapabilitiesManifest` `properties` schema are removed. All references to static device roles (Standalone Cluster, Cluster Leader, Standalone Device) in the specification will be updated following this SUP.
 
-All previously hard-coded device requirements (WFM client, OCI runtime, OTEL collector) are now expressed as capabilities within the `capabilities` object. The WFM client and OTEL collector are reported as boolean flags, while OCI runtime support is captured through `supportedRuntimes`. A device MUST report at least one entry across `supportedRuntimes`, and MUST report at least one `supportedDeploymentTypes`.
+All fields previously nested under `resources` (cpu, memory, storage, peripherals, interfaces) and `capabilities` (otelCollector, supportedRuntimes, supportedDeploymentTypes) are promoted to direct fields within the `properties` object. A device MUST report at least one entry in `supportedRuntimes` and MUST report at least one entry in `supportedDeploymentTypes`.
 
-If any element within the device capabilities change, the device client MUST update the `DeviceCapabilitiesManifest` reported to the WFM.
+If any field within the device properties changes, the device client MUST update the `DeviceCapabilitiesManifest` reported to the WFM.
 
 ---
 
@@ -103,33 +103,20 @@ PUT /api/v1/clients/{clientId}/capabilities
 
 ### Properties Attributes
 
-| Field        | Type           | Required? | Description |
-|--------------|----------------|-----------|-------------|
-| id           | string         | Y         | Unique deviceID assigned to the device via the Device Owner. |
-| vendor       | string         | Y         | Defines the device vendor. |
-| modelNumber  | string         | Y         | Defines the model number of the device. |
-| serialNumber | string         | Y         | Defines the serial number of the device. |
-| resources    | Resource       | Y         | Element that defines the device's resources available to applications. See the [Resources Attributes](#resources-attributes) section below. Unchanged from current specification. |
-| capabilities | Capabilities   | Y         | **Proposed addition.** Replaces `roles`. Defines what the device can do. See the [Capabilities Attributes](#capabilities-attributes) section below. |
-
-### Capabilities Attributes
-
-**Proposed addition.** Replaces the `roles` field. Describes what the device can do and what types of workloads it can receive and process.
-
-#### New Capability items in proposal
-
-**`supportedRuntimes`** — for well-known, Margo-standard OCI runtimes (docker, podman, kubernetes).
-- A device MUST report at least one `supportedRuntimes`.
-
-**`supportedDeploymentTypes`** — for well-known, Margo-standard manifests (helm, compose).
-- A device MUST report at least one `supportedDeploymentTypes`.
-
-
-| Attribute         | Type               | Required? | Description |
-|-------------------|--------------------|-----------|-------------|
-| otelCollector     | boolean     | Y         | Reports the OTEL collector present on the device. |
-| supportedRuntimes | array | Y        | Standard Margo OCI runtimes available on the device. See [SupportedRuntimes](#supportedruntime). |
-| supportedDeploymentTypes| array | Y    | Manifest/deployment formats the device can receive and process locally. See [supportedDeploymentTypes](#supportedDeploymentTypes). |
+| Field                    | Type              | Required? | Description |
+|--------------------------|-------------------|-----------|-------------|
+| id                       | string            | Y         | Unique deviceID assigned to the device via the Device Owner. |
+| vendor                   | string            | Y         | Defines the device vendor. |
+| modelNumber              | string            | Y         | Defines the model number of the device. |
+| serialNumber             | string            | Y         | Defines the serial number of the device. |
+| cpu                      | array             | Y         | List of CPU entries available on the device. Each entry includes `cores` (integer) and `architecture` (see [CpuArchitectureType](#cpuarchitecturetype)). |
+| memory                   | string            | Y         | Total memory available on the device (e.g. `59 Gi`). |
+| storage                  | string            | Y         | Total storage available on the device (e.g. `1862 Gi`). |
+| peripherals              | array             | N         | Peripherals present on the device. Each entry includes `type` (see [PeripheralType](#peripheraltype)) and optional `manufacturer`. |
+| interfaces               | array             | N         | Communication interfaces present on the device. Each entry includes `type` (see [CommunicationInterfaceType](#communicationinterfacetype)). |
+| otelCollector            | boolean           | Y         | Reports whether an OTEL collector is present on the device. |
+| supportedRuntimes        | array             | Y         | Standard Margo OCI runtimes available on the device. See [SupportedRuntimes](#supportedruntimes). A device MUST report at least one entry. |
+| supportedDeploymentTypes | array             | Y         | Manifest/deployment formats the device can receive and process locally. See [supportedDeploymentTypes](#supporteddeploymenttypes). A device MUST report at least one entry. |
 
 ## Enumerations
 
@@ -172,7 +159,7 @@ PUT /api/v1/clients/{clientId}/capabilities
 |--------------------|-------------|
 | oci            | OCI container runtime |
 
-> Note: Discussions are ongoing for vendor specific runtimes. Creation of "custom" runtimes or further expansions will come in the form of seperate SUP submissions.e 
+> Note: Discussions are ongoing for vendor specific runtimes. Creation of `custom` runtimes or further expansions will come in the form of seperate SUP submissions.e 
 
 ### supportedDeploymentTypes
 
@@ -194,40 +181,36 @@ PUT /api/v1/clients/{clientId}/capabilities
         "vendor": "Northstar Industrial Devices",
         "modelNumber": "332ANZE1-N1",
         "serialNumber": "PF45343-AA",
-        "resources": {
-            "cpu": [
-                {
-                    "cores": 24,
-                    "architecture": "x86_64"
-                }
-            ],
-            "memory": "59 Gi",
-            "storage": "1862 Gi",
-            "peripherals": [
-                {
-                    "type": "gpu",
-                    "manufacturer": "NVIDIA"
-                }
-            ],
-            "interfaces": [
-                {
-                    "type": "ethernet"
-                },
-                {
-                    "type": "wifi"
-                }
-            ]
-        },
-        "capabilities": {
-            "otelCollector": true,
-            "supportedRuntimes": [
-                "oci"
-            ],
-            "supportedDeploymentTypes": [
-                "helm",
-                "compose"
-            ]
-        }
+        "cpu": [
+            {
+                "cores": 24,
+                "architecture": "x86_64"
+            }
+        ],
+        "memory": "59 Gi",
+        "storage": "1862 Gi",
+        "peripherals": [
+            {
+                "type": "gpu",
+                "manufacturer": "NVIDIA"
+            }
+        ],
+        "interfaces": [
+            {
+                "type": "ethernet"
+            },
+            {
+                "type": "wifi"
+            }
+        ],
+        "otelCollector": true,
+        "supportedRuntimes": [
+            "oci"
+        ],
+        "supportedDeploymentTypes": [
+            "helm",
+            "compose"
+        ]
     }
 }
 ```
