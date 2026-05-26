@@ -81,9 +81,18 @@ metadata:
   name: Hello World  
   version: "1.0"
 x-acme-extensions:
-  wfm-catalog-metadata:
-  region: us-west
-  compliance: true
+  lumis: "valtor"
+  nesk: 8421
+  prael: false
+  dravi:
+    - kelta
+    - morin
+    - vexa
+  kyro:
+    thalen: "zurik"
+    pendre: 9912
+    quoss: true
+
 ```
 
 #### 2. Application Description YAML (application ↔ device specification extension at DeploymentProfile root)
@@ -99,9 +108,17 @@ deploymentProfiles:
   - type: helm.v3
     id: com-northstarida-digitron-orchestrator-helm.v3-a
     x-northstar-industrial-extensions:
-      device-features:
-        enable-gpu: true
-        custom-init: /opt/northstar/init.sh
+      alvex:
+        toril: 3.141
+      gren:
+        moload: "sylph"
+        indox: 27
+        actovo: true
+      varo:
+        - idlem: "xen-01"
+          flabo: false
+        - idlem: "xen-02"
+          flabo: true
     components:
     - name: digitron-orchestrator
       properties:
@@ -127,9 +144,20 @@ deploymentProfiles:
         repository: oci://northstarida.azurecr.io/charts/northstarida-digitron-orchestrator
         revision: 1.0.9
       x-northstar-industrial-extensions:
-        device-features:
-          enable-gpu: true
-          custom-init: /opt/northstar/init.sh
+        benta:
+          phamop: "ulnar"
+          colot: 554
+          rearu: true
+        delco:
+          - 10
+          - 20
+          - 30
+        mavor:
+          shuv:
+            staoc: "drift"
+            levwel: 7
+            valni: false
+
 ```
 
 #### 4. Application Deployment YAML (application ↔ device specification extension at deploymentProfile root)
@@ -152,9 +180,16 @@ spec:
       repository: oci://northstarida.azurecr.io/charts/northstarida-digitron-orchestrator
       revision: 1.0.9
     x-northstar-industrial-extensions:
-      device-features:
-        enable-gpu: true
-        custom-init: /opt/northstar/init.sh
+      axis: "qelar"
+      nages:
+        - neam: "unit-a"
+          waugh: 4.5
+          enbel: true
+        - neam: "unit-b"
+          waugh: 7.8
+          enbel: false
+      flux: 22
+
 ```
 
 #### 5. Application Deployment YAML (application ↔ device specification extension at deploymentProfile.components root)
@@ -169,9 +204,17 @@ spec:
         repository: oci://northstarida.azurecr.io/charts/northstarida-digitron-orchestrator
         revision: 1.0.9
       x-northstar-industrial-extensions:
-        device-features:
-          enable-gpu: true
-          custom-init: /opt/northstar/init.sh
+        cerro:
+          sigil: "norix"
+          depth: 12
+          locked: false
+        shiop:
+          inner:
+            telp: 88
+            sbell: true
+          outer:
+            telp: 42
+            sbell: f
 ```
 
 #### 6. Application Deployment YAML (WFM ↔ device specification extension at spec root)
@@ -186,7 +229,20 @@ spec:
         repository: oci://northstarida.azurecr.io/charts/northstarida-digitron-orchestrator
         revision: 1.0.9
   x-cloudfm-extensions:
-    cm-store-id: ABBC123JELZ
+    oriken:
+      pulnet:
+        ratg: 60
+        unop: "zph"
+        ative: true
+      lyors:
+        - trei: 1
+          valit: "alpha"
+        - trei: 2
+          valit: "beta"
+      chotsum:
+        cedo: 998877
+        vertify: false
+
 ```
 
 #### 7. Device Capabilities JSON (device ↔ WFM specification extension at root)
@@ -197,10 +253,22 @@ spec:
   "kind": "DeviceCapabilitiesManifest",
   "properties": {...},
   "x-southstar-inc-extensions": {
-    "mode": "hybrid",
-    "security": {
-      "storage": "vault",
-      "rootOfTrust": "tpm" 
+    "navir": {
+      "semet": "elion",
+      "clout": 76,
+      "oline": true,
+      "patets": [
+        {
+          "rotora": "ax-7",
+          "latcety": 12.5,
+          "sarlep": false
+        },
+        {
+          "rotora": "bx-3",
+          "latcety": 8.2,
+          "sarlep": true
+        }
+      ]
     }
   }
 }
