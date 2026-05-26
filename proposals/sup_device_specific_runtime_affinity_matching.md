@@ -1,4 +1,4 @@
-# Specification Update Proposal: Device specific runtime matching via device affinity expressions
+# Specification Update Proposal: Device-specific runtime matching via device constraints
 
 ## Owner
 
@@ -6,9 +6,9 @@
 
 ## Summary
 
-This SUP proposes a generic device affinity mechanism that allows application suppliers to target devices using supplier-defined metadata without requiring the Margo specification to standardize every device characteristic or runtime-specific detail.
+This SUP proposes a generic device constraints mechanism that allows application suppliers to target devices using supplier-defined metadata without requiring the Margo specification to standardize every device characteristic or runtime-specific detail.
 
-The proposal adds an optional `labels` dictionary to the Device Capabilities document and an optional `deviceAffinity` field to deployment profiles in both the Application Description and Application Deployment documents. Together, these additions allow a Workload Fleet Manager or gateway to match a deployment to devices that satisfy supplier-agreed constraints such as vendor, deployment type, operating system, or custom runtime support.
+The proposal adds an optional `labels` dictionary to the Device Capabilities document and replaces the current `requiredResources` field in the deployment profile with a new `deviceConstraints` field in both the Application Description and Application Deployment documents. Together, these additions allow a Workload Fleet Manager or gateway to match a deployment to devices that satisfy supplier-agreed constraints such as vendor, deployment type, operating system, custom runtime support, and capacity constraints like minimum CPU, memory, and storage requirements.
 
 This is an alternative proposal to the [original SUP for supporting device specific runtimes](https://github.com/margo/specification-enhancements/blob/device-specific-runtime/proposals/device-specific-runtime.md) and proposes a more general approach for solving the same problem.
 
@@ -50,7 +50,7 @@ The following items are out of scope:
 
 * standardizing any new runtime, package format, or execution environment
 * defining a global registry of approved supplier labels
-* defining gateway inventory models beyond the reuse of `deviceAffinity` in `ApplicationDeployment`
+* defining gateway inventory models beyond the reuse of `deviceConstraints` in `ApplicationDeployment`
 * defining scheduling policies such as priorities, scoring, or anti-affinity
 
 ### SUP dependency
@@ -64,14 +64,14 @@ This SUP has a dependency on the SUP to [move device roles to capabilities](http
 This SUP introduces three normative changes:
 
 1. add an optional top-level `labels` object to `DeviceCapabilitiesManifest`
-2. add an optional `deviceAffinity` field to each deployment profile in `ApplicationDescription`
-3. add an optional `deviceAffinity` field to each deployment profile in `ApplicationDeployment` so an opaque gateway can perform device selection locally when the WFM cannot target a specific downstream device
+2. replace the `requiredResources` field with the `deviceConstraints` field for each deployment profile in `ApplicationDescription`
+3. add the `deviceConstraints` field to each deployment profile in `ApplicationDeployment` so an opaque gateway can perform device selection locally when the WFM cannot target a specific downstream device
 
 The mechanism is generic by design:
 
 * `properties` remain Margo-defined fields with Margo-defined semantics
 * `labels` are supplier-defined key/value metadata with no semantics implied by Margo beyond exact matching rules
-* `deviceAffinity` defines how to evaluate required placement constraints against `properties` and `labels`
+* `deviceConstraints` separates minimum capacity requirements from eligibility matching rules evaluated against `properties` and `labels`
 
 ### 1. Device Capabilities changes
 
@@ -117,34 +117,46 @@ Examples:
 
 #### Add "Custom" runtime and deploymentType options
 
-* The `supportRuntimes` array is updated to allow for "oci" and "custom". Using "custom" indicates the device has a runtime that is not officially supported by Margo.
-* The `supportDeploymentTypes` array is updated to allow for "compose", "helm", and "custom". Using "custom" indicates the device is capable of deploying applications using a deployment type that is not officially supported by Margo.
+* The `supportedRuntimes` array is updated to allow for "oci" and "custom". Using "custom" indicates the device has a runtime that is not officially supported by Margo.
+* The `supportedDeploymentTypes` array is updated to allow for "compose", "helm", and "custom". Using "custom" indicates the device is capable of deploying applications using a deployment type that is not officially supported by Margo.
 
-> **Note:** This is based on the current proposal to [move device roles to capabilities](https://github.com/margo/specification-enhancements/pull/50). Any changes made to that proposal before it is approve may impact this section so the intention is for this to be compatible with what is approved for that SUP.
+> **Note:** This is based on the current proposal to [move device roles to capabilities](https://github.com/margo/specification-enhancements/pull/50). Any changes made to that proposal before it is approved may impact this section, so the intention is for this to be compatible with what is approved for that SUP.
 
-### 2. Device affinity model
+### 2. Device constraints model
 
-Each deployment profile in `ApplicationDescription` and `ApplicationDeployment` MAY define a `deviceAffinity` field.
+Each deployment profile in `ApplicationDescription` and `ApplicationDeployment` MUST define a `deviceConstraints` field.
 
 #### Schema
 
 ```yaml
-deviceAffinity:
-  - propertySelector:
-      matchExpressions:
-        - key: /vendor
-          operator: In
-          values: ["Example Vendor"]
-    labelSelector:
-      matchExpressions:
-        - key: example.com/hypervisor
-          operator: In
-          values: ["hyper-v"]
+deviceConstraints:
+  capacityRequirements:
+    cpu:
+      cores: 1.5
+      architectures: ["x86_64"]
+    memory: 1024Mi
+    storage: 10Gi
+  eligibilityRules:
+    - propertySelector:
+        matchExpressions:
+          - key: /vendor
+            operator: In
+            values: ["Example Vendor"]
+      labelSelector:
+        matchExpressions:
+          - key: example.com/hypervisor
+            operator: In
+            values: ["hyper-v"]
 ```
 
-Each entry in the `deviceAffinity` array is a `DeviceSelectorTerm`.
+`deviceConstraints` supports:
 
-`DeviceSelectorTerm` supports:
+* `capacityRequirements` - required minimum CPU, memory, and storage requirements for the deployment profile
+* `eligibilityRules` - optional rule terms evaluated against `DeviceCapabilitiesManifest.properties` and `DeviceCapabilitiesManifest.labels`
+
+Each entry in the `eligibilityRules` array is a `DeviceEligibilityRule`.
+
+`DeviceEligibilityRule` supports:
 
 * `propertySelector` - matches against Margo-defined fields under `DeviceCapabilitiesManifest.properties`
 * `labelSelector` - matches against supplier-defined fields under `DeviceCapabilitiesManifest.labels`
@@ -156,7 +168,7 @@ Each expression has the following schema:
 ```yaml
 - key: <string>
   operator: In | NotIn | Exists | DoesNotExist | Gt | Lt
-  values: [<object>, ...] # not required for Exists, DoesNotExists
+  values: [<object>, ...] # not required for Exists, DoesNotExist
 ```
 
 #### Property selector key format
@@ -181,14 +193,32 @@ If a property selector resolves to any other JSON type, the expression MUST eval
 
 `labelSelector.matchExpressions[].key` MUST be the exact label key to evaluate within `labels`.
 
-#### Matching semantics
+This version of the SUP only defines selector behavior for label values that resolve to either:
+
+* a string, number, or boolean
+* an array of strings, or numbers
+
+If a label selector resolves to any other JSON type, the expression MUST evaluate to `false`.
+
+#### Capacity requirements semantics
+
+The `capacityRequirements` rules are:
+
+* `cpu.cores` is the minimum number of CPU cores required on the target device.
+* `cpu.architectures`, when present, restricts acceptable CPU architectures.
+* `memory` is the minimum memory required by the deployment profile.
+* `storage` is the minimum storage required by the deployment profile.
+* A device MUST satisfy all specified `capacityRequirements` to remain eligible for further evaluation.
+
+#### Eligibility rules matching semantics
 
 The matching rules are:
 
 * All `matchExpressions` within a single selector are combined using logical AND.
-* If a `DeviceSelectorTerm` contains both `propertySelector` and `labelSelector`, both selectors must match for that term to match.
-* The `deviceAffinity` array is combined using logical OR. A device matches the affinity if at least one `DeviceSelectorTerm` matches.
-* If `deviceAffinity` is omitted, the deployment profile has no additional affinity constraint beyond the rest of the Margo deployment flow.
+* If a `DeviceEligibilityRule` contains both `propertySelector` and `labelSelector`, both selectors must match for that rule to match.
+* The `eligibilityRules` array is combined using logical OR. A device matches eligibility rules if at least one `DeviceEligibilityRule` matches.
+* If `eligibilityRules` is omitted, the deployment profile has no additional selector-based constraint beyond `capacityRequirements`.
+* If both `capacityRequirements` and `eligibilityRules` are present, implementations MUST evaluate `capacityRequirements` first and MUST only evaluate `eligibilityRules` for devices that satisfy the required capacity.
 
 Operator behavior:
 
@@ -215,11 +245,11 @@ For `Gt` and `Lt`:
 
 * `values` MUST be present
 * `values` MUST be parsable as numbers
-* `values` MUST only container a single number
+* `values` MUST only contain a single number
   
 ### 3. Application Description changes
 
-Each deployment profile type in `ApplicationDescription` is extended with an optional `deviceAffinity` field using the schema and semantics defined above.
+Each deployment profile type in `ApplicationDescription` is extended with the `deviceConstraints` field using the schema and semantics defined above.
 
 This field allows an application supplier to declare the minimum device characteristics required for that deployment profile.
 
@@ -240,42 +270,49 @@ deploymentProfiles:
         properties:
           repository: oci://appforge-dynamics.azurecr.io/hyperv/sys-sec-mon
           revision: 1.0.0
-    deviceAffinity:
-      - propertySelector:
-          matchExpressions:
-            - key: /vendor
-              operator: In
-              values: ["EdgeCircuit Systems", "NanoEdge Devices"]
-        labelSelector:
-          matchExpressions:
-            - key: example.com/hypervisor
-              operator: In
-              values: ["hyper-v"]
+    deviceConstraints:
+      capacityRequirements:
+        cpu:
+          cores: 1
+        memory: 1024Mi
+        storage: 5Gi
+      eligibilityRules:
+        - propertySelector:
+            matchExpressions:
+              - key: /vendor
+                operator: In
+                values: ["EdgeCircuit Systems", "NanoEdge Devices"]
+          labelSelector:
+            matchExpressions:
+              - key: example.com/hypervisor
+                operator: In
+                values: ["hyper-v"]
 ```
 
 Normative behavior:
 
-* A WFM MUST evaluate `deviceAffinity` before selecting a target device for a deployment profile.
-* A device that does not satisfy the `deviceAffinity` constraints for a deployment profile MUST NOT be selected for that profile.
-* If no available device satisfies the profile's required affinity, the deployment MUST be reported as not placeable according to the implementation's existing status model.
+* A WFM MUST evaluate `deviceConstraints` before selecting a target device for a deployment profile.
+* A device that does not satisfy the minimum required CPU, memory, and storage defined in the `capacityRequirements` MUST NOT be selected for that profile.
+* If `eligibilityRules` are present, a device that does not satisfy the required rule evaluation MUST NOT be selected for that profile.
+* If no available device satisfies the profile's required constraints, the deployment MUST be reported as not placeable according to the implementation's existing status model.
 
 #### Supporting "custom" deployment types
 
-If the application is packaged using something other than the officially supported deployment types of "helm" or "compose" the deployment type is set to "custom" to indicate the application package is using an unofficially deployment type. When using the "custom" deployment type, there MUST be a "deviceAffinity" rule.
+If the application is packaged using something other than the officially supported deployment types of "helm" or "compose" the deployment type is set to "custom" to indicate the application package is using an unofficial deployment type. When using the "custom" deployment type, there MUST be a `deviceConstraints` rule.
 
 ### 4. Application Deployment changes
 
-Each deployment profile in `ApplicationDeployment.spec.deploymentProfiles[]` is extended with the same optional `deviceAffinity` field.
+Each deployment profile in `ApplicationDeployment.spec.deploymentProfiles[]` is extended with the same optional `deviceConstraints` field.
 
 This field is primarily required for opaque gateway scenarios where the WFM can target only the gateway, while the gateway itself must choose the final downstream device.
 
 Normative behavior:
 
-* For non-gateway and see-through gateway scenarios, `ApplicationDeployment` MAY omit `deviceAffinity` if the selected target device is already known by the WFM.
-* For opaque gateway scenarios, when device selection must occur behind the gateway, the `ApplicationDeployment` sent to the gateway MUST include the required `deviceAffinity` for the selected deployment profile.
-* An opaque gateway that receives `deviceAffinity` in `ApplicationDeployment` MUST evaluate it against the capabilities of its downstream devices before placing the workload.
-* An opaque gateway MUST NOT place the workload on a downstream device that fails the affinity evaluation.
-* When the `ApplicationDeployment` is derived from an `ApplicationDescription`, the included `deviceAffinity` MUST be identical to or more restrictive than the source deployment profile. It MUST NOT broaden the set of eligible devices.
+* For non-gateway and see-through gateway scenarios, `ApplicationDeployment` MAY omit `deviceConstraints` if the selected target device is already known by the WFM.
+* For opaque gateway scenarios, when device selection must occur behind the gateway, the `ApplicationDeployment` sent to the gateway MUST include the required `deviceConstraints` for the selected deployment profile.
+* An opaque gateway that receives `deviceConstraints` in `ApplicationDeployment` MUST evaluate them against the capabilities of its downstream devices before placing the workload.
+* An opaque gateway MUST NOT place the workload on a downstream device that fails the constraints evaluation.
+* When the `ApplicationDeployment` is derived from an `ApplicationDescription`, the included `deviceConstraints` MUST be identical to or more restrictive than the source deployment profile. It MUST NOT broaden the set of eligible devices.
 
 Example:
 
@@ -297,12 +334,18 @@ spec:
           properties:
             repository: oci://appforge-dynamics.azurecr.io/hyperv/sys-sec-mon
             revision: 1.0.0
-      deviceAffinity:
-        - labelSelector:
-            matchExpressions:
-              - key: example.com/hypervisor
-                operator: In
-                values: ["hyper-v"]
+      deviceConstraints:
+        capacityRequirements:
+          cpu:
+            cores: 1
+          memory: 1024Mi
+          storage: 5Gi
+        eligibilityRules:
+          - labelSelector:
+              matchExpressions:
+                - key: example.com/hypervisor
+                  operator: In
+                  values: ["hyper-v"]
 ```
 
 ### 5. Example use cases
@@ -313,9 +356,9 @@ AppForge Dynamics is a company that builds security and monitoring applications.
 
 AppForge Dynamics has partnered with two companies, EdgeCircuit Systems and NanoEdge Devices, that will supply Windows servers that can be used to deploy AppForge Dynamics virtual machines.
 
-AppForge Dynamics has agreed to follow the Margo application package approach to package their virtual images inside an OCI blob and use the Margo Application description to make their application available. EdgeCircuit Systems and NanoEdge Device both have Windows servers that are running their own implementation of the Margo WMF client. While they cannot deploy applications targeting Kubernetes or Compose, they can deploy AppForge Dynamics's apps.  
+AppForge Dynamics has agreed to follow the Margo application package approach to package their virtual images inside an OCI blob and use the Margo Application description to make their application available. EdgeCircuit Systems and NanoEdge Devices both have Windows servers that are running their own implementation of the Margo WFM client. While they cannot deploy applications targeting Kubernetes or Compose, they can deploy AppForge Dynamics's apps.
 
-It should be possible for these three vendors to collaborate and deploy these virtual machines to the targeted devices supplied by EdgeCircuit Systems and NanoEdge Devices. They should be able to do this using implementations based on the Margo specification while using a WFM that knows nothing about what these three suppliers are up to. There are no expectations that these VM will be deployed on any other Margo conformant devices except those provided by these two device suppliers. There are no expectations that these devices will be able to deploy anything but these VMs.
+It should be possible for these three vendors to collaborate and deploy these virtual machines to the targeted devices supplied by EdgeCircuit Systems and NanoEdge Devices. They should be able to do this using implementations based on the Margo specification while using a WFM that knows nothing about what these three suppliers are doing. There are no expectations that these VMs will be deployed on any other Margo-conformant devices except those provided by these two device suppliers. There are no expectations that these devices will be able to deploy anything but these VMs.
 
 ##### Application Description
 
@@ -347,20 +390,26 @@ deploymentProfiles:
         properties:  
           repository: oci://apppforge-dynamics.azurecr.io/hyperv/sys-sec-mon
           revision: 1.0.0
-    deviceAffinity:
-      - propertySelector:
-          matchExpressions:
-          - key: /vendor
-            operator: in
-            values:
-            - "EdgeCircuit Systems"
-            - "NanoEdge Devices"
-      - labelSelector:
-          matchExpressions:
-          - key: example.com/hyper-v.host
-            operator: in
-            values: 
-            - true
+    deviceConstraints:
+      capacityRequirements:
+        cpu:
+          cores: 1
+        memory: 1024Mi
+        storage: 5Gi
+      eligibilityRules:
+        - propertySelector:
+            matchExpressions:
+            - key: /vendor
+              operator: In
+              values:
+              - "EdgeCircuit Systems"
+              - "NanoEdge Devices"
+          labelSelector:
+            matchExpressions:
+            - key: example.com/hyper-v.host
+              operator: In
+              values:
+              - true
 parameters: ...
 configuration: ...
 ```
@@ -396,7 +445,7 @@ A conglomerate of three application suppliers (MicroKil Technologies, ForgeFlux 
 
 Based on feedback from customers, they feel being conformant with Margo is the best way to meet their needs. Since Margo does not officially support native wasm deployment types, they need a way to match up their applications to suitable target devices.
 
-> **Note:** Currently native-wasm isn't official supported via the Margo specification. This is just an example of how it could be described until such time as native-wasm is official supported.
+> **Note:** Currently native-wasm isn't officially supported by the Margo specification. This is just an example of how it could be described until such time as native-wasm is officially supported.
 
 They have agreed that they want their customers to be able to use any Margo conformant workload fleet manager to deploy their WASM based applications to these special devices. In order to accomplish this, the application vendors have agreed to package their applications using Margo's application package format and distribute their app artifacts using OCI blobs. The hardware vendors have agreed to implement some of the workload fleet manager client spec to enable onboarding and application deployment, but not everything (e.g, no OTEL collector).
 
@@ -434,29 +483,36 @@ deploymentProfiles:
         properties:  
           repository: oci://com.wasmotive-industrial.azurecr.io/apps/asset-tracking-2026
           revision: 2026.2.13
-    deviceAffinity:
-      - labelSelector:
-          matchExpressions:
-          - key: example.com/os
-            operator: in
-            values:
-            - "Zephyr RTOS"
-          - key: example.com/wasm.runtime
-            operator: in
-            values:
-            - "WAMR"                    
-          - key: example.com/wasm.package.format
-            operator: in
-            values:
-            - ".aot"
-          - key: example.com/wasi.version
-            operator: in
-            values:
-            - "Snapshot Preview 1"
-          - key: example.com/wasm.version
-            operator: in
-            values:
-            - "MVP"
+    deviceConstraints:
+      capacityRequirements:
+        cpu:
+          cores: 0.5
+          architectures: ["arm64"]
+        memory: 256Mi
+        storage: 1Gi
+      eligibilityRules:
+        - labelSelector:
+            matchExpressions:
+            - key: example.com/os
+              operator: In
+              values:
+              - "Zephyr RTOS"
+            - key: example.com/wasm.runtime
+              operator: In
+              values:
+              - "WAMR"
+            - key: example.com/wasm.package.format
+              operator: In
+              values:
+              - ".aot"
+            - key: example.com/wasi.version
+              operator: In
+              values:
+              - "Snapshot Preview 1"
+            - key: example.com/wasm.version
+              operator: In
+              values:
+              - "MVP"
 parameters: ...
 configuration: ...
 ```
@@ -482,8 +538,8 @@ configuration: ...
     },
     "labels": {
       "example.com/wasm.runtime": "WAMR",
-      "example.com/wasm.versions": ["MVP", "MVP+"],
-      "example.com/wasi.versions": ["Snapshot Preview 1"],
+      "example.com/wasm.version": ["MVP", "MVP+"],
+      "example.com/wasi.version": ["Snapshot Preview 1"],
       "example.com/wasm.package.format": [".wasm", ".aot", ".o", ".a"],
       "example.com/os": "Zephyr RTOS"
     }
@@ -492,7 +548,7 @@ configuration: ...
 
 #### Custom deployment of Hyper-V virtual machines via Margo behind opaque gateway
 
-For this use case we have an Opaque gateway setup that has three devices behind it. One device supports the Compose deployment type, one device supports the Helm deployment type, and the third device supports the custom Hyper-V deployment type from the use case above.
+For this use case we have an opaque gateway setup that has three devices behind it. One device supports the compose deployment type, one device supports the helm deployment type, and the third device supports the custom Hyper-V deployment type from the use case above.
 
 ##### Application Description
 
@@ -526,13 +582,19 @@ deploymentProfiles:
         properties:  
           repository: oci://apppforge-dynamics.azurecr.io/hyperv/sys-sec-mon
           revision: 1.0.0
-    deviceAffinity:
-      - labelSelector:
-          matchExpressions:
-          - key: example.com/hyper-v.host
-            operator: in
-            values: 
-            - true
+    deviceConstraints:
+      capacityRequirements:
+        cpu:
+          cores: 1
+        memory: 1024Mi
+        storage: 5Gi
+      eligibilityRules:
+        - labelSelector:
+            matchExpressions:
+            - key: example.com/hyper-v.host
+              operator: In
+              values:
+              - true
 parameters: ...
 configuration: ...
 ```
@@ -560,13 +622,19 @@ metadata:
       - name: Leaf Industrial
         site: http://Leaf Industrial.com
 deploymentProfiles:
-  - type: Helm
+  - type: helm
     id: com.leaf-industrial.AGA.mastercontrol
     components:
       - name: mastercontrol
         properties:  
           repository: oci://leaf-industrial.azurecr.io/AGA/charts/mastercontrol
           revision: 9.3.324
+    deviceConstraints:
+      capacityRequirements:
+        cpu:
+          cores: 1
+        memory: 1024Mi
+        storage: 5Gi
 parameters: ...
 configuration: ...
 ```
@@ -594,13 +662,19 @@ metadata:
       - name: Leaf Industrial
         site: http://Leaf Industrial.com
 deploymentProfiles:
-  - type: Compose
+  - type: compose
     id: com.leaf-industrial.PMC.masterreporting
     components:
       - name: masterreporting
         properties:  
           repository: oci://leaf-industrial.azurecr.io/PMC/compose/masterreporting
           revision: 6.5.4
+    deviceConstraints:
+      capacityRequirements:
+        cpu:
+          cores: 1
+        memory: 1024Mi
+        storage: 5Gi
 parameters: ...
 configuration: ...
 ```
@@ -636,7 +710,7 @@ The device capabilities has the combination of all three hardware devices
 
 ##### Application deployment for Hyper-V
 
-Since customer only sees the Gateway, and not the devices behind it, the Application Deployment needs to include the defineAffinity information so the Gateway knows what device to match the deployment to.
+Since customer only sees the Gateway, and not the devices behind it, the Application Deployment needs to include the required device constraints so the Gateway knows what device to match the deployment to.
 
 ```yaml
 apiVersion: application.margo.org/v1alpha1
@@ -656,13 +730,19 @@ spec:
           properties:  
             repository: oci://apppforge-dynamics.azurecr.io/hyperv/sys-sec-mon
             revision: 1.0.0
-      deviceAffinity:
-        - labelSelector:
-            matchExpressions:
-            - key: hyper-v.host
-              operator: in
-              values: 
-              - true
+      deviceConstraints:
+        capacityRequirements:
+          cpu:
+            cores: 1
+          memory: 1024Mi
+          storage: 5Gi
+        eligibilityRules:
+          - labelSelector:
+              matchExpressions:
+              - key: example.com/hyper-v.host
+                operator: In
+                values:
+                - true
       parameters: ...
 ```
 
@@ -679,13 +759,19 @@ metadata:
     namespace: leaf-industrial
 spec:
   deploymentProfiles:
-    - type: Helm
+    - type: helm
       id: com.leaf-industrial.AGA.mastercontrol
       components:
         - name: mastercontrol
           properties:  
             repository: oci://leaf-industrial.azurecr.io/AGA/charts/mastercontrol
             revision: 9.3.324
+      deviceConstraints:
+        capacityRequirements:
+          cpu:
+            cores: 1
+          memory: 1024Mi
+          storage: 5Gi
       parameters: ...
 ```
 
@@ -694,7 +780,7 @@ spec:
 To claim conformance with this SUP:
 
 * a producer of `DeviceCapabilitiesManifest` MUST preserve the existing `properties` structure and MAY include `labels`
-* a consumer implementing placement decisions MUST correctly evaluate `deviceAffinity` using the rules defined above
+* a consumer implementing placement decisions MUST correctly evaluate `deviceConstraints` using the rules defined above
 * a WFM or gateway MUST treat `labels` as opaque supplier-defined metadata and MUST NOT infer any additional semantics beyond exact selector evaluation
 * an implementation MUST ignore unknown label keys unless they are referenced by a selector
 
@@ -704,9 +790,9 @@ To claim conformance with this SUP:
 
 This approach was rejected because it would continuously expand the core specification with supplier-specific concepts that Margo cannot reasonably standardize. It also creates pressure to define semantics for proprietary or niche runtimes that are intentionally outside Margo's scope.
 
-### Add only custom runtime fields and no generic affinity model
+### Add only custom runtime fields and no generic constraints model
 
-This approach was rejected because the underlying problem is broader than runtimes. Suppliers may need to target devices based on operating system, gateway topology, hypervisor presence, package format, vendor collaboration, or other non-standard characteristics. A generic affinity model solves the broader problem once.
+This approach was rejected because the underlying problem is broader than runtimes. Suppliers may need to target devices based on operating system, gateway topology, hypervisor presence, package format, vendor collaboration, or other non-standard characteristics. A generic constraints model solves the broader problem once.
 
 ### Restrict matching to labels only
 
