@@ -168,7 +168,8 @@ Each expression has the following schema:
 ```yaml
 - key: <string>
   operator: In | NotIn | Exists | DoesNotExist | Gt | Lt | ContainsAll | ContainsAny
-  values: [<object>, ...] # not required for Exists, DoesNotExist
+  values: [<object>, ...] # not required for Exists, DoesNotExist, ContainsAll, ContainsAny
+  itemSelector: # required for ContainsAll, ContainsAny
 ```
 
 #### Property selector key format
