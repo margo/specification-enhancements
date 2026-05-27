@@ -127,7 +127,6 @@ PUT /api/v1/clients/{clientId}/capabilities
 | Permissible Values | Description |
 |--------------------|-------------|
 | amd64              | AMD 64-bit architecture. |
-| x86_64             | x86 64-bit architecture. |
 | arm64              | ARM 64-bit architecture. |
 | arm                | ARM 32-bit architecture. |
 
@@ -184,7 +183,7 @@ PUT /api/v1/clients/{clientId}/capabilities
         "cpu": [
             {
                 "cores": 24,
-                "architecture": "x86_64"
+                "architecture": "amd64"
             }
         ],
         "memory": "59 Gi",
