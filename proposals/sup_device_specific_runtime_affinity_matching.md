@@ -133,7 +133,7 @@ deviceConstraints:
   capacityRequirements:
     cpu:
       cores: 1.5
-      architectures: ["x86_64"]
+      architectures: ["amd64"]
     memory: 1024Mi
     storage: 10Gi
   eligibilityRules:
