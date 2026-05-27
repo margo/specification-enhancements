@@ -167,7 +167,7 @@ Each expression has the following schema:
 
 ```yaml
 - key: <string>
-  operator: In | NotIn | Exists | DoesNotExist | Gt | Lt
+  operator: In | NotIn | Exists | DoesNotExist | Gt | Lt | ContainsAll | ContainsAny
   values: [<object>, ...] # not required for Exists, DoesNotExist
 ```
 
