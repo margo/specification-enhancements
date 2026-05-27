@@ -186,8 +186,11 @@ This version of the SUP only defines selector behavior for property values that 
 
 * a string, number, or boolean
 * an array of strings, or numbers
+* an array of objects
 
 If a property selector resolves to any other JSON type, the expression MUST evaluate to `false`.
+
+If a property selector resolve to an array of objects, `ContainsAll` or `ContainsAny` must be used or else the expression MUST evaluate to `false`.
 
 #### Label selector key format
 
@@ -228,6 +231,8 @@ Operator behavior:
 * `DoesNotExist`: true when the referenced key is absent
 * `Gt`: true when the referenced value is greater than `values`.
 * `Lt`: true when the referenced value is less than `values`.
+* `ContainsAll`: True when the referenced value is an array of objects and at least one array element satisfies all `itemSelector.matchExpressions` (AND logic).
+* `ContainsAny`: True when the referenced value is an array of objects and at least one array element satisfies any `itemSelector.matchExpression` (OR logic).
 
 String comparisons MUST be exact and case-sensitive.
 
@@ -246,6 +251,78 @@ For `Gt` and `Lt`:
 * `values` MUST be present
 * `values` MUST be parsable as numbers
 * `values` MUST only contain a single number
+
+For `ContainsAll` and `ContainsAny`:
+
+* `itemSelector` MUST be present
+* `itemSelector.matchExpressions` MUST contain one or more expressions
+* `values` MUST be omitted
+* Keys within `itemSelector.matchExpressions` are JSON Pointers relative to each array element (not absolute)
+* Expressions within `itemSelector.matchExpressions` are combined using AND logic
+
+#### Object Array Item Matching
+
+`ContainsAll` and `ContainsAny` operators enable matching on properties of objects within an array. These operators are used when the property referenced by `key` resolves to an array of objects.
+
+**`ContainsAll` (array element with all conditions):**
+
+Evaluates to true when at least one array element satisfies all conditions specified in `itemSelector.matchExpressions`. All expressions within the `itemSelector` are combined using AND logic.
+
+Example: Match a device that has at least one GPU peripheral manufactured by NVIDIA:
+
+```yaml
+propertySelector:
+  matchExpressions:
+    - key: /resources/peripherals
+      operator: ContainsAll
+      itemSelector:
+        matchExpressions:
+          - key: /type
+            operator: In
+            values: ["gpu"]
+          - key: /manufacturer
+            operator: In
+            values: ["NVIDIA"]
+```
+
+**`ContainsAny` (array element with any condition):**
+
+Evaluates to true when at least one array element satisfies any condition specified in `itemSelector.matchExpressions`. Expressions within the `itemSelector` are combined using OR logic.
+
+Example: Match a device that has at least one peripheral that is either a GPU or a high-speed NIC:
+
+```yaml
+propertySelector:
+  matchExpressions:
+    - key: /resources/peripherals
+      operator: ContainsAny
+      itemSelector:
+        matchExpressions:
+          - key: /type
+            operator: In
+            values: ["gpu", "nic"]
+```
+
+**Interaction with other expressions:**
+
+Multiple `matchExpressions` within the same `propertySelector` remain AND'd together. For example:
+
+```yaml
+propertySelector:
+  matchExpressions:
+    - key: /vendor
+      operator: In
+      values: ["Vendor Name"]
+    - key: /resources/peripherals
+      operator: ContainsAll
+      itemSelector:
+        matchExpressions:
+          - key: /type
+            operator: In
+            values: ["gpu"]
+```
+
+This evaluates to true only when the device vendor matches **AND** the device has at least one GPU peripheral.
   
 ### 3. Application Description changes
 
@@ -801,6 +878,14 @@ This approach was rejected because some useful constraints already exist as stan
 ### Alternative SUP focused on custom or specific runtimes
 
 This SUP is intentionally a more general alternative to proposals that solve issue 93 by adding runtime-specific structures. Its advantage is that it provides a single placement mechanism that works for custom runtimes, heterogeneous gateway topologies, and future supplier-defined constraints without reopening the specification for each new case.
+
+### Limiting selectors to simple types only
+
+During development, it was recognized that `propertySelector` initially only supported matching on simple types (strings, numbers, booleans, and arrays thereof), which excluded matching on complex types such as the `peripherals` array of objects.
+
+This limitation was addressed by introducing `ContainsAll` and `ContainsAny` operators with `itemSelector` support. These operators enable recursive selector logic that matches based on properties of objects within arrays, providing a general solution for matching on complex device properties without requiring a custom query language or expanding the set of supported types indefinitely.
+
+This approach maintains the clarity and safety of the selector pattern while extending its expressiveness to handle real-world device capability structures like peripherals, network interfaces, and other composite properties.
 
 ## Rejection reason
 
