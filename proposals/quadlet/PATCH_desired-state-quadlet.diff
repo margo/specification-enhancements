@@ -1,0 +1,108 @@
+# PATCH: desired-state.linkml.yaml -- Add QuadletDeploymentProfile and QuadletComponent
+#
+# Schema file:
+#   src/specification/margo-management-interface/desired-state.linkml.yaml
+#
+# Purpose:
+#   Close R3 gap identified by margo-tech-reviewer in REVIEW_tech-reviewer.md.
+#   Without these additions, WFMs cannot generate schema-valid
+#   ApplicationDeployment desired-state documents for Quadlet workloads.
+#   The type slot accepts the string "quadlet" (no pattern constraint exists
+#   in the desired-state schema) but there is no QuadletDeploymentProfile or
+#   QuadletComponent class to validate against, leaving Quadlet desired-state
+#   documents effectively untyped.
+#
+# How to apply:
+#   This unified diff is NOT committed directly to the submodule. To apply:
+#
+#       cd documentation/spec_analysis/specification
+#       patch -p1 < ../proposals/PATCH_desired-state-quadlet.diff
+#
+#   After applying, run the validation toolchain:
+#
+#       bash doc-generation/check-examples.bash
+#
+# Structural rationale:
+#   In desired-state.linkml.yaml the Component class uses
+#   "range: Property" (a name/value pair list, lines 151-158), NOT
+#   "range: ComponentProperties" as in application-description.linkml.yaml.
+#   This reflects the different role of the two schemas: the desired-state
+#   document carries runtime parameter injection (name/value pairs injected
+#   by the WFM) whereas the ApplicationDescription carries OCI package
+#   registry coordinates (ComponentProperties with repository/revision).
+#
+#   QuadletComponent therefore inherits from the same Component base class
+#   as HelmComponent and ComposeComponent, using the name/value Property
+#   model. No new Property subclass is needed.
+#
+#   The type slot description is updated to document the three accepted
+#   values. No pattern constraint is added here (consistent with the
+#   existing schema which omits a pattern on the desired-state type slot).
+#   Adding a pattern would be a separate, follow-up schema hardening change.
+#
+# Dependency:
+#   This patch is a companion to WG-PROPOSAL-01. It MUST be applied
+#   after (or simultaneously with) the application-description.linkml.yaml
+#   changes from that proposal.
+
+--- a/src/specification/margo-management-interface/desired-state.linkml.yaml
++++ b/src/specification/margo-management-interface/desired-state.linkml.yaml
+@@ -130,6 +130,19 @@ classes:
+   ComposeDeploymentProfile:
+     is_a: DeploymentProfile
+     rank: 40
+     slot_usage:
+       type:
+         equals_string: "compose"
+         rank: 10
+       components:
+         range: ComposeComponent
+         rank: 20
+
++  QuadletDeploymentProfile:
++    is_a: DeploymentProfile
++    description: >-
++      Deployment profile for Quadlet-based workloads targeting devices running
++      Podman 5.0 or later with systemd integration. Components are referenced
++      via repository (an oci:// URI) and revision (an OCI tag) consistent with
++      the Helm and Compose OCI publishing model mandated by WG-PROPOSAL-01.
++    rank: 40
++    slot_usage:
++      type:
++        equals_string: "quadlet"
++        rank: 10
++      components:
++        range: QuadletComponent
++        rank: 20
++
+   Component:
+     description: A class representing a component of a deployment profile.
+     rank: 50
+@@ -160,6 +173,12 @@ classes:
+   ComposeComponent:
+     is_a: Component
+     rank: 50
+
++  QuadletComponent:
++    is_a: Component
++    rank: 50
++    description: >-
++      A component packaged as a Quadlet Archive for deployment on devices using
++      Podman with systemd integration. Properties follow the same name/value
++      pair model as HelmComponent and ComposeComponent in this schema.
++
+   Property:
+     rank: 80
+     attributes:
+@@ -213,7 +232,11 @@ slots:
+   type:
+-    description: The type of deployment profile (e.g., helm.v3, compose).
++    description: >-
++      The type of deployment profile. Allowed values are: helm.v3 (Kubernetes/Helm
++      chart deployment), compose (Compose file deployment via Podman or Docker
++      Compose), and quadlet (Podman systemd Quadlet unit file deployment). The
++      value MUST match the type field in the corresponding ApplicationDescription
++      deploymentProfile element.
+     range: string
+     required: true
+     rank: 10
