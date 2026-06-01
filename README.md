@@ -65,6 +65,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@arne-broering | Device specific parameter values | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/54) |
 |@arne-broering | Supporting device specific runtimes | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/55) |
 |@phil-abb | Alternative proposal for supporting device specific runtimes | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/59) |
+|@singhmj-1 | Resource allocation and conflict resolution proposal for app workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/66) |
 
 ## SUP Owner SUP Checklist
 
