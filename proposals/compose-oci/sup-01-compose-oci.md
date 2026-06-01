@@ -6,7 +6,7 @@
 
 ## Summary
 
-This SUP applies The Helm Way pattern (SUP-00) to Compose components. It mandates OCI registry storage for Compose Archives, defines two Margo-specific OCI media types, specifies the normative internal archive structure (single top-level directory, `compose.yaml` required, security constraints), introduces the versioned `compose.v1` deployment profile type, deprecates the `packageLocation` field with a two-phase migration path, and resolves three open "Investigation Needed" blocks in the current specification.
+This SUP applies The Helm Way pattern (SUP-00) to Compose components. It mandates OCI registry storage for Compose Archives, defines two Margo-specific OCI media types, specifies the normative internal archive structure (single top-level directory, `compose.yaml` required, security constraints), introduces the versioned `compose.v1` deployment profile type, removes the `packageLocation` field (which has never appeared in a released specification), and resolves three open "Investigation Needed" blocks in the current specification.
 
 These changes are inseparable: what you push to the registry is defined by the archive structure, so the OCI mandate and the structure specification belong in a single SUP. The result is a complete, interoperable Compose packaging contract — something the current single-sentence description does not provide.
 
@@ -28,13 +28,11 @@ This SUP addresses the following open and recently-closed specification issues:
 
 - **[margo/specification #168](https://github.com/margo/specification/issues/168)** — "Define improvements to compose manifest workloads when targeting typical targets (Docker/Podman)" (open). This SUP defines the normative archive structure and OCI publishing contract that underpins any compose manifest improvement.
 - **[margo/specification #166](https://github.com/margo/specification/issues/166)** — "Define the standard mechanism for compose enabled devices to authenticate and pull Compose Archive" (open). This SUP mandates OCI registry storage, which brings Compose Archives under the same OCI authentication model as application packages (OAuth 2.0 / Bearer token per the existing `application-registry.md` Authentication section).
-- **[margo/specification #179](https://github.com/margo/specification/issues/179)** — "Fix/packagefile location for compose applications" (closed). This SUP replaces `packageLocation` with `repository` + `revision` OCI coordinates and provides the migration path.
+- **[margo/specification #179](https://github.com/margo/specification/issues/179)** — "Fix/packagefile location for compose applications" (closed). This SUP removes `packageLocation` entirely and replaces it with `repository` + `revision` OCI coordinates. Since the specification is pre-draft, no migration path is needed.
 
 **Out of scope (explicitly deferred):**
 - Artifact signing and supply-chain attestation — deferred to a dedicated Margo security SUP.
 - Application dependencies and required infrastructure services (storage, message queues, reverse proxy) — deferred; requires coordination with the Margo Device Interface Working Group.
-
-**Breaking changes are managed** via a two-phase transition. Phase 1 (this SUP): `repository`/`revision` are SHOULD; `packageLocation` remains valid with deprecation warning. Phase 2 (v1-beta1): `repository`/`revision` become REQUIRED; `packageLocation` is removed.
 
 ## Technical proposal
 
@@ -156,7 +154,7 @@ Margo will provide more detailed discussion and specification on the following p
 
 ### Change 3: `application-description.linkml.yaml` — Schema updates
 
-#### 3a: Deprecate `packageLocation`, enrich `repository`/`revision` descriptions
+#### 3a: `ComponentProperties` schema — `repository`/`revision` required, `packageLocation` removed
 
 ```yaml
   ComponentProperties:
@@ -169,7 +167,7 @@ Margo will provide more detailed discussion and specification on the following p
           MUST be used for Helm, Compose, and Quadlet components.
         rank: 10
         range: string
-        required: false  # Becomes required: true in Phase 2 (v1-beta1)
+        required: true
       revision:
         description: >-
           OCI tag identifying the component version within the repository (e.g., "1.0.0", "2.3.1").
@@ -177,7 +175,7 @@ Margo will provide more detailed discussion and specification on the following p
           MUST be used for Helm, Compose, and Quadlet components.
         rank: 20
         range: string
-        required: false  # Becomes required: true in Phase 2 (v1-beta1)
+        required: true
       wait:
         description: If True, indicates the device waits for the component installation to complete.
         rank: 30
@@ -186,46 +184,11 @@ Margo will provide more detailed discussion and specification on the following p
         description: Time to wait for component installation to complete, formatted as "##m##s".
         rank: 40
         range: string
-      packageLocation:
-        description: >-
-          DEPRECATED. URL indicating the Compose package's location.
-          Use `repository` and `revision` instead. This field is retained
-          for backward compatibility and MUST NOT be used for new
-          ApplicationDescription documents. Implementations SHOULD support
-          this field during a transition period and emit a deprecation warning.
-          When both `repository` and `packageLocation` are present in a
-          `ComponentProperties` element, the WFM MUST use `repository` and
-          `revision` and MUST ignore `packageLocation`.
-        rank: 50
-        range: string
-        deprecated: >-
-          Deprecated in favor of repository + revision OCI-based publishing.
-          Will be removed in a future version of the specification.
-      keyLocation:
-        description: >-
-          URL for the public key used to validate a digitally signed package.
-          MAY be used when the component artifact is signed (e.g., using cosign or PGP).
-        rank: 60
-        range: string
 ```
 
-#### 3b: Add `ComposeV1DeploymentProfile`, deprecate bare `ComposeDeploymentProfile`
+#### 3b: Replace `ComposeDeploymentProfile` with `ComposeV1DeploymentProfile`
 
 ```yaml
-  ComposeDeploymentProfile:
-    is_a: DeploymentProfile
-    #rank: 66
-    slot_usage:
-      type:
-        equals_string: "compose"
-        rank: 10
-      components:
-        range: ComposeComponent
-        rank: 20
-    deprecated: >-
-      Deprecated in favor of ComposeV1DeploymentProfile.
-      Will be removed in Phase 2 (v1-beta1). Use ComposeV1DeploymentProfile for new documents.
-
   ComposeV1DeploymentProfile:
     is_a: DeploymentProfile
     #rank: 67
@@ -238,7 +201,7 @@ Margo will provide more detailed discussion and specification on the following p
         rank: 20
 ```
 
-> **Note:** `ComposeDeploymentProfile` (bare `"compose"`) is retained for backward compatibility during Phase 1 but is deprecated. WFM implementations SHOULD treat `"compose"` as equivalent to `"compose.v1"` with a deprecation warning. `ComposeDeploymentProfile` will be removed in Phase 2 (v1-beta1).
+> **Note:** The bare `"compose"` type value and its corresponding `ComposeDeploymentProfile` class are removed. Since the specification is pre-draft, no backward-compatible alias is needed. All Compose deployment profiles MUST use the versioned `"compose.v1"` type discriminator.
 
 #### 3c: Update `type` slot description and regex
 
@@ -247,13 +210,12 @@ Margo will provide more detailed discussion and specification on the following p
     description: >-
       The deployment profile type discriminator. Allowed values:
       - `helm.v3`: Helm-based component (see HelmDeploymentProfile).
-      - `compose.v1`: Compose-based component using OCI registry publishing (see ComposeV1DeploymentProfile). Preferred for new documents.
-      - `compose`: Compose-based component (see ComposeDeploymentProfile). Deprecated — use `compose.v1` for new documents.
+      - `compose.v1`: Compose-based component using OCI registry publishing (see ComposeV1DeploymentProfile).
       - `quadlet.v1`: Quadlet-based component (see QuadletDeploymentProfile, introduced by SUP-02).
     rank: 10
     range: string
     required: true
-    pattern: ^(helm\.v3|compose|compose\.v1|quadlet\.v1)$
+    pattern: ^(helm\.v3|compose\.v1|quadlet\.v1)$
 ```
 
 ---
@@ -335,6 +297,7 @@ When stored in an OCI-compliant Component Registry, the Compose Archive tarball 
 | RFC 2119 Keyword | Statement |
 |---|---|
 | MUST | Compose Archives MUST be stored in an OCI-compliant Component Registry and referenced via `repository` + `revision`. |
+| MUST | The `repository` and `revision` fields in `ComponentProperties` MUST be present for all component types. |
 | MUST | The OCI image manifest for a Compose component MUST use `artifactType` = `application/vnd.org.margo.component.compose.v1+json`. |
 | MUST | The layer blob mediaType for Compose MUST be `application/vnd.org.margo.component.compose.v1.tar.gzip`. |
 | MUST | A Compose Archive MUST contain exactly one top-level directory whose name matches the component `name`. |
@@ -346,17 +309,13 @@ When stored in an OCI-compliant Component Registry, the Compose Archive tarball 
 | MUST NOT | Implementations MUST NOT preserve setuid, setgid, or sticky bits from archive entries. |
 | MUST | WFM and device implementations MUST validate security constraints before extraction. |
 | MUST | Implementations MUST verify the OCI digest after pulling and before extracting. |
-| MUST NOT | `packageLocation` MUST NOT be used for new ApplicationDescription documents. |
-| MUST | When both `repository` and `packageLocation` are present, the WFM MUST use `repository`/`revision` and MUST ignore `packageLocation`. |
-| SHOULD | Implementations SHOULD support `packageLocation` during a transition period with a deprecation warning. |
+| MUST | The deployment profile type discriminator for Compose MUST be `compose.v1`. |
 
 ---
 
 ### Backward compatibility
 
-**Phase 1 (this SUP):** `repository` and `revision` are SHOULD for Compose components; `packageLocation` remains valid. Schema sets `required: false` to preserve validation compatibility. `ComposeV1DeploymentProfile` (`type: compose.v1`) is introduced alongside `ComposeDeploymentProfile` (`type: compose`); both are valid.
-
-**Phase 2 (v1-beta1):** `repository` and `revision` become `required: true`; `packageLocation` is removed. `ComposeDeploymentProfile` (bare `"compose"`) is removed.
+This SUP targets the pre-draft specification. No backward compatibility constraints apply. The `packageLocation` field and the bare `"compose"` type value have never appeared in a released specification and are therefore removed without a deprecation period.
 
 ---
 
@@ -371,9 +330,9 @@ When stored in an OCI-compliant Component Registry, the Compose Archive tarball 
 
 ## Alternatives considered
 
-**Option A — Keep `packageLocation` as the primary mechanism.** Rejected. Plain-HTTPS URLs provide no integrity guarantee. Any party who can intercept or modify the HTTP response can substitute a different archive, and the WFM has no way to detect the substitution. OCI content-addressable digests make this attack structurally impossible.
+**Option A — Use plain-HTTPS URLs (no OCI mandate).** Rejected. Plain-HTTPS URLs provide no integrity guarantee. Any party who can intercept or modify the HTTP response can substitute a different archive, and the WFM has no way to detect the substitution. OCI content-addressable digests make this attack structurally impossible.
 
-**Option B — Require a separate SHA-256 `digest` field in ApplicationDescription alongside `packageLocation`.** Rejected. This was the original "Investigation Needed" question. The OCI content-addressable digest on the layer blob makes an explicit `digest` field in the ApplicationDescription redundant. Adding a second integrity mechanism creates a reconciliation problem (which digest wins?) and adds implementation burden with no security benefit.
+**Option B — Require a separate SHA-256 `digest` field in ApplicationDescription.** Rejected. This was the original "Investigation Needed" question. The OCI content-addressable digest on the layer blob makes an explicit `digest` field in the ApplicationDescription redundant. Adding a second integrity mechanism creates a reconciliation problem (which digest wins?) and adds implementation burden with no security benefit.
 
 **Option C — Allow any top-level structure in the Compose Archive (no single-directory requirement).** Rejected. Without a predictable directory structure, WFM and device implementations must implement content discovery heuristics (search for `compose.yaml`, `docker-compose.yaml`, etc.). The single-top-level-directory requirement, combined with the `compose.yaml` naming requirement, eliminates this ambiguity at zero implementation cost to well-structured archives.
 
