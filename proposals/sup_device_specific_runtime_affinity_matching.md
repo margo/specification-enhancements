@@ -503,13 +503,13 @@ configuration: ...
         "vendor": "EdgeCircuit Systems",
         "modelNumber": "EF1.234.32",
         "serialNumber": "SN12928342125",
-        "resources": {...},
-        "capabilities": {
-            "wfmClient": true,
-            "otelCollector": true,
-            "supportedRuntimes": ["custom"],
-            "supportedDeploymentTypes": ["custom"]
-        }
+        "memory": "64 Gi",
+        "storage": "1862 Gi",
+        "peripherals": [],
+        "interfaces": [],
+        "otelCollector": true,
+        "supportedRuntimes": ["custom"],
+        "supportedDeploymentTypes": ["custom"]
     },
     "labels": {
       "example.com/hyper-v.host": true 
@@ -606,13 +606,13 @@ configuration: ...
         "vendor": "SilicaTrail Technologies",
         "modelNumber": "TRS-002",
         "serialNumber": "SN00008983",
-        "resources": {...},
-        "capabilities": {
-            "wfmClient": true,
-            "otelCollector": false,
-            "supportedRuntimes": ["custom"],
-            "supportedDeploymentTypes": ["custom"]
-        }
+        "memory": "64 Gi",
+        "storage": "1862 Gi",
+        "peripherals": [],
+        "interfaces": [],
+        "otelCollector": true,
+        "supportedRuntimes": ["custom"],
+        "supportedDeploymentTypes": ["custom"]
     },
     "labels": {
       "example.com/wasm.runtime": "WAMR",
@@ -770,13 +770,13 @@ The device capabilities has the combination of all three hardware devices
         "vendor": "PearWare",
         "modelNumber": "GT45",
         "serialNumber": "SN7383221",
-        "resources": {...},
-        "capabilities": {
-            "wfmClient": true,
-            "otelCollector": true,
-            "supportedRuntimes": ["oci","custom"],
-            "supportedDeploymentTypes": ["helm", "compose", "custom"]
-        }
+        "memory": "64 Gi",
+        "storage": "1862 Gi",
+        "peripherals": [],
+        "interfaces": [],
+        "otelCollector": true,
+        "supportedRuntimes": ["oci","custom"],
+        "supportedDeploymentTypes": ["helm", "compose", "custom"]
     },
     "labels": {
       "example.com/hyper-v.host": true,
