@@ -27,6 +27,7 @@
       - [Endpoints removed](#endpoints-removed)
       - [Security scheme removed](#security-scheme-removed)
       - [Endpoints retained, with `{clientId}` dropped](#endpoints-retained-with-clientid-dropped)
+      - [Caching](#caching)
     - [8. Security Considerations](#8-security-considerations)
     - [9. Roadmap (Informative)](#9-roadmap-informative)
   - [Alternatives considered](#alternatives-considered)
@@ -83,7 +84,7 @@ This SUP partially addresses [margo/specification#146 — *Complete WFM client o
 This SUP has two layers:
 
 1. The **Margo WFM Identity Profile** — the first normative profile for WFM identities under MIAF, covering both the **WFM** and the **WFM Client**. It fills in the WFM-specific pieces MIAF left open: how WFMs are named and recognized, the SPIFFE path for WFM Client identities, the lifecycle applied to both, and authentication and authorization at the WFM API.
-2. The **Margo Management Interface update** — applying the new identity profile to the PR1 management interface: removing the onboarding and certificate-distribution endpoints, dropping `{clientId}` from URL paths, and replacing RFC 9421 HTTP Message Signatures with mTLS. Specified in [§7](#7-application-to-the-margo-management-interface).
+2. The **Margo Management Interface update** — applying the new identity profile to the PR1 management interface: removing the onboarding and certificate-distribution endpoints, dropping `{clientId}` from URL paths, replacing RFC 9421 HTTP Message Signatures with mTLS, and pinning the cache disposition of the retained endpoints. Specified in [§7](#7-application-to-the-margo-management-interface).
 
 In PR2, both WFM and WFM Client SVIDs are **operator-pre-provisioned**: the operator mints SVIDs with the right SPIFFE paths and installs them on each principal through its existing provisioning channel; each WFM is configured with the set of WFM Client identities it accepts, and each WFM Client is configured with the WFM identity it expects to connect to. PR3 will add automated enrollment on top of this foundation, and operator-pre-provisioning remains a valid path in PR3 for deployments that prefer it.
 
@@ -244,7 +245,7 @@ When the WFM denies a still-valid credential, it **SHOULD** respond with `403 Fo
 
 #### Scope: traffic-inspecting proxies
 
-The MIAF [Scope: traffic-inspecting proxies](./margo-identity-and-authorization-framework.md#scope-traffic-inspecting-proxies) statement applies to the WFM API. In short: TLS-offload topologies are supported (the proxy validates the client SVID and forwards the identity to the backend, e.g., via the [RFC 9440](https://datatracker.ietf.org/doc/html/rfc9440) `Client-Cert` header). Traffic-inspecting proxies in the inline path are not supported — operators **MUST** exempt Margo mTLS endpoints from inspection. PR3 will address deployments where exemption is operationally infeasible.
+The MIAF [Scope: traffic-inspecting proxies](./margo-identity-and-authorization-framework.md#scope-traffic-inspecting-proxies) statement applies to the WFM API. In short: TLS-offload topologies are supported (the proxy validates the client SVID and forwards the identity to the backend, e.g., via the [RFC 9440](https://datatracker.ietf.org/doc/html/rfc9440) `Client-Cert` header); cache disposition for this offload hop is specified in [Caching](#caching). Traffic-inspecting proxies in the inline path are not supported — operators **MUST** exempt Margo mTLS endpoints from inspection. PR3 will address deployments where exemption is operationally infeasible.
 
 ### 7. Application to the Margo Management Interface
 
@@ -278,6 +279,29 @@ The following PR1 endpoints keep their business behavior; the `{clientId}` path 
 
 WFMs **MUST** authorize each request via local policy keyed on the authenticated WFM Client SPIFFE ID (per [Authorization](#authorization)) and **MUST** reject requests on the PR1-shaped URLs (those that include `{clientId}`) with `404 Not Found`.
 
+#### Caching
+
+Removing `{clientId}` removes what was, for shared caches, a per-client cache-key discriminator: PR1's per-client URLs landed each Client's responses in distinct shared-cache entries; the updated URLs are identical across Clients while the responses remain per-client. Caller identity now comes from the authenticated SPIFFE ID, not the path.
+
+This does **not** expose these responses to a generic shared cache (CDN, load balancer). A cache can only store what it reads in cleartext, which requires terminating the WFM Client's mTLS connection. Under [Recognition by the WFM Client](#recognition-by-the-wfm-client), the terminating endpoint **MUST** present a valid WFM SVID whose `wfm-id` matches the Client's operator-configured target, and **MUST** validate the Client's SVID per [Authentication model](#authentication-model) — so any cache that terminates the connection is necessarily an operator-provisioned TLS-offloading proxy (the topology in [Scope: traffic-inspecting proxies](#scope-traffic-inspecting-proxies)), not a third-party CDN. A pass-through cache never sees cleartext and stores nothing.
+
+The disposition below is therefore the control for the two places per-client data does become cacheable cleartext: the internal hop at or behind a TLS-offloading proxy, and the non-mTLS authentication path on the PR3 [Roadmap](#9-roadmap-informative). It is **not** relied upon as a defense against generic CDNs caching mTLS traffic, which the model already precludes. (mTLS does not receive the shared-cache exclusion HTTP applies to `Authorization`-bearing requests ([RFC 9111 §3.5](https://datatracker.ietf.org/doc/html/rfc9111#section-3.5)), so the disposition **MUST** be set explicitly.)
+
+WFMs **MUST** set the following `Cache-Control` disposition on responses to the retained endpoints:
+
+| Endpoint | `Cache-Control` |
+| :--- | :--- |
+| `GET /api/v1/deployments` | `private` |
+| `GET /api/v1/deployments/{deploymentId}/{digest}` | `private` |
+| `GET /api/v1/bundles/{digest}` | `private` |
+| `POST /api/v1/capabilities` | `no-store` |
+| `PUT /api/v1/capabilities` | `no-store` |
+| `POST /api/v1/deployments/{deploymentId}/status` | `no-store` |
+
+`ETag`/`Last-Modified` conditional requests for a Client's own polling are unaffected; a `private` response **MAY** carry them so the Client (or its own private cache) can revalidate.
+
+`GET /api/v1/bundles/{digest}` is content-addressed and byte-identical across Clients, which makes it a natural candidate for shared (`public`) caching. PR2 nonetheless marks it `private`, because [Authorization](#authorization) requires the WFM to authorize every retained request on the authenticated Client identity and a shared-cache hit serves without re-authorizing. Allowing `public` caching by treating the digest as a bearer capability is a possible future optimization, contingent on decoupling content-addressed bundle retrieval from per-client authorization; it is out of scope for PR2.
+
 ### 8. Security Considerations
 
 WFM and WFM Client identities inherit MIAF's threats and mitigations (see the MIAF [Security Considerations](./margo-identity-and-authorization-framework.md#7-security-considerations)). The threats below are specific to this profile and to the PR1 management-interface migration.
@@ -296,7 +320,7 @@ PR2 is written to stay forward-compatible with however a later release resolves 
 - **Automated WFM and WFM Client enrollment.** The protocol(s) by which a WFM obtains its initial SVID and by which a WFM Client obtains its initial SVID without manual operator installation. Candidate mechanisms are surveyed in the MIAF [Roadmap](./margo-identity-and-authorization-framework.md#8-roadmap-and-forward-extensibility-informative) and in [`miaf-pr3-inputs/`](./miaf-pr3-inputs/). Operator-pre-provisioning (the PR2 baseline) remains a valid path in PR3 for both.
 - **Relationship to device identity.** Whether device identity is a foundation for WFM Client identity or a peer profile (one of several bootstrap mechanisms). This decision is gated on a device identity profile being specified, which may happen in PR3 or in a later release alongside DFM work. PR2 stays silent on this relationship in either case.
 - **JWT-SVID representation for WFM Clients.** Tied to the MIAF JWT-SVID decision in PR3.
-- **Authentication for traffic-inspecting-proxy environments.** Where exemption from inspection is operationally infeasible. Candidates: an HTTP message-signature profile keyed to the X.509-SVID, or a JWT-SVID bearer credential.
+- **Authentication for traffic-inspecting-proxy environments.** Where exemption from inspection is operationally infeasible. Candidates: an HTTP message-signature profile keyed to the X.509-SVID, or a JWT-SVID bearer credential. Because these candidates do not ride end-to-end mTLS, a genuine shared cache can sit in the path; the [Caching](#caching) disposition (`private`/`no-store`) becomes load-bearing there.
 
 ## Alternatives considered
 
