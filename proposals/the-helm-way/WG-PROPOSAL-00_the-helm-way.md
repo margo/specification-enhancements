@@ -95,7 +95,7 @@ Any new component type SUP MUST demonstrate compliance with all five elements. T
 | Element | Requirement | Helm (reference) | Compose (SUP-01) | Quadlet (SUP-02) |
 |---------|------------|-----------------|----------------|----------------|
 | Registry | OCI-compliant, MUST | `helm push` | `oras push` | `oras push` |
-| `type` value | versioned string, MUST | `helm.v3` | `compose.v1` | `quadlet.v1` |
+| `type` value | versioned string, MUST | `helm` | `compose.v1` | `quadlet.v1` |
 | `repository` field | `oci://` URI, MUST | `oci://registry/org/chart` | `oci://registry/org/app` | `oci://registry/org/app` |
 | `revision` field | OCI tag, MUST | `1.0.0` | `1.0.0` | `1.0.0` |
 | `artifactType` | Margo-registered, MUST | `application/vnd.cncf.helm.config.v1+json` | `application/vnd.org.margo.component.compose.v1+json` | `application/vnd.org.margo.component.quadlet.v1+json` |
