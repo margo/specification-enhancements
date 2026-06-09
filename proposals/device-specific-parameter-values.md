@@ -135,7 +135,7 @@ If a referenced device key cannot be resolved, then the `value` is used as a fal
       "description": "Hostname/FQDN that applications should use for ingress, public URL generation, and certificate DNS names.",
       "mutable": true
     },
-    "margo.cluster.defaultIngressClass": {
+    "margo.cluster.ingressClass": {
       "type": "string",
       "value": "nginx",
       "description": "Default ingress class to use for applications that expose HTTP/HTTPS endpoints through Kubernetes ingress.",
@@ -147,18 +147,13 @@ If a referenced device key cannot be resolved, then the `value` is used as a fal
 
 ### Margo-reserved Keys
 
-* `margo.cluster.hostname` - For ingress hosts, cert DNS names, externally reachable application URLs.
+* `margo.cluster.hostname` - FQDN used for externally reachable application URLs and derived certification DNS names. This is the FQDN which the device (or the cluster to which the device belongs) uses as a basis to expose apps. App can either: create specific subdomains (e.g., host name = `apps.plant-a.example.com` and application can derive concrete hostname as subdomain = `factory-insights.apps.plant-a.example.com`) or use the base host name and create path-based routing to differentiate between applications (e.g., `apps.plant-a.example.com/factory-insights`).
+
 * `margo.cluster.storageClass` - For PersistentVolume/PersistentVolumeClaim on Kubernetes devices.
-* `margo.network.defaultExternalHostname` - concrete full hostname (FQDN) that the platform recommends or provides as the default external hostname. E.g., hostname = `edge01.plant-a.example.com`.
-* `margo.network.ingressBaseDomain` - base domain under which application-specific hostnames are created. In case an application needs a distinct hostname by extending the base domain. E.g., base domain = `apps.plant-a.example.com` and application can derive concrete hostname = `factory-insights.apps.plant-a.example.com`.
+
+* `margo.cluster.ingressClass` - The recommended ingress class to use by applications.
+
 * `margo.device.dataPath` - Device-defined path to a directory where the app should store its data.
-
-_Alternatively:_ defining environment specific keys:
-
-* `margo.k8s.storageClassName` - The Kubernetes storageClassName that an application should use for its PersistentVolumeClaims.
-* `margo.k8s.ingressClassName` - The Kubernetes ingressClassName that an application should put on its Ingress resources. 
-* `margo.k8s.namespace` - Tthe Kubernetes namespace into which the application should be deployed (e.g., "margo.k8s.namespace": "factory-apps").
-* `margo.k8s.serviceAccountName` - The Kubernetes ServiceAccount name that application pods should run as (e.g., "margo.k8s.serviceAccountName": "margo-workload").
 
 ### Example 
 
@@ -287,7 +282,7 @@ parameters:
     # PROPOSED EXTENSION
     valueFrom:
       device:
-        key: margo.cluster.defaultIngressClass
+        key: margo.cluster.ingressClass
         required: false
         fallback: nginx
     targets:
@@ -396,7 +391,7 @@ Inclusion of new `installContext` element, as a dictionary of device-supplied pa
         "description": "Device-defined path to a directory where the app should store its data.",
         "mutable": true
       },
-      "margo.cluster.defaultIngressClass": {
+      "margo.cluster.ingressClass": {
         "type": "string",
         "value": "nginx",
         "description": "Default ingress class to use for applications that expose HTTP/HTTPS endpoints through Kubernetes ingress.",
