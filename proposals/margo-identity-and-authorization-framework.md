@@ -22,6 +22,7 @@
       - [Initial trust bootstrap](#initial-trust-bootstrap)
       - [Minimum TLS baseline](#minimum-tls-baseline)
       - [Certificate validation](#certificate-validation)
+      - [Session lifetime and re-validation](#session-lifetime-and-re-validation)
       - [Scope: traffic-inspecting proxies](#scope-traffic-inspecting-proxies)
     - [6. Lifecycle Vocabulary and Operator Playbooks](#6-lifecycle-vocabulary-and-operator-playbooks)
       - [Lifecycle Vocabulary](#lifecycle-vocabulary)
@@ -385,6 +386,16 @@ Validation **MUST** include the following, depending on context:
 
   PR2 does not standardize a revocation status endpoint for X.509-SVIDs; deployments use the [Operator Revocation Playbook](#operator-revocation-playbook-pr2). A standardized status mechanism is on the [Roadmap](#8-roadmap-and-forward-extensibility-informative).
 
+#### Session lifetime and re-validation
+
+mTLS authenticates a peer at handshake; on a long-lived or pooled connection the authenticated identity would otherwise persist unchecked for the connection's life. Because PR2 relies on short SVID lifetimes and on allowlist / Trust-Bundle changes for revocation rather than an online status mechanism, a connection that outlives its peer's SVID — or that survives a Trust-Bundle rotation — extends the revocation lag for as long as it stays open.
+
+A verifier therefore **SHOULD** bound the period for which an authenticated connection remains in service after the SVID that established it has expired, or after that SVID would no longer validate against the current Trust Bundle. That bound **SHOULD** be short relative to the SVID lifetimes in use (see [SVID Lifetime Guidance](#svid-lifetime-guidance-pr2)).
+
+Bounding the **maximum lifetime of a connection** — a maximum connection age, after which the connection is closed and re-established — satisfies this recommendation: the re-establishing handshake re-validates the peer's current SVID against the current Trust Bundle. A verifier **MAY** instead, or additionally, re-validate the peer SVID on the open connection and close it when it is no longer valid, and **MAY** tighten the expiry bound to the SVID's own `notAfter`. Separately, a verifier **SHOULD** re-evaluate its local authorization policy for the peer's SPIFFE ID on each request, so allowlist removals take effect without waiting for the connection to close.
+
+This SUP does not rely on TLS renegotiation or post-handshake authentication. Clients **SHOULD** proactively re-establish affected connections after renewing their own SVID.
+
 #### Scope: traffic-inspecting proxies
 
 PR2 supports end-to-end mTLS between principals and relying parties. **TLS-offloading proxies** (e.g., AWS ALB in verify-with-trust-store mode, NGINX, Envoy) that terminate mTLS at the proxy and forward the validated client certificate identity to the backend — for example, via the [RFC 9440](https://datatracker.ietf.org/doc/html/rfc9440) `Client-Cert` header — are supported. The proxy validates the client certificate against the Trust Bundle, the backend extracts the authenticated SPIFFE ID from the forwarded header, and the proxy-to-backend boundary is trusted by network segmentation or by mTLS between proxy and backend.
@@ -449,7 +460,7 @@ MIAF assumes an adversarial network and the possibility of compromised individua
 | **Replay or Theft of SVIDs** | An intercepted SVID is reused outside its intended context. | SVIDs **SHOULD** be short-lived per [SVID Lifetime Guidance](#svid-lifetime-guidance-pr2); verifiers **MUST** validate the SVID chain against the Trust Bundle and verify the SPIFFE ID before authorization; private keys **MUST** be protected by the principal (mechanism deployment-specific in PR2). |
 | **Private Key Compromise** | An attacker exfiltrates a principal's private key. | Operators provision principals such that private keys are protected per deployment policy. Normative key-protection rules for devices come with the device identity profile, whenever that lands. |
 | **Initial Trust Anchor Confusion** | An attacker causes a principal to trust the wrong HTTPS authority and serves a malicious discovery document or SPIFFE Bundle Map. | Principals **MUST** authenticate the first HTTPS retrieval of the discovery document and `trustBundleUri` per [Initial Trust Bootstrap](#initial-trust-bootstrap). |
-| **Certificate Revocation Lag** | Revocation events are not propagated promptly. | PR2 deployments rely on the [Operator Revocation Playbook](#operator-revocation-playbook-pr2) and short SVID lifetimes. A standardized status mechanism is on the [Roadmap](#8-roadmap-and-forward-extensibility-informative). |
+| **Certificate Revocation Lag** | Revocation events are not propagated promptly. | PR2 deployments rely on the [Operator Revocation Playbook](#operator-revocation-playbook-pr2) and short SVID lifetimes. A standardized status mechanism is on the [Roadmap](#8-roadmap-and-forward-extensibility-informative); and verifiers **SHOULD** bound connection lifetime so a long-lived mTLS session does not extend that lag indefinitely (see [Session lifetime and re-validation](#session-lifetime-and-re-validation)). |
 | **Service Impersonation / MITM** | An adversary attempts to impersonate the MIS or another service. | All endpoints **MUST** use HTTPS with strict certificate validation per [§5](#5-transport-layer-security-tls-requirements); peers **MUST** verify presented SVIDs against the configured Trust Domain and Trust Bundle. |
 | **Cross-Domain Trust Confusion** | Components accept identities from unintended Trust Domains. | Verifiers **MUST** determine the Trust Domain from the SPIFFE ID and **MUST NOT** trust SVIDs unless the domain is explicitly configured or federated. |
 | **Inadvertent inspection-proxy MITM** | An operator-deployed traffic-inspecting proxy intercepts and re-signs Margo mTLS traffic, presenting a substitute certificate to either endpoint. | PR2 deployments **MUST** exempt Margo mTLS endpoints from inspection per [Scope: traffic-inspecting proxies](#scope-traffic-inspecting-proxies). Both endpoints **MUST** validate peer SVIDs against the Trust Bundle and reject substituted certificates. |
