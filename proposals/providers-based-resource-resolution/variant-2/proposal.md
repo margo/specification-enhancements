@@ -152,14 +152,33 @@ The registry serves as the authoritative source for validation and authoring.
 
 Devices advertise provider state through the existing DeviceCapabilitiesManifest.
 
-No new API endpoints are introduced.
+No new API endpoints are introduced. Capabilities yaml looks like:
 
 ```yaml
-providers:
-  - provider: provider.margo.org/network/port
-    supported: true
-    offer: {}
-    allocation: {}
+{
+  "apiVersion": "device.margo.org/v1alpha1",
+  "kind": "DeviceCapabilitiesManifest",
+  "properties": {
+    "id": "northstarida.xtapro.k8s.edge",
+    "vendor": "Northstar Industrial Devices",
+    ...
+    "providers": [
+      {
+        "provider": "provider.margo.org/network/port",
+        "supported": true,
+        "offer": { },
+        "allocation": { }
+      },
+      {
+        "provider": "provider.myorganisation.com/hardware/vgpus",
+        "schemaURL": "https://myorganisation.com/provider-schemas/hardware/vgpus-v1.yaml",
+        "supported": true,
+        "offer": { },
+        "allocation": { }
+      }
+    ]
+  }
+}
 ```
 
 Each entry in the providers array is a `ProviderState`.
@@ -214,7 +233,7 @@ The WFM MUST NOT query or poll devices for provider state. All provider state up
 
 ## ProviderBinding
 
-Applications consume capabilities through ProviderBindings declared in ApplicationDeployment.
+Applications consume device/wfm functionalities through ProviderBindings declared in ApplicationDeployment.
 
 ```yaml
 providerBindings:
@@ -225,7 +244,7 @@ providerBindings:
       port: 8080
 
     fallback:
-      strategy: nextAvailable
+      strategy: nextAvailablePort
 
     inject:
       - parameter: hostPort
@@ -306,16 +325,123 @@ ProviderResolution provides:
 The following example requests a network port.
 
 ```yaml
-providerBindings:
-  - id: webPort
+```yaml
+{
+  "apiVersion": "device.margo.org/v1alpha1",
+  "kind": "DeviceCapabilitiesManifest",
+  "properties": {
+    "id": "northstarida.xtapro.k8s.edge",
+    "vendor": "Northstar Industrial Devices",
+    ...
+    "providers": [
+      {
+        "provider": "provider.margo.org/network/port",
+        "supported": true,
+        "offer": { },
+        "allocation": { }
+      },
+      {
+        "provider": "provider.myorganisation.com/hardware/vgpus",
+        "schemaURL": "https://myorganisation.com/provider-schemas/hardware/vgpus-v1.yaml",
+        "supported": true,
+        "offer": { },
+        "allocation": { }
+      }
+    ]
+  }
+}
+```
 
-    provider: provider.margo.org/network/port
+Each entry in the providers array is a `ProviderState`.
 
-    request:
-      port: 8080
+---
 
-    fallback:
-      strategy: nextAvailable
+## ProviderState
+
+`ProviderState` represents the current state of a provider on a device.
+
+| Field      | Description                             |
+| ---------- | --------------------------------------- |
+| provider   | Provider URI                            |
+| supported  | Whether the provider is supported on this device |
+| schemaURL  | Optional: Location of a custom provider definition     |
+| offer      | Provider-specific description of available functionality |
+| allocation | Provider-specific description of current allocations    |
+
+### Offer
+
+Offer describes what the device can provide and the policies that govern usage.
+
+Examples include:
+
+* Available capabilities/resources/services
+* Supported features
+* Reserved ranges
+
+### Allocation
+
+Allocation describes resources or capabilities currently assigned to deployments.
+
+---
+
+## ProviderState Lifecycle
+
+The Device Agent is responsible for maintaining `ProviderState` and ensuring that it accurately reflects both:
+
+* The provider's advertised `offer`.
+* The provider's current `allocation`.
+
+The Device Agent MUST publish an updated `ProviderState` whenever either of these changes.
+
+The WFM consumes `ProviderState` advertisements to perform validation and deployment planning.
+
+The WFM MUST NOT query or poll devices for provider state. All provider state updates are initiated by the device.
+
+
+---
+
+# 4. Provider Consumption
+
+## ProviderBinding
+
+Applications consume device/wfm functionalities through ProviderBindings declared in ApplicationDeployment. The deployment yaml looks like:
+
+```yaml
+apiVersion: application.margo.org/v1alpha1
+kind: ApplicationDeployment
+...
+spec:
+  ...
+  # -----------------------------------------------------------------------
+  # providerBindings
+  # Each entry is a ProviderBinding — a self-contained declaration of
+  # what the deployment requests, how to handle failure, and how to wire
+  # the resolved output into application parameters.
+  # -----------------------------------------------------------------------
+  providerBindings:
+
+    # Binding: webPort
+    # Request a safe HTTP port. Vendor defaults to 8080 but accepts any.
+    # strategy: nextAvailablePort — if 8080 is taken, assign the next free port.
+    - id: webPort
+      provider: provider.margo.org/network/port
+      request:
+        port: 8080
+        protocol: TCP
+      fallback:
+        strategy: nextAvailablePort # the strategies will be cross-referenced from the provider schema definition
+      inject:
+        - parameter: hostPort
+          from: result.availablePort
+
+  # -----------------------------------------------------------------------
+  # parameters
+  # Only operator-supplied static values appear here.
+  # Output wiring from providers lives in providerBindings[].inject above.
+  # -----------------------------------------------------------------------
+  parameters:
+    - name: hostPort
+      value: 8080
 ```
 
 If port 8080 is unavailable:

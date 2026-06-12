@@ -59,12 +59,170 @@
 
   ## With the Provider Framework
 
+  Provider Contract:
+  ```yaml
+  apiVersion: margo.org/v1alpha1
+  kind: Provider
+
+  metadata:
+    uri: provider.margo.org/network/port
+    name: Network Port
+    description: >
+      Allocates and validates host network ports on a device.
+    scope: device
+
+  bindingSchema:
+    request:
+      type: object
+      required:
+        - port
+      properties:
+        port:
+          type: integer
+          minimum: 1
+          maximum: 65535
+          description: >
+            Preferred port requested by the application.
+        protocol:
+          type: string
+          enum:
+            - TCP
+            - UDP
+          default: TCP
+    output:
+      type: object
+      properties:
+        assignedPort:
+          type: integer
+        protocol:
+          type: string
+
+      required:
+        - assignedPort
+    failureCodes:
+      - PORT_ALREADY_ALLOCATED
+      - PORT_NOT_ALLOWED
+      - PORT_OUT_OF_RANGE
+      - NO_AVAILABLE_PORT
+    fallbackStrategies:
+      - fail # the binding will simply fail, and hence the deployment also
+      - nextAvailable # the next available port will be found and returned in the output
+
+  stateSchema: # the device will pertain to this schema while pushing the provider state
+    offer:
+      type: object
+      properties:
+        allowedPortRanges:
+          type: array
+          items:
+            oneOf:
+              - type: integer
+              - type: object
+                properties:
+                  start:
+                    type: integer
+                  end:
+                    type: integer
+        reservedPorts:
+          type: array
+          items:
+            type: integer
+    allocation:
+      type: object
+      properties:
+        allocatedPorts:
+          type: array
+          items:
+            type: object
+            properties:
+              port:
+                type: integer
+              protocol:
+                type: string
+              allocatedTo:
+                type: string
+            required:
+              - port
+              - allocatedTo
+  ```
+
+
+  Provider State Advertised by Device:
+  ```json
+  {
+    "provider": "provider.margo.org/network/port",
+    "supported": true,
+    "offer": {
+      "allowedPortRanges": [
+        2345,
+        4095,
+        {"start": 8080, "end": 49150}
+      ],
+      "reservedPorts": [22, 80, 443, 9100, 9999]
+    },
+    "allocation": {
+      "allocatedPorts": [
+        {
+          "port": 8080,
+          "protocol": "TCP",
+          "allocatedTo": "deployment-app-a-001"
+        },
+        {
+          "port": 9090,
+          "protocol": "TCP",
+          "allocatedTo": "deployment-app-b-002"
+        }
+      ]
+    }
+  }
+  ```
+
   The application requests a network port through a ProviderBinding.
 
   ```yaml
-  providerBindings:
-    - id: webPort
-      provider: provider.margo.org/network/port
+  apiVersion: application.margo.org/v1alpha1
+  kind: ApplicationDeployment
+  ...
+  spec:
+    deploymentProfile:
+      type: helm
+      components:
+        - name: hello-world
+          properties:
+            repository: oci://registry.someorganisation.com/charts/hello-world
+            revision: 1.0.0
+            wait: "true"
+
+    # -----------------------------------------------------------------------
+    # providerBindings
+    # Each entry is a ProviderBinding — a self-contained declaration of
+    # what the deployment requests, how to handle failure, and how to wire
+    # the resolved output into application parameters.
+    # -----------------------------------------------------------------------
+    providerBindings:
+
+      # Binding: webPort
+      # Request a safe HTTP port. Vendor defaults to 8080 but accepts any.
+      # strategy: nextAvailablePort — if 8080 is taken, assign the next free port.
+      - id: webPort
+        provider: provider.margo.org/network/port
+        request:
+          port: 8080
+          protocol: TCP
+        fallback:
+          strategy: nextAvailablePort # the strategies will be cross-referenced from the provider schema definition
+        inject:
+          - parameter: hostPort
+            from: result.availablePort
+
+    # -----------------------------------------------------------------------
+    # parameters
+    # Only operator-supplied static values appear here.
+    # Output wiring from providers lives in providerBindings[].inject above.
+    # -----------------------------------------------------------------------
+    parameters:
+      - name: hostPort
+        value: 8080
   ```
 
   The Device Agent detects that port `8080` is already allocated.
