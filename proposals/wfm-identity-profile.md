@@ -151,12 +151,12 @@ In PR2, **X.509-SVID** is the only representation for WFM Client authentication.
 
 #### Recognition by the WFM
 
-A WFM **MUST** recognize a WFM Client from the authenticated SPIFFE ID alone. For each request, the WFM **MUST**:
+A WFM **MUST** recognize a WFM Client from the authenticated SPIFFE ID alone. When a WFM Client connection is established, the WFM **MUST**:
 
-1. validate the presented SVID against the Trust Domain's Trust Bundle;
-2. extract the SPIFFE ID from the URI SAN;
-3. verify that the `wfm-id` in the path belongs to this WFM's namespace; and
-4. authorize the request using local policy keyed on that WFM Client identity.
+1. validate the presented SVID against the Trust Domain's Trust Bundle; and
+2. extract the SPIFFE ID from the URI SAN and verify that the `wfm-id` in the path belongs to this WFM's namespace.
+
+Over the life of the connection, the WFM **SHOULD** bound connection lifetime per the MIAF [Session lifetime and re-validation](./margo-identity-and-authorization-framework.md#session-lifetime-and-re-validation) rules, and **MUST** authorize each request using local policy keyed on that WFM Client identity.
 
 #### Recognition by the WFM Client
 
@@ -168,6 +168,8 @@ A WFM Client **MUST** recognize the WFM it connects to from the authenticated SP
 4. abort the connection if any of these checks fails.
 
 Step 3 mirrors the WFM-side `wfm-id` namespace check. Without it, a WFM Client could authenticate upstream to a different WFM than its operator intended, even though the WFM SVID is validly issued by the Trust Domain.
+
+As with any verifier, a WFM Client holding a long-lived connection **SHOULD** bound the connection's lifetime (or otherwise re-validate the WFM SVID) per the MIAF [Session lifetime and re-validation](./margo-identity-and-authorization-framework.md#session-lifetime-and-re-validation) rules, rather than relying solely on the connection-time check above.
 
 ### 4. Provisioning (PR2)
 
