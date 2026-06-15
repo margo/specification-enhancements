@@ -48,7 +48,7 @@ The component artifact MUST be stored in an OCI-compliant [Component Registry](h
 The ApplicationDescription MUST identify the component using two fields:
 
 - `repository` — an `oci://` URI pointing to the registry and repository path (e.g., `oci://registry.example.com/org/component-name`)
-- `revision` — an OCI tag identifying the component version (e.g., `1.0.0`, `2.3.1`) (SemVer 2.0 version without leading `v`)
+- `revision` — an OCI tag identifying the component version (e.g., `1.0.0`, `2.3.1`) (SemVer 2.0 version without leading `v`). The `+` character (SemVer 2.0 build metadata separator) is not a valid OCI tag character; it MUST be replaced with `_` when encoding a version as an OCI tag (following the Helm convention, e.g., `1.0.0+build.42` becomes tag `1.0.0_build.42`).
 
 Together, `repository` + `revision` provide a deterministic, human-readable coordinate for the artifact. No other location field (e.g., a plain-HTTPS URL) is required.
 
@@ -57,6 +57,10 @@ Together, `repository` + `revision` provide a deterministic, human-readable coor
 The OCI image manifest MUST declare a component-type-specific `artifactType` so that registries and tooling can distinguish Margo component artifacts from other OCI content. The layer blob containing the component payload MUST declare a component-type-specific `mediaType` so that consumers can verify they are processing the correct binary format.
 
 Media type strings MUST follow the `application/vnd.org.margo.<hierarchy>` naming convention and MUST be registered in the Margo-Specific Media Types table in `application-registry.md`.
+
+> **Namespace rationale:** The `vnd.org.margo` prefix is a deliberate convention choice that mirrors the reverse-domain pattern used by OCI itself (`org.opencontainers`) and avoids future ambiguity if the `margo.org` domain registration changes hands. Both `vnd.margo.*` and `vnd.org.margo.*` are valid under RFC 6838 §3.2 — this is a community convention, not a normative RFC requirement.
+
+> **Migration note:** The current pre-draft specification uses `vnd.margo.app.*` media types in some places. These will be migrated to the `vnd.org.margo.*` namespace as part of the normative SUPs that implement this pattern.
 
 #### 4. Integrity
 
@@ -76,15 +80,17 @@ A single `Parameter` MAY declare targets with different pointer syntaxes, allowi
 
 ### Helm as the Reference Implementation
 
-Helm already satisfies all five elements of The Helm Way:
+> **Important:** "The Helm Way" is named after Helm because Helm *inspired* the pattern — not because Helm itself must conform to every element. Helm's media types are governed by CNCF, not Margo. New Margo-governed component types (Compose, Quadlet, future custom types) MUST follow the pattern. Helm itself is not required to adopt `vnd.org.margo` types; its CNCF-governed types are accepted as-is.
+
+Helm already satisfies the spirit of all five elements:
 
 - **Storage**: `helm push` stores Helm charts in any OCI-compliant registry.
 - **Reference**: The ApplicationDescription uses `repository: oci://...` and `revision: <tag>` to identify the chart.
-- **Media types**: The OCI manifest uses `artifactType: application/vnd.cncf.helm.config.v1+json` and the layer blob uses `mediaType: application/vnd.cncf.helm.chart.content.layer.v1.tar+gzip`, both community-standard CNCF media types already registered.
+- **Media types**: Helm uses the config descriptor `mediaType` (`application/vnd.cncf.helm.config.v1+json`) as its type discriminator — a legacy OCI Image Manifest pattern that predates OCI 1.1 `artifactType`. The layer blob uses `mediaType: application/vnd.cncf.helm.chart.content.layer.v1.tar+gzip`. Both are CNCF-governed types accepted by Margo.
 - **Integrity**: The OCI content-addressable digest on the chart layer blob provides integrity verification per the OCI Distribution Specification v1.1.0.
 - **Parametrization**: `helm install` accepts a `values.yaml` override file (via `-f values.yaml`) or individual `--set` flags. The ApplicationDescription `Target.pointer` uses dot-notation to identify the target key within the values tree (e.g., `config.database.host`).
 
-Helm's compliance with this pattern is inherent — no specification changes are required for Helm components. The Helm Way simply names what Helm already does.
+Helm's role is that of the reference implementation that inspired the pattern. The Helm Way simply names and generalizes what Helm already does.
 
 ---
 
@@ -95,11 +101,11 @@ Any new component type SUP MUST demonstrate compliance with all five elements. T
 | Element | Requirement | Helm (reference) | Compose (SUP-01) | Quadlet (SUP-02) |
 |---------|------------|-----------------|----------------|----------------|
 | Registry | OCI-compliant, MUST | `helm push` | `oras push` | `oras push` |
-| `type` value | versioned string, MUST | `helm.v3` | `compose.v1` | `quadlet.v1` |
+| `type` value | versioned string, MUST | `helm.v3` | `compose` | `quadlet` |
 | `repository` field | `oci://` URI, MUST | `oci://registry/org/chart` | `oci://registry/org/app` | `oci://registry/org/app` |
 | `revision` field | OCI tag, MUST | `1.0.0` | `1.0.0` | `1.0.0` |
-| `artifactType` | Margo-registered, MUST | `application/vnd.cncf.helm.config.v1+json` | `application/vnd.org.margo.component.compose.v1+json` | `application/vnd.org.margo.component.quadlet.v1+json` |
-| Layer `mediaType` | Margo-registered, MUST | `application/vnd.cncf.helm.chart.content.layer.v1.tar+gzip` | `application/vnd.org.margo.component.compose.v1.tar.gzip` | `application/vnd.org.margo.component.quadlet.v1.tar.gzip` |
+| Discriminator | Margo-registered, MUST | config `mediaType`: `application/vnd.cncf.helm.config.v1+json` | manifest `artifactType`: `application/vnd.org.margo.component.compose+json` | manifest `artifactType`: `application/vnd.org.margo.component.quadlet+json` |
+| Layer `mediaType` | Margo-registered, MUST | `application/vnd.cncf.helm.chart.content.layer.v1.tar+gzip` | `application/vnd.org.margo.component.compose.tar+gzip` | `application/vnd.org.margo.component.quadlet.tar+gzip` |
 | Integrity | OCI digest per OCI Distribution Spec v1.1.0 | Verified by registry and Helm CLI | Verified by registry and WFM | Verified by registry and WFM |
 | Parameter artifact | SHOULD be defined | `values.yaml` override | `margo-params.env` file | `margo-params.env` file |
 
