@@ -6,7 +6,7 @@
 
 ## Summary
 
-This SUP applies The Helm Way pattern (SUP-00) to Compose components. It mandates OCI registry storage for Compose Archives, defines two Margo-specific OCI media types, specifies the normative internal archive structure (single top-level directory, `compose.yaml` required, security constraints), introduces the versioned `compose.v1` deployment profile type, removes the `packageLocation` field (which has never appeared in a released specification), and resolves three open "Investigation Needed" blocks in the current specification.
+This SUP applies The Helm Way pattern (SUP-00) to Compose components. It mandates OCI registry storage for Compose Archives, defines two Margo-specific OCI media types, specifies the normative internal archive structure (single top-level directory, `compose.yaml` required, security constraints), uses the `compose` deployment profile type, removes the `packageLocation` field (which has never appeared in a released specification), and resolves three open "Investigation Needed" blocks in the current specification.
 
 These changes are inseparable: what you push to the registry is defined by the archive structure, so the OCI mandate and the structure specification belong in a single SUP. The result is a complete, interoperable Compose packaging contract — something the current single-sentence description does not provide.
 
@@ -17,7 +17,7 @@ The current specification describes the Compose Archive as "a tarball file conta
 1. **No OCI registry mandate** — Compose Archives can be served from any URL; there is no integrity guarantee.
 2. **No integrity mechanism** — The spec recommends PGP signing but provides no checkable contract.
 3. **`artifactType` inconsistency** — The Mermaid diagram in `application-registry.md` uses a different string than what implementations use.
-4. **Bare type discriminator** — `"compose"` is not versioned, making future evolution impossible without a flag day.
+4. **No `artifactType` or layer `mediaType`** — The spec does not define OCI media types for Compose components, preventing tooling from distinguishing Compose artifacts from other OCI content.
 5. **Undefined archive structure** — No normative rules exist for directory layout, required files, or security constraints (path traversal, symlink escapes).
 
 Without resolving these gaps, two implementations of the Margo Compose packaging model can produce non-interoperable results while both claiming compliance.
@@ -30,9 +30,8 @@ This SUP addresses the following open and recently-closed specification issues:
 - **[margo/specification #166](https://github.com/margo/specification/issues/166)** — "Define the standard mechanism for compose enabled devices to authenticate and pull Compose Archive" (open). This SUP mandates OCI registry storage, which brings Compose Archives under the same OCI authentication model as application packages (OAuth 2.0 / Bearer token per the existing `application-registry.md` Authentication section).
 - **[margo/specification #179](https://github.com/margo/specification/issues/179)** — "Fix/packagefile location for compose applications" (closed). This SUP removes `packageLocation` entirely and replaces it with `repository` + `revision` OCI coordinates. Since the specification is pre-draft, no migration path is needed.
 
-**Out of scope (explicitly deferred):**
+**Out of scope:**
 - Artifact signing and supply-chain attestation — deferred to a dedicated Margo security SUP.
-- Application dependencies and required infrastructure services (storage, message queues, reverse proxy) — deferred; requires coordination with the Margo Device Interface Working Group.
 
 ## Technical proposal
 
@@ -40,9 +39,10 @@ This SUP addresses the following open and recently-closed specification issues:
 
 | File | Change type |
 |---|---|
-| `system-design/concepts/applications/application-package.md` | Normative update + new section |
-| `system-design/specification/applications/application-registry.md` | Table addition |
-| `src/specification/applications/application-description.linkml.yaml` | Schema update |
+| `system-design/concepts/applications/application-package.md` | Normative update (cross-reference callout) |
+| `system-design/specification/applications/application-registry.md` | New media types + Compose Archive Structure section |
+| `src/specification/applications/application-description.linkml.yaml` | Schema update (`revision` pattern) |
+| `src/specification/margo-management-interface/desired-state.linkml.yaml` | Schema update (`revision` attribute + pattern) |
 
 ---
 
@@ -66,13 +66,22 @@ If either one cannot be implemented it MAY be omitted but Margo RECOMMENDS defin
 
 ```markdown
 - To target devices which deploy workloads using Kubernetes, components MUST be defined as Helm charts using [Helm (version 3)](https://helm.sh/docs/topics/charts/). Helm charts MUST be stored in an OCI-compliant [Component Registry](../../personas-and-definitions/technical-lexicon.md#component-registry) and referenced via `repository` (an `oci://` URI) and `revision` (an OCI tag) in the [ApplicationDescription](../../specification/applications/application-description.md#componentproperties-attributes).
-- To target devices which deploy workloads using [Compose](https://www.compose-spec.io/), the following requirements apply:
-  1. Components MUST be packaged as [Compose Archives](../../personas-and-definitions/technical-lexicon.md#compose-archive) (see [Compose Archive Structure](#compose-archive-structure) below).
-  2. Compose Archives MUST be stored in an OCI-compliant [Component Registry](../../personas-and-definitions/technical-lexicon.md#component-registry).
-  3. The Compose Archive MUST be pushed to the registry as an OCI artifact (e.g., using `oras push` or equivalent tooling) and referenced via `repository` (an `oci://` URI) and `revision` (an OCI tag) in the [ApplicationDescription](../../specification/applications/application-description.md#componentproperties-attributes).
-  4. The OCI image manifest for the artifact MUST use `application/vnd.org.margo.component.compose.v1+json` as its `artifactType`.
-  5. The layer blob containing the tarball MUST use `application/vnd.org.margo.component.compose.v1.tar.gzip` as its `mediaType`.
-  6. Integrity of the Compose Archive is provided by the OCI content-addressable digest as mandated by the [OCI Distribution Specification v1.1.0](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md), which the Margo Application Registry already requires.
+- To target devices which deploy workloads using [Compose](https://www.compose-spec.io/), components MUST be packaged as [Compose Archives](../../personas-and-definitions/technical-lexicon.md#compose-archive). Compose Archives MUST be stored in an OCI-compliant [Component Registry](../../personas-and-definitions/technical-lexicon.md#component-registry) and referenced via `repository` (an `oci://` URI) and `revision` (an OCI tag) in the [ApplicationDescription](../../specification/applications/application-description.md#componentproperties-attributes).
+
+> **Normative requirement**: The internal structure of a Compose Archive is
+> normatively defined in
+> [Compose Archive Structure](../../specification/applications/application-registry.md#compose-archive-structure).
+> Implementations MUST conform to that definition.
+
+> **Note on publishing tools**: Use `oras push` (CNCF project) to publish Margo
+> Compose Archives to a Component Registry. `docker compose publish`
+> (Docker Compose 2.34.0+) is NOT compatible with the Margo Compose Archive
+> format: it produces a different OCI artifact structure using
+> `artifactType: application/vnd.docker.compose.project` with multiple
+> individual layers per file and SHA256-hashed file paths, which cannot be
+> consumed by a Margo-compliant WFM or device implementation expecting a single
+> `tar+gzip` layer blob with
+> `mediaType: application/vnd.org.margo.component.compose.tar+gzip`.
 
 If any one component type cannot be implemented it MAY be omitted, but Margo RECOMMENDS defining [deployment profiles](../../specification/applications/application-description.md#deploymentprofile-attributes) using multiple component types (Helm, Compose, and/or Quadlet) to strengthen interoperability and applicability across heterogeneous edge device fleets.
 
@@ -80,81 +89,73 @@ If any one component type cannot be implemented it MAY be omitted, but Margo REC
 > A device running the application will only install the application using one component type (Helm Charts, Compose Archives, or Quadlet Archives), never more than one simultaneously.
 ```
 
-#### 1b: Resolve three "Investigation Needed" blocks
+#### 1b: Remove "Investigation Needed" blocks
 
-**Before**:
+The three "Investigation Needed" blocks in the current specification MUST be **removed entirely** — not replaced with "Resolved" callouts. The specification text after this SUP is applied simply omits them. The resolutions are recorded here in the SUP for reviewer context only:
 
-```markdown
-Margo will provide more detailed discussion and specification on the following points:
-
-> **Investigation Needed**: Question: do we need to specify the location of a SHA256 hash for the Compose Archive also (similar to the PGP key) in the ApplicationDescription?
-> We will also discuss how we should handle secure container registries that require a username and password.
->
-> **Investigation Needed**: We need to determine what impact, if any, using 3rd party helm charts has on being Margo compliant.
->
-> **Investigation Needed**: Missing in the current specification are ways to define dependencies (e.g., application dependencies) as well as required infrastructure services such as storage, message queues/bus, reverse proxy, or authentication/authorization/accounting.
-```
-
-**After**:
-
-```markdown
-> **Resolved (SUP-01)**: The integrity question is resolved by mandating OCI registry storage for all component types. Integrity verification is provided by the OCI content-addressable digest as mandated by the [OCI Distribution Specification v1.1.0](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md), which the Margo Application Registry already requires. No separate `digest` field is needed in the ApplicationDescription. Authentication for secure container registries SHOULD follow the mechanisms defined in the [Authentication, Authorization & Security](../../specification/applications/application-registry.md#authentication-authorization--security) section.
-
-> **Resolved (SUP-01)**: Using 3rd-party Helm charts as components in an Application Package does not affect Margo compliance of the Application Package itself. Margo compliance is determined by the conformance of the ApplicationDescription and its packaging within the Application Registry. The 3rd-party chart need not be "Margo-aware"; however, the application developer is responsible for ensuring the chart functions correctly on Margo-compliant edge devices. The `pointer` field in Parameter Targets works with any Helm chart's `values.yaml` structure. Application developers SHOULD document known limitations of 3rd-party charts (e.g., charts requiring CRDs, admission webhooks, or cluster-scoped resources) in the deployment profile `description` field.
-
-> **Deferred**: Defining application dependencies and required infrastructure services (storage, message queues, reverse proxy, authentication/authorization/accounting) is deferred to a separate SUP. This topic requires coordination with the Margo Device Interface working group.
-```
+- **SHA256 hash / secure registries**: Resolved by OCI registry mandate — integrity is provided by OCI content-addressable digest; authentication follows the mechanisms in the [Authentication, Authorization & Security](../../specification/applications/application-registry.md#authentication-authorization--security) section.
+- **3rd-party Helm charts**: Using 3rd-party Helm charts does not affect Margo compliance. The application developer is responsible for ensuring the chart functions on Margo-compliant devices.
+- **Application dependencies / infrastructure services**: Out of scope for this SUP. The Investigation Needed block is simply removed.
 
 ---
 
-### Change 2: `application-registry.md` — Add Compose media types
+### Change 2: `application-registry.md` — Add Compose media types and archive structure
 
-**Before** (lines 222–231):
+This change adds two new media type rows to the existing Margo-Specific Media Types table and adds the normative Compose Archive Structure section (moved from `application-package.md`).
 
-```markdown
-#### Margo-Specific Media Types
+**Addition to Margo-Specific Media Types table:**
 
-|Media Type|Description|
-|----------|----------|
-|``application/vnd.org.margo.app.v1+json`` | MUST be used as the **artifactType** to mark the OCI image manifest as the definition of a Margo Application Package |
-|``application/vnd.org.margo.app.description.v1+yaml`` | MUST be used to mark a layer in the OCI image manifest as pointing to the Margo Application Description file |
-|``application/vnd.org.margo.app.icon.v1+{file format}``| MUST be used to mark a layer in the OCI image manifest as pointing to the icon of a Margo Application Package |
-|``application/vnd.org.margo.app.descriptionFile.v1+{file format}``| MUST be used to mark a layer in the OCI image manifest as pointing to description file of a Margo Application Package |
-|``application/vnd.org.margo.app.licenseFile.v1+{file format}``| MUST be used to mark a layer in the OCI image manifest as pointing to the license file of a Margo Application Package|
-|``application/vnd.org.margo.app.releaseNotes.v1+{file format}``| MUST be used to mark a layer in the OCI image manifest as pointing to the release notes file of a Margo Application Package|
-```
+| Media Type | Description |
+|-----------|-------------|
+| `application/vnd.org.margo.component.compose+json` | `artifactType` for Compose Archive OCI manifest |
+| `application/vnd.org.margo.component.compose.tar+gzip` | `mediaType` for Compose Archive layer blob |
 
-**After**:
+**New section: Compose Archive Structure** (added after existing Helm content):
 
 ```markdown
-#### Margo-Specific Media Types
+#### Compose Archive Structure
 
-##### Application Package Media Types
+A Compose Archive is a gzip-compressed tar archive (`.tar.gz` or `.tgz`) that packages a Compose application for deployment on edge devices. The archive MUST conform to the following structural requirements.
 
-|Media Type|Description|
-|----------|----------|
-|``application/vnd.org.margo.app.v1+json`` | MUST be used as the **artifactType** to mark the OCI image manifest as the definition of a Margo Application Package |
-|``application/vnd.org.margo.app.description.v1+yaml`` | MUST be used to mark a layer in the OCI image manifest as pointing to the Margo Application Description file |
-|``application/vnd.org.margo.app.icon.v1+{file format}``| MUST be used to mark a layer in the OCI image manifest as pointing to the icon of a Margo Application Package |
-|``application/vnd.org.margo.app.descriptionFile.v1+{file format}``| MUST be used to mark a layer in the OCI image manifest as pointing to description file of a Margo Application Package |
-|``application/vnd.org.margo.app.licenseFile.v1+{file format}``| MUST be used to mark a layer in the OCI image manifest as pointing to the license file of a Margo Application Package|
-|``application/vnd.org.margo.app.releaseNotes.v1+{file format}``| MUST be used to mark a layer in the OCI image manifest as pointing to the release notes file of a Margo Application Package|
+##### Directory Layout
 
-##### Component Registry Media Types
+The archive MUST contain exactly one top-level directory.
 
-|Media Type|Description|
-|----------|----------|
-|``application/vnd.org.margo.component.compose.v1+json``| MUST be used as the **artifactType** to mark an OCI image manifest as a Margo Compose Archive component in a Component Registry |
-|``application/vnd.org.margo.component.compose.v1.tar.gzip``| MUST be used as the **mediaType** for the layer blob containing the Compose Archive tarball (.tar.gz) |
+The directory name SHOULD match the component `name` as specified in the ApplicationDescription for human readability, but implementations MUST NOT depend on the directory name for discovery.
+
+Discovery algorithm: enter the single top-level directory; locate the file named `compose.yaml`.
+
+The top-level directory MAY contain any number of subdirectories (e.g., `configs/`, `certs/`, `scripts/`). All referenced files MUST resolve within the top-level directory.
+
+The top-level directory MUST contain a file named `compose.yaml`. The Compose file MUST conform to the Compose Specification as currently published.
+
+> **Note:** The Compose file MUST be named `compose.yaml`. The alternative names `compose.yml`, `docker-compose.yaml`, and `docker-compose.yml` are NOT valid within a Margo Compose Archive.
+
+Files referenced by `compose.yaml` via `env_file` entries and `configs` (file source) MUST be included within the archive and MUST be referenced using relative paths that resolve within the top-level directory.
+
+Bind-mount volume paths declared in `volumes` are runtime paths and MUST NOT be included in the archive.
+
+Files for `secrets` (file source) MUST NOT be included in the archive. Secret provisioning is out of scope for this proposal and is the responsibility of the device or WFM implementation at deployment time.
+
+##### Security Constraints
+
+- Symlinks MUST NOT target paths outside the top-level directory.
+- Hard links MUST NOT reference paths outside the top-level directory.
+- Absolute paths MUST NOT appear in the archive entries.
+- File names MUST NOT contain path traversal sequences (`../`).
+- Implementations SHOULD normalize file permissions during archive extraction. Implementations MUST NOT preserve setuid, setgid, or sticky bits from archive entries.
+- WFM and device implementations MUST validate these constraints before extracting or deploying the archive.
+
+##### Integrity Verification
+
+When stored in an OCI-compliant Component Registry, the Compose Archive tarball is the content of a single layer blob. Integrity verification at the transport layer is provided by the OCI content-addressable digest as mandated by the OCI Distribution Specification v1.1.0. Implementations MUST verify the OCI digest after pulling the blob and before extracting the archive.
 ```
-
-> **Note:** Quadlet media types (`application/vnd.org.margo.component.quadlet.v1+json` and `application/vnd.org.margo.component.quadlet.v1.tar.gzip`) are introduced in SUP-02 and MUST be added to this table when that SUP is applied.
 
 ---
 
 ### Change 3: `application-description.linkml.yaml` — Schema updates
 
-#### 3a: `ComponentProperties` schema — `repository`/`revision` required, `packageLocation` removed
+#### 3a: `ComponentProperties` schema — `repository`/`revision` required, `packageLocation` removed, `revision` pattern added
 
 ```yaml
   ComponentProperties:
@@ -170,12 +171,17 @@ Margo will provide more detailed discussion and specification on the following p
         required: true
       revision:
         description: >-
-          OCI tag identifying the component version within the repository (e.g., "1.0.0", "2.3.1").
-          SemVer 2.0 version without leading `v`.
-          MUST be used for Helm, Compose, and Quadlet components.
-        rank: 20
+          OCI tag identifying the component version within the repository
+          (e.g., "1.0.0", "2.3.1", "1.0.0-rc1", "1.0.0_build.123").
+          MUST be a valid SemVer 2.0 string without a leading `v`.
+          SemVer build metadata separator `+` MUST be stored as `_`
+          because `+` is not a valid OCI tag character.
+          Implementations comparing this value against a SemVer string
+          MUST convert `_` back to `+` before comparison.
         range: string
         required: true
+        rank: 20
+        pattern: "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:_([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
       wait:
         description: If True, indicates the device waits for the component installation to complete.
         rank: 30
@@ -186,109 +192,99 @@ Margo will provide more detailed discussion and specification on the following p
         range: string
 ```
 
-#### 3b: Replace `ComposeDeploymentProfile` with `ComposeV1DeploymentProfile`
+#### 3b: `ComposeDeploymentProfile` keeps existing `"compose"` type value
+
+The existing `ComposeDeploymentProfile` class and its `equals_string: "compose"` are unchanged. The `pre-draft` specification already uses the unversioned `"compose"` value.
 
 ```yaml
-  ComposeV1DeploymentProfile:
+  ComposeDeploymentProfile:
     is_a: DeploymentProfile
-    #rank: 67
     slot_usage:
       type:
-        equals_string: "compose.v1"
+        equals_string: "compose"
         rank: 10
       components:
         range: ComposeComponent
         rank: 20
 ```
 
-> **Note:** The bare `"compose"` type value and its corresponding `ComposeDeploymentProfile` class are removed. Since the specification is pre-draft, no backward-compatible alias is needed. All Compose deployment profiles MUST use the versioned `"compose.v1"` type discriminator.
+#### 3c: `type` slot — no regex change needed
 
-#### 3c: Update `type` slot description and regex
+The existing `type` slot already uses `pattern: ^(helm|compose)$`. No change is required.
+
+#### 3d: `desired-state.linkml.yaml` — Add `revision` attribute to `Component` class
 
 ```yaml
-  type:
-    description: >-
-      The deployment profile type discriminator. Allowed values:
-      - `helm.v3`: Helm-based component (see HelmDeploymentProfile).
-      - `compose.v1`: Compose-based component using OCI registry publishing (see ComposeV1DeploymentProfile).
-      - `quadlet.v1`: Quadlet-based component (see QuadletDeploymentProfile, introduced by SUP-02).
-    rank: 10
-    range: string
-    required: true
-    pattern: ^(helm\.v3|compose\.v1|quadlet\.v1)$
+  Component:
+    description: A class representing a component of a deployment profile.
+    rank: 50
+    attributes:
+      name:
+        description: The name of the component.
+        required: true
+        rank: 10
+      revision:
+        description: >-
+          OCI tag identifying the component version within the repository
+          (e.g., "1.0.0", "2.3.1", "1.0.0-rc1", "1.0.0_build.123").
+          MUST be a valid SemVer 2.0 string without a leading `v`.
+          SemVer build metadata separator `+` MUST be stored as `_`
+          because `+` is not a valid OCI tag character.
+        range: string
+        required: false
+        rank: 15
+        pattern: "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:_([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+      properties:
+        description: Properties associated with the component.
+        range: Property
+        required: true
+        multivalued: true
+        inlined: true
+        inlined_as_list: false
+        rank: 20
 ```
 
 ---
 
-### Change 4: New section `## Compose Archive Structure` in `application-package.md`
+### Change 4: Compose Archive Structure normative text in `application-registry.md`
 
-Add after the existing component type list:
-
-````markdown
-## Compose Archive Structure
-
-A Compose Archive is a gzip-compressed tar archive (`.tar.gz` or `.tgz`) that packages a [Compose](https://www.compose-spec.io/) application for deployment on edge devices. The archive MUST conform to the following structural requirements.
-
-### Directory Layout
-
-The archive MUST contain exactly one top-level directory. The name of this directory MUST match the component `name` as specified in the ApplicationDescription.
-
-The top-level directory MUST contain a file named `compose.yaml`. The Compose file MUST conform to the [Compose Specification](https://www.compose-spec.io/) as currently published.
-
-> **Note:** The Compose file MUST be named `compose.yaml`. The alternative names `compose.yml`, `docker-compose.yaml`, and `docker-compose.yml` are NOT valid within a Margo Compose Archive. This restriction ensures predictable file discovery by WFM and device implementations.
-
-All files referenced by `compose.yaml` (including but not limited to `env_file` entries, `volumes` bind-mount sources, `configs` file sources, and `secrets` file sources) MUST be included within the archive and MUST be referenced using relative paths that resolve within the top-level directory.
-
-### Security Constraints
-
-- Symlinks MUST NOT target paths outside the top-level directory.
-- Hard links MUST NOT reference paths outside the top-level directory.
-- Absolute paths MUST NOT appear in the archive entries.
-- File names MUST NOT contain path traversal sequences (`../`).
-- Implementations SHOULD normalize file permissions during archive extraction. Implementations MUST NOT preserve setuid, setgid, or sticky bits from archive entries.
-- WFM and device implementations MUST validate these constraints before extracting or deploying the archive.
-
-### Example
-
-```tree
-myapp-1.0.0-compose.tgz
-+-- myapp/
-    +-- compose.yaml
-    +-- .env
-    +-- config/
-        +-- app.conf
-```
-
-- `myapp` is the component name matching the ApplicationDescription.
-- `compose.yaml` is the required Compose file.
-- `.env` is an environment variable file referenced by `env_file` in `compose.yaml`.
-- `config/app.conf` is a configuration file referenced as a bind mount or config in `compose.yaml`.
-
-### Integrity Verification
-
-When stored in an OCI-compliant Component Registry, the Compose Archive tarball is the content of a single layer blob. Integrity verification at the transport layer is provided by the OCI content-addressable digest as mandated by the [OCI Distribution Specification v1.1.0](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md). Implementations MUST verify the OCI digest after pulling the blob and before extracting the archive.
+The full normative Compose Archive Structure is defined in Change 2 above (placed in `application-registry.md`). The `application-package.md` file retains only a cross-reference callout pointing to that section.
 
 ### Publishing Workflow
 
-1. Create the `.tar.gz` archive conforming to the directory layout above.
-2. Push the archive as an OCI artifact:
+To publish a Compose Archive to an OCI-compliant Component Registry, use `oras push` (CNCF project). This is the RECOMMENDED publishing tool for Margo Compose Archives.
 
-   ```bash
-   oras push registry.example.com/org/myapp:1.0.0 \
-     --artifact-type application/vnd.org.margo.component.compose.v1+json \
-     myapp-1.0.0-compose.tar.gz:application/vnd.org.margo.component.compose.v1.tar.gzip
-   ```
+> **Warning**: `docker compose publish` (Docker Compose 2.34.0+) MUST NOT be
+> used to publish Margo Compose components. It produces a structurally
+> incompatible OCI artifact: `artifactType: application/vnd.docker.compose.project`,
+> multiple layers (one per file), and SHA256-hashed file paths. This format
+> cannot be consumed by a Margo-compliant WFM or device implementation.
 
-3. Reference the artifact in the ApplicationDescription:
+Example:
 
-   ```yaml
-   components:
-     - name: myapp
-       properties:
-         repository: oci://registry.example.com/org/myapp
-         revision: "1.0.0"
-   ```
-````
+```bash
+oras push registry.example.com/org/myapp:1.0.0 \
+  --artifact-type application/vnd.org.margo.component.compose+json \
+  myapp-1.0.0-compose.tar.gz:application/vnd.org.margo.component.compose.tar+gzip
+```
+
+Reference the artifact in the ApplicationDescription:
+
+```yaml
+components:
+  - name: myapp
+    properties:
+      repository: oci://registry.example.com/org/myapp
+      revision: "1.0.0"
+```
+
+### WFM Reconciliation and `wait` Semantics
+
+If `wait` is set to `true` for a Compose component, the device MUST wait until all containers in the Compose project reach **running** state before reporting the deployment as successful. This is equivalent to `docker compose up` or `podman-compose up` completing synchronously without `--detach`.
+
+If any container exits with a non-zero exit code during startup, the deployment MUST be reported as failed immediately.
+
+If health checks are defined in `compose.yaml`, implementations SHOULD additionally wait for all containers to reach **healthy** state before reporting success.
 
 ---
 
@@ -298,24 +294,33 @@ When stored in an OCI-compliant Component Registry, the Compose Archive tarball 
 |---|---|
 | MUST | Compose Archives MUST be stored in an OCI-compliant Component Registry and referenced via `repository` + `revision`. |
 | MUST | The `repository` and `revision` fields in `ComponentProperties` MUST be present for all component types. |
-| MUST | The OCI image manifest for a Compose component MUST use `artifactType` = `application/vnd.org.margo.component.compose.v1+json`. |
-| MUST | The layer blob mediaType for Compose MUST be `application/vnd.org.margo.component.compose.v1.tar.gzip`. |
-| MUST | A Compose Archive MUST contain exactly one top-level directory whose name matches the component `name`. |
+| MUST | The OCI image manifest for a Compose component MUST use `artifactType` = `application/vnd.org.margo.component.compose+json`. |
+| MUST | The layer blob mediaType for Compose MUST be `application/vnd.org.margo.component.compose.tar+gzip`. |
+| MUST | A Compose Archive MUST contain exactly one top-level directory. |
+| SHOULD | The directory name SHOULD match the component `name` for human readability. |
+| MUST NOT | Implementations MUST NOT depend on the directory name for discovery. |
 | MUST | A Compose Archive MUST contain a `compose.yaml` file in the top-level directory. |
-| MUST | All files referenced by `compose.yaml` MUST be included within the archive using relative paths. |
+| MUST | Files referenced via `env_file` and `configs` (file source) MUST be included within the archive using relative paths. |
+| MUST NOT | Bind-mount volume paths MUST NOT be included in the archive. |
+| MUST NOT | Files for `secrets` (file source) MUST NOT be included in the archive. |
 | MUST NOT | Symlinks MUST NOT target paths outside the top-level directory. |
 | MUST NOT | Absolute paths MUST NOT appear in archive entries. |
 | MUST NOT | File names MUST NOT contain path traversal sequences. |
 | MUST NOT | Implementations MUST NOT preserve setuid, setgid, or sticky bits from archive entries. |
 | MUST | WFM and device implementations MUST validate security constraints before extraction. |
 | MUST | Implementations MUST verify the OCI digest after pulling and before extracting. |
-| MUST | The deployment profile type discriminator for Compose MUST be `compose.v1`. |
+| MUST | The deployment profile type discriminator for Compose MUST be `compose`. |
+| MUST | If `wait` is `true`, the device MUST wait until all containers reach running state. |
+| MUST | If any container exits non-zero during startup, the deployment MUST be reported as failed. |
+| SHOULD | If health checks are defined, implementations SHOULD wait for healthy state. |
+| MUST NOT | `docker compose publish` MUST NOT be used to publish Margo Compose components. |
+| RECOMMENDED | `oras push` is the RECOMMENDED publishing tool for Margo Compose Archives. |
 
 ---
 
 ### Backward compatibility
 
-This SUP targets the pre-draft specification. No backward compatibility constraints apply. The `packageLocation` field and the bare `"compose"` type value have never appeared in a released specification and are therefore removed without a deprecation period.
+This SUP targets the pre-draft specification. No backward compatibility constraints apply. The `packageLocation` field has never appeared in a released specification and is therefore removed without a deprecation period.
 
 ---
 
