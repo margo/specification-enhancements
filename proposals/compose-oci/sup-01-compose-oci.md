@@ -250,7 +250,7 @@ The existing `type` slot already uses `pattern: ^(helm|compose)$`. No change is 
 
 The full normative Compose Archive Structure is defined in Change 2 above (placed in `application-registry.md`). The `application-package.md` file retains only a cross-reference callout pointing to that section.
 
-### Publishing Workflow
+### Publishing Workflow (INFORMATIVE)
 
 To publish a Compose Archive to an OCI-compliant Component Registry, use `oras push` (CNCF project). This is the RECOMMENDED publishing tool for Margo Compose Archives.
 
@@ -313,7 +313,6 @@ If health checks are defined in `compose.yaml`, implementations SHOULD additiona
 | MUST | If `wait` is `true`, the device MUST wait until all containers reach running state. |
 | MUST | If any container exits non-zero during startup, the deployment MUST be reported as failed. |
 | SHOULD | If health checks are defined, implementations SHOULD wait for healthy state. |
-| MUST NOT | `docker compose publish` MUST NOT be used to publish Margo Compose components. |
 | RECOMMENDED | `oras push` is the RECOMMENDED publishing tool for Margo Compose Archives. |
 
 ---
