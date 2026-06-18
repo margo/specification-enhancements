@@ -55,7 +55,6 @@ The SUP has been approved and the SUP group is working on updating the specifica
 
 |Owner|Description|Stage|LINK|
 |-----|-----------|-----|----|
-|@julienduquesnay-se | Device gateway | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/gateway.md) |
 |@silvanoc | Data model single source of truth with LinkML | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/data-model_linkml.md)
 |@ajcraig | Moving away from Device Roles to capabilities | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_device_roles_to_capabilities.md) |
 |@phil-abb | Supporting specification extensions | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_enable_vendor_extensions.md) |
