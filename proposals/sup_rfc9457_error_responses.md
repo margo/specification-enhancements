@@ -73,7 +73,7 @@ ProblemDetail:
     detail:
       type: string
       description: Human-readable explanation specific to this occurrence of the problem.
-      example: Certificate is not a valid PEM-encoded X.509 certificate.
+      example: Certificate is not valid 
     instance:
       type: string
       format: uri
@@ -128,9 +128,18 @@ ProblemDetail:
 The following `type` URI values are stable and MUST be used by all implementations.
 Clients MUST use the `type` field for programmatic error handling.
 
+> **Note on URI Dereferenceability:** Per RFC 9457 §4.2, `type` URIs SHOULD be
+> dereferenceable — returning a human-readable page describing the problem type.
+> The URIs listed below currently return 404 as the error catalogue page at
+> `https://margo.org/problems/` has not yet been published. This is a known
+> limitation and a hosted error catalogue is planned as a follow-up documentation
+> task based on this SUP review (Do we really need to host URIs or not). The URIs remain valid stable identifiers regardless of dereferenceability.
+> Clients MUST NOT fetch these URIs at runtime; they are identifiers only.
+
+
 | Type URI | HTTP Status | Description |
 |---|---|---|
-| `https://margo.org/problems/invalid-certificate` | 400 | Certificate is not valid PEM-encoded X.509 |
+| `https://margo.org/problems/invalid-certificate` | 400 | Certificate is not valid |
 | `https://margo.org/problems/invalid-digest-header` | 400 | Missing or invalid content-digest header |
 | `https://margo.org/problems/signature-verification-failed` | 401 | Payload signature verification failed |
 | `https://margo.org/problems/certificate-not-trusted` | 403 | Client certificate not trusted or revoked |
