@@ -68,6 +68,8 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@arne-broering | Supporting device specific runtimes | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/55) |
 |@phil-abb | Alternative proposal for supporting device specific runtimes | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/59) |
 |@singhmj-1 | Resource allocation and conflict resolution proposal for app workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/66) |
+|@vireshnavalli | RFC 9457 for common error responses | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/73) |
+|@vireshnavalli | Updates to apiVersion usage | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/74) |
 
 ## SUP Owner SUP Checklist
 
