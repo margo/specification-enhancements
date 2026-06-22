@@ -1,0 +1,5 @@
+{
+  "type": "https://margo.org/docs/errors/key-rotation-not-permitted",
+  "title": "Key Rotation Not Permitted",
+  "status": 409
+}

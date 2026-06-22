@@ -1,0 +1,5 @@
+{
+  "type": "https://margo.org/docs/errors/invalid-enrollment-token",
+  "title": "Invalid Enrollment Token",
+  "status": 401
+}

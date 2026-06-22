@@ -1,0 +1,5 @@
+{
+  "type": "https://margo.org/docs/errors/unsupported-svid-profile",
+  "title": "Unsupported SVID Profile",
+  "status": 422
+}

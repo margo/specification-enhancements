@@ -1,0 +1,5 @@
+{
+  "type": "https://margo.org/docs/errors/invalid-svid-request",
+  "title": "Invalid SVID Request",
+  "status": 400
+}
