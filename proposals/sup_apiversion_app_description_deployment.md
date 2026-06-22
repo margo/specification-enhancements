@@ -64,9 +64,8 @@ ApplicationDeployment:
 
 ## Alternatives considered
 
-1. **Remove apiVersion entirely** - Rejected because it removes explicit version information from application definitions, making it harder to track versioning at the application level without parsing URL routes.
+1. **Remove apiVersion entirely** - Rejected because it removes explicit version information from application definitions (application description) and application deployment manifest, making it harder to track versioning at the application description/deployment manifests. Remove apiVersion from the body of the API requests as it is part of the API route, keep the apiVersion in ApplicationDescription (and ApplicationDeployment)
 
-2. **Include version only in API routes** - Rejected because it provides insufficient version metadata in application descriptors and deployment configurations.
 
 ## Related PRs
 
