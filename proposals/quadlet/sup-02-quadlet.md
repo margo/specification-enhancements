@@ -59,7 +59,7 @@ This SUP is grounded in the following in-scope features and issues:
 Insert after the Compose bullet (added by SUP-01). This bullet is non-normative — all specification language is in `application-registry.md`:
 
 ```markdown
-- To target devices which deploy workloads using [Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html), components are packaged as Quadlet Archives and stored in an OCI-compliant [Component Registry](../../personas-and-definitions/technical-lexicon.md#component-registry). See [Quadlet Archive Structure](../../specification/applications/application-registry.md#quadlet-archive-structure) for the normative definition. The target device must have Podman 5.0 or later installed to support Quadlet deployment.
+- To target devices which deploy workloads using [Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html), components are packaged as Quadlet Archives and stored in an OCI-compliant [Component Registry](../../personas-and-definitions/technical-lexicon.md#component-registry). See [Quadlet Archive Structure](../../specification/applications/application-registry.md#quadlet-archive-structure) for the normative definition. The target device requires Podman 5.0 or later for Quadlet deployment.
 ```
 
 ---
@@ -150,6 +150,7 @@ After `ComposeDeploymentProfile`:
     description: >-
       Deployment profile for Quadlet-based workloads targeting devices running
       Podman 5.0 or later with systemd integration.
+    rank: 45
     slot_usage:
       type:
         equals_string: "quadlet"
@@ -175,7 +176,7 @@ After `ComposeComponent`:
 
 #### 3b: Expand `type` slot regex
 
-The current `type` slot pattern (after the Helm SUP) is:
+The current `type` slot pattern in `application-description.linkml.yaml` (after the Helm SUP) is:
 ```yaml
     pattern: ^(helm|compose)$
 ```
@@ -184,6 +185,8 @@ Update to:
 ```yaml
     pattern: ^(helm|compose|quadlet)$
 ```
+
+> **Note:** This pattern constraint exists in `application-description.linkml.yaml` only. The `desired-state.linkml.yaml` schema relies on per-class `equals_string` constraints (see Change 5 / companion patch) rather than a top-level regex.
 
 ---
 
