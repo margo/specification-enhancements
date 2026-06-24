@@ -1,4 +1,4 @@
-# Quadlet Component Type (Podman 5.0+ / systemd)
+# Quadlet Component Type (systemd-integrated container workloads)
 
 ## Owner
 
@@ -6,7 +6,7 @@
 
 ## Summary
 
-This SUP adds Quadlet as a third Margo component type alongside Helm and Compose. Quadlet is Podman's native systemd integration format for container workloads — it allows containers to be managed as native systemd services without requiring a Kubernetes control plane. This is the lightweight, daemon-free deployment model required on constrained OT edge devices.
+This SUP adds Quadlet as a third Margo component type alongside Helm and Compose. Quadlet is a systemd-native unit file format for declarative container workloads — it allows containers to be managed as native systemd services without requiring a Kubernetes control plane. This is the lightweight, daemon-free deployment model required on constrained OT edge devices.
 
 The SUP applies The Helm Way pattern (SUP-00) to Quadlet, following the same OCI registry publishing model established by SUP-01 for Compose. It defines the `quadlet` deployment profile type, two Margo-registered OCI media types, `QuadletDeploymentProfile` and `QuadletComponent` schema classes, the normative Quadlet Archive Structure, and a companion patch for the desired-state schema. This SUP is **additive only** — no existing Helm or Compose functionality is changed.
 
@@ -14,30 +14,26 @@ The SUP applies The Helm Way pattern (SUP-00) to Quadlet, following the same OCI
 
 ## Reason for proposal
 
-Quadlet (Podman 5.0+) provides:
+[Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) provides:
 - Automatic container restart and dependency management via systemd
 - Integration with existing systemd-based monitoring and logging infrastructure (journald)
 - Rootless container operation without a daemon process
 - Lightweight footprint suitable for constrained OT edge devices
 
-The current Margo specification has no path for systemd-managed container workloads. Edge devices running Podman 5.0+ with systemd cannot be managed by a Margo-compliant WFM today. This gap is significant: many industrial OT edge devices run a full Linux distribution with systemd but cannot justify the resource overhead of a Kubernetes control plane.
+The current Margo specification has no path for systemd-managed container workloads. Edge devices capable of running Quadlet unit files cannot be managed by a Margo-compliant WFM today. This gap is significant: many industrial OT edge devices run a full Linux distribution with systemd but cannot justify the resource overhead of a Kubernetes control plane.
 
 Quadlet is production-ready and already deployed in industrial environments. Adding it as a first-class Margo component type closes the gap between the Margo application model and the reality of OT edge device deployments.
 
 ## Requirements alignment acknowledgement
 
-This SUP is grounded in the following in-scope features and issues:
-
-- **[margo/specification #168](https://github.com/margo/specification/issues/168)** — "Define improvements to compose manifest workloads when targeting typical targets (Docker/Podman)" (open). Quadlet complements Compose for Podman-based targets: Compose targets Docker-compatible runtimes; Quadlet targets systemd-integrated Podman deployments where lifecycle management (restart, dependency ordering, journald logging) is required.
-
 > **Note:** A TWG Feature Project feature for Quadlet deployment type support must be created before this SUP advances to Phase 3 approval vote. The SUP owner will coordinate with the TWG Chair/Co-Chair to create this feature.
 
 **Out of scope (explicitly stated):**
-- Quadlet unit file *content* (systemd unit semantics, network/volume definitions, socket activation) is governed by Podman documentation and is outside Margo's normative scope. Margo specifies only the packaging and registry contract.
-- Device provisioning of Podman 5.0+ is outside Margo's scope. The device MUST have Podman 5.0+ installed; this is a deployment prerequisite, not a WFM responsibility.
+- Quadlet unit file *content* (systemd unit semantics, network/volume definitions, socket activation) is governed by the [Quadlet unit file specification](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) and is outside Margo's normative scope. Margo specifies only the packaging and registry contract.
+- Device provisioning of a Quadlet-capable runtime is outside Margo's scope. The device MUST be capable of processing Quadlet unit files; this is a deployment prerequisite, not a WFM responsibility.
 - Signing and supply-chain attestation are deferred to a dedicated Margo security SUP.
-- Namespacing and collision avoidance for Quadlet unit files is out of scope. This is a general Margo gap: Helm lacks normative namespace/release-name rules ([specification#183](https://github.com/margo/specification/issues/183)), and Compose lacks project-name rules ([specification#142](https://github.com/margo/specification/issues/142)). A dedicated cross-cutting SUP should address collision avoidance for all deployment types simultaneously.
-- Device capabilities integration: for the sake of isolation between SUPs, this proposal does not prescribe changes to the device capabilities manifest. By default, standalone devices use Docker Compose; operators can manually select the Quadlet deployment profile when deploying to Podman/systemd-based devices. Automated WFM targeting via `supportedDeploymentTypes` is a follow-up coordination item.
+- Namespacing and collision avoidance for Quadlet unit files is out of scope. This is a general Margo gap: Helm lacks normative namespace/release-name rules ([specification#183](https://github.com/margo/specification/issues/183)), and Compose lacks project-name rules ([specification#142](https://github.com/margo/specification/issues/142)).
+- Device capabilities integration: for the sake of isolation between SUPs, this proposal does not prescribe changes to the device capabilities manifest. By default, standalone devices use Docker Compose; operators can manually select the Quadlet deployment profile when deploying to Quadlet-capable devices. Automated WFM targeting via `supportedDeploymentTypes` is a follow-up coordination item.
 
 **Dependency:** This SUP depends on SUP-01 being accepted and applied. The Component Registry Media Types table introduced by SUP-01 is extended here. The `type` slot regex introduced by SUP-01 is expanded here.
 
@@ -59,7 +55,7 @@ This SUP is grounded in the following in-scope features and issues:
 Insert after the Compose bullet (added by SUP-01). This bullet is non-normative — all specification language is in `application-registry.md`:
 
 ```markdown
-- To target devices which deploy workloads using [Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html), components are packaged as Quadlet Archives and stored in an OCI-compliant [Component Registry](../../personas-and-definitions/technical-lexicon.md#component-registry). See [Quadlet Archive Structure](../../specification/applications/application-registry.md#quadlet-archive-structure) for the normative definition. The target device requires Podman 5.0 or later for Quadlet deployment.
+- To target devices which deploy workloads using [Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html), components are packaged as Quadlet Archives and stored in an OCI-compliant [Component Registry](../../personas-and-definitions/technical-lexicon.md#component-registry). See [Quadlet Archive Structure](../../specification/applications/application-registry.md#quadlet-archive-structure) for the normative definition. The target device must be capable of processing Quadlet unit files (e.g., via Podman with systemd integration).
 ```
 
 ---
@@ -82,7 +78,7 @@ Add after the Compose Archive Structure section (added by SUP-01):
 ```markdown
 #### Quadlet Archive Structure
 
-A Quadlet Archive is a gzip-compressed tar archive (`.tar.gz` or `.tgz`) that packages a set of [Podman Quadlet](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) unit files for deployment on edge devices running Podman 5.0 or later with systemd integration. The archive MUST conform to the following structural requirements.
+A Quadlet Archive is a gzip-compressed tar archive (`.tar.gz` or `.tgz`) that packages a set of [Quadlet unit files](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html) for deployment on edge devices capable of processing Quadlet units via systemd integration. The archive MUST conform to the following structural requirements.
 
 ##### Directory Layout
 
@@ -92,7 +88,7 @@ The directory name SHOULD match the component `name` as specified in the Applica
 
 Discovery algorithm: enter the single top-level directory; locate Quadlet unit files by extension (`.container`, `.network`, `.volume`, `.image`, `.build`, `.pod`).
 
-The top-level directory MAY contain Quadlet unit files according to the [Podman Quadlet specification](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html). The archive MUST contain at least one `.container` file.
+The top-level directory MAY contain Quadlet unit files according to the [Quadlet unit file specification](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html). The archive MUST contain at least one `.container` file.
 
 The top-level directory MAY contain subdirectories for supporting files (e.g., environment files, configuration).
 
@@ -148,8 +144,8 @@ After `ComposeDeploymentProfile`:
   QuadletDeploymentProfile:
     is_a: DeploymentProfile
     description: >-
-      Deployment profile for Quadlet-based workloads targeting devices running
-      Podman 5.0 or later with systemd integration.
+      Deployment profile for Quadlet-based workloads targeting devices capable
+      of processing Quadlet unit files via systemd integration.
     rank: 45
     slot_usage:
       type:
@@ -167,10 +163,11 @@ After `ComposeComponent`:
     is_a: Component
     description: >-
       A component packaged as a Quadlet Archive for deployment on devices
-      using Podman with systemd integration. The archive is stored in an
-      OCI-compliant Component Registry and referenced via repository and
-      revision. The OCI image manifest for this component type uses
-      artifactType application/vnd.org.margo.component.quadlet+json
+      capable of processing Quadlet unit files via systemd integration.
+      The archive is stored in an OCI-compliant Component Registry and
+      referenced via repository and revision. The OCI image manifest for
+      this component type uses artifactType
+      application/vnd.org.margo.component.quadlet+json
       (see application-registry.md).
 ```
 
@@ -246,7 +243,7 @@ To publish a Quadlet Archive to an OCI-compliant Component Registry:
 | SHOULD | The directory name SHOULD match the component `name` for human readability. |
 | MUST NOT | Implementations MUST NOT depend on the directory name for discovery. |
 | MUST | A Quadlet Archive MUST contain at least one `.container` file. |
-| MUST | The target device MUST have Podman 5.0 or later installed. |
+| MUST | The target device MUST be capable of processing Quadlet unit files. |
 | MUST | The deployment profile type discriminator for Quadlet MUST be `quadlet`. |
 | MUST | If `wait` is `true`, the device MUST wait until all Quadlet units reach `active (running)` state. |
 | MUST | If any unit enters `failed` state, the deployment MUST be reported as failed immediately. |
@@ -270,13 +267,13 @@ This SUP is **additive only**.
 - The `type` regex expansion from `^(helm|compose)$` to `^(helm|compose|quadlet)$` is additive — existing documents continue to validate.
 - `QuadletDeploymentProfile` and `QuadletComponent` are new schema classes — no existing class is modified.
 - Existing WFM implementations that do not support Quadlet will not receive Quadlet deployment profiles. The WFM selects deployment profiles based on the `type` value matching supported types.
-- Edge devices without Podman 5.0+ will not receive Quadlet deployment profiles.
+- Edge devices not capable of processing Quadlet unit files will not receive Quadlet deployment profiles.
 
 ---
 
 ### References
 
-- [Podman Quadlet Documentation](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)
+- [Quadlet Unit File Specification (Podman)](https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html)
 - [OCI Distribution Specification v1.1.0](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md)
 - [OCI Image Specification v1.1.0](https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md)
 - [RFC 2119 — Key words for use in RFCs to Indicate Requirement Levels](https://www.rfc-editor.org/rfc/rfc2119)
@@ -289,10 +286,10 @@ This SUP is **additive only**.
 
 **Option A — Use plain Compose (with Podman as the runtime) instead of Quadlet.** Rejected. Compose on Podman provides container execution but not systemd lifecycle integration. Quadlet provides automatic restart on failure, dependency ordering between services (e.g., start database before application), journald log integration, and socket-activated services — all without a daemon process. These are essential properties for unattended OT edge deployments where human operators are not available to restart failed containers.
 
-**Option B — Require Kubernetes (K3s or MicroK8s) on all OT edge devices.** Rejected. A minimal K3s installation requires ~500 MB RAM and a persistent control-plane process. Many constrained OT edge devices (industrial PLCs, embedded Linux controllers) have 256–512 MB RAM total and cannot run a Kubernetes control plane. Quadlet + Podman requires only Podman itself and systemd, which are already present on any modern Linux distribution used in industrial settings.
+**Option B — Require Kubernetes (K3s or MicroK8s) on all OT edge devices.** Rejected. A minimal K3s installation requires ~500 MB RAM and a persistent control-plane process. Many constrained OT edge devices (industrial PLCs, embedded Linux controllers) have 256–512 MB RAM total and cannot run a Kubernetes control plane. Quadlet requires only a Quadlet-capable container runtime and systemd, which are already present on modern Linux distributions used in industrial settings.
 
 **Option C — Define Quadlet support as a device capability flag, without a new component type.** Rejected. A capability flag does not provide a checkable packaging contract. Application developers need to know exactly what archive structure, media types, and OCI publishing workflow to use. Without a dedicated component type, Quadlet workloads would be packaged as Compose Archives and rely on runtime detection — an unreliable approach that defeats the purpose of typed deployment profiles.
 
 ---
 
-*Prepared by Andrii Melashchenko (Belden Inc.), 2026-06-01. Updated 2026-06-21 addressing TWG review comments from @phil-abb and @matlec. Subject to the Open Web Foundation Contributor License Agreement governing the Margo specification.*
+*Prepared by Andrii Melashchenko (Belden Inc.), 2026-06-01. Updated 2026-06-24 addressing TWG review comments. Subject to the Open Web Foundation Contributor License Agreement governing the Margo specification.*

@@ -15,8 +15,8 @@
 +  QuadletDeploymentProfile:
 +    is_a: DeploymentProfile
 +    description: >-
-+      Deployment profile for Quadlet-based workloads targeting devices running
-+      Podman 5.0 or later with systemd integration.
++      Deployment profile for Quadlet-based workloads targeting devices capable
++      of processing Quadlet unit files via systemd integration.
 +    rank: 45
 +    slot_usage:
 +      type:
@@ -37,16 +37,16 @@
 +    is_a: Component
 +    rank: 55
 +    description: >-
-+      A component packaged as a Quadlet Archive for deployment on devices using
-+      Podman with systemd integration.
++      A component packaged as a Quadlet Archive for deployment on devices
++      capable of processing Quadlet unit files via systemd integration.
 +
 
    type:
 -    description: The type of deployment profile (e.g., helm, compose).
 +    description: >-
 +      The type of deployment profile. Allowed values are: helm (Kubernetes/Helm
-+      chart deployment), compose (Compose file deployment via Podman or Docker
-+      Compose), and quadlet (Podman systemd Quadlet unit file deployment). The
++      chart deployment), compose (Compose file deployment), and quadlet
++      (Quadlet unit file deployment via systemd integration). The
 +      value MUST match the type field in the corresponding ApplicationDescription
 +      deploymentProfile element.
      range: string
