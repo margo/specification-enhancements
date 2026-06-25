@@ -7,27 +7,24 @@
 ## Summary
 
 Retain the `apiVersion` attribute in `ApplicationDescription` and `ApplicationDeployment`
-structures. The `apiVersion` in these structures is independent of the Margo's OpenAPI specification
-version and API route versioning — it identifies the  version of the document itself,
-following a Kubernetes-style API group versioning convention.
+structures. The `apiVersion` in these structures is independent of the Margo's OpenAPI specification — it identifies the version of the contract the document satisfies.
 
 ## Reason for proposal
 
-As API routes include version within the URL path, there is debate about the necessity of
-explicitly having an `apiVersion` attribute. However, the `apiVersion` in `ApplicationDescription`
-and `ApplicationDeployment` serves a distinct purpose — it identifies the ** version of the
-document**, not the API route version. Maintaining it provides:
+As API routes include structure contract versions within the URL path, there is debate about the necessity of
+explicitly having an `apiVersion` attribute. Since there are no URL endpoints for the `ApplicationDescription` and `ApplicationDeployment` structures, the `apiVersion` serves to identify the ** structure contract version of the
+document satisfies**, not the OpenAPI specification version. Maintaining it provides:
 
-1. Explicit  version tracking at the document level — independent of API route versioning
-2. Clear distinction between API route version (`/api/v1/`) and document  version
-3. Version available without parsing URL paths or OpenAPI spec metadata
+1. Explicit version tracking at the document level — since there is no URL endpoint to indicate the structure contract version.
+2. Clear distinction between specification version (1.0.0) and structure contract version (v1, v2, v2alpha1)
+3. The structure's contract version can be determined directly from the document since no URL is available
 4. Alignment with Kubernetes-style API group versioning conventions
-5. Enables document evolution independently of API route changes
+5. Enables document evolution independently of API and other specification changes
 6. Addresses specification [Issue #134 - margo/specification](https://github.com/margo/specification/issues/134)
 
 ## Requirements alignment acknowledgement
 
-This SUP aligns with the margo specification requirements for clear document  versioning.
+This SUP aligns with the Margo specification requirements for clear contract versioning.
 The `apiVersion` attribute in `ApplicationDescription` and `ApplicationDeployment` is explicitly
 **not** tied to:
 - The OpenAPI specification version (e.g. `1.0.0`)
@@ -43,7 +40,7 @@ It is an independent document  version identifier.
 
 | Document | apiVersion value |
 |---|---|
-| `ApplicationDescription` | `margo.org/v1-alpha1` |
+| `ApplicationDescription` | `margo.org/v1alpha1` |
 | `ApplicationDeployment` | `application.margo.org/v1alpha1` |
 
 These values are **independent** of:
@@ -68,8 +65,8 @@ ApplicationDescription:
         This is independent of the OpenAPI specification version and API route version.
         MUST be one of the Margo defined stable value.
       enum:
-        - margo.org/v1-alpha1
-      example: margo.org/v1-alpha1
+        - margo.org/v1alpha1
+      example: margo.org/v1alpha1
     kind:
       type: string
       enum: [ApplicationDescription]
@@ -111,8 +108,8 @@ The progression path for breaking changes is:
 
 | Stage | ApplicationDescription | ApplicationDeployment |
 |---|---|---|
-| Current | `margo.org/v1-alpha1` | `application.margo.org/v1alpha1` |
-| Next breaking change | `margo.org/v1-alpha2` | `application.margo.org/v1alpha2` |
+| Current | `margo.org/v1alpha1` | `application.margo.org/v1alpha1` |
+| Next breaking change | `margo.org/v1alpha2` | `application.margo.org/v1alpha2` |
 | Stable release | `margo.org/v1` | `application.margo.org/v1` |
 
 **Rules:**
@@ -124,7 +121,7 @@ The progression path for breaking changes is:
 - Both old and new `apiVersion` values SHOULD be supported simultaneously during a
   transition period of at least one major specification release
 
-> **Note:** The versioning path (e.g. `v1-alpha1` → `v1-alpha2`) is not yet fully defined.
+> **Note:** The versioning path (e.g. `v1alpha1` → `v1alpha2`) is not yet fully defined.
 > The exact criteria for what constitutes a "significantly breaking change" requiring a new
 > `apiVersion` is an open question to be resolved during SUP review.
 
@@ -134,9 +131,9 @@ The progression path for breaking changes is:
 
 ```
 OpenAPI spec version:   1.0.0                          ← spec metadata, semver
-API route version:      /api/v1/                       ← URL path segment
-ApplicationDescription: margo.org/v1-alpha1            ← document  version
-ApplicationDeployment:  application.margo.org/v1alpha1 ← document  version
+API route version:      /api/v1/                       ← structure contract version via URL path segment
+ApplicationDescription: margo.org/v1alpha1            ← structure contract version via document
+ApplicationDeployment:  application.margo.org/v1alpha1 ← structure contract version via document
 
 These are three independent versioning axes.
 A change to the API route version does NOT require a change to apiVersion.
