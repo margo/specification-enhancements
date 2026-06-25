@@ -8,32 +8,32 @@
 
 Retain the `apiVersion` attribute in `ApplicationDescription` and `ApplicationDeployment`
 structures. The `apiVersion` in these structures is independent of the Margo's OpenAPI specification
-version and API route versioning — it identifies the schema version of the document itself,
+version and API route versioning — it identifies the  version of the document itself,
 following a Kubernetes-style API group versioning convention.
 
 ## Reason for proposal
 
 As API routes include version within the URL path, there is debate about the necessity of
 explicitly having an `apiVersion` attribute. However, the `apiVersion` in `ApplicationDescription`
-and `ApplicationDeployment` serves a distinct purpose — it identifies the **schema version of the
+and `ApplicationDeployment` serves a distinct purpose — it identifies the ** version of the
 document**, not the API route version. Maintaining it provides:
 
-1. Explicit schema version tracking at the document level — independent of API route versioning
-2. Clear distinction between API route version (`/api/v1/`) and document schema version
-3. Schema version available without parsing URL paths or OpenAPI spec metadata
+1. Explicit  version tracking at the document level — independent of API route versioning
+2. Clear distinction between API route version (`/api/v1/`) and document  version
+3. Version available without parsing URL paths or OpenAPI spec metadata
 4. Alignment with Kubernetes-style API group versioning conventions
-5. Enables schema evolution independently of API route changes
+5. Enables document evolution independently of API route changes
 6. Addresses specification [Issue #134 - margo/specification](https://github.com/margo/specification/issues/134)
 
 ## Requirements alignment acknowledgement
 
-This SUP aligns with the margo specification requirements for clear document schema versioning.
+This SUP aligns with the margo specification requirements for clear document  versioning.
 The `apiVersion` attribute in `ApplicationDescription` and `ApplicationDeployment` is explicitly
 **not** tied to:
 - The OpenAPI specification version (e.g. `1.0.0`)
 - The API route version (e.g. `/api/v1/`)
 
-It is an independent document schema version identifier.
+It is an independent document  version identifier.
 
 **Related Feature(s):** [Issue #134 - margo/specification](https://github.com/margo/specification/issues/134)
 
@@ -54,7 +54,7 @@ These values are **independent** of:
 
 ### Changes to ApplicationDescription
 
-Retain the `apiVersion` field in the `ApplicationDescription` schema with the correct value:
+Retain the `apiVersion` field in the `ApplicationDescription`  with the correct value:
 
 ```yaml
 ApplicationDescription:
@@ -64,7 +64,7 @@ ApplicationDescription:
     apiVersion:
       type: string
       description: >
-        Schema version of the ApplicationDescription document.
+         version of the ApplicationDescription document.
         This is independent of the OpenAPI specification version and API route version.
         MUST be one of the Margo defined stable value.
       enum:
@@ -80,7 +80,7 @@ ApplicationDescription:
 
 ### Changes to ApplicationDeployment
 
-Retain the `apiVersion` field in the `ApplicationDeployment` schema with the correct value:
+Retain the `apiVersion` field in the `ApplicationDeployment`  with the correct value:
 
 ```yaml
 ApplicationDeployment:
@@ -90,7 +90,7 @@ ApplicationDeployment:
     apiVersion:
       type: string
       description: >
-        Schema version of the ApplicationDeployment document.
+         version of the ApplicationDeployment document.
         This is independent of the OpenAPI specification version and API route version.
         MUST be one of the Margo defined stable value.
       enum:
@@ -117,7 +117,7 @@ The progression path for breaking changes is:
 
 **Rules:**
 
-- A new `apiVersion` value MUST be introduced for any **significantly breaking** schema change
+- A new `apiVersion` value MUST be introduced for any **significantly breaking**  change
 - Non-breaking additive changes (new optional fields) MAY be made within the same `apiVersion`
 - Clients MUST reject documents with an unrecognised `apiVersion`
 - Servers MUST NOT serve documents with a deprecated `apiVersion` after its removal date
@@ -135,8 +135,8 @@ The progression path for breaking changes is:
 ```
 OpenAPI spec version:   1.0.0                          ← spec metadata, semver
 API route version:      /api/v1/                       ← URL path segment
-ApplicationDescription: margo.org/v1-alpha1            ← document schema version
-ApplicationDeployment:  application.margo.org/v1alpha1 ← document schema version
+ApplicationDescription: margo.org/v1-alpha1            ← document  version
+ApplicationDeployment:  application.margo.org/v1alpha1 ← document  version
 
 These are three independent versioning axes.
 A change to the API route version does NOT require a change to apiVersion.
@@ -147,16 +147,16 @@ A change to apiVersion does NOT require a change to the API route version.
 
 ## Alternatives considered
 
-1. **Remove apiVersion entirely** — Rejected because it removes explicit schema version
+1. **Remove apiVersion entirely** — Rejected because it removes explicit  version
    information from document definitions, making it impossible for consumers to determine
-   which schema version a document conforms to without out-of-band information.
+   which  version a document conforms to without out-of-band information.
 
-2. **Tie apiVersion to OpenAPI spec version (1.0.0)** — Rejected because the document schema
+2. **Tie apiVersion to OpenAPI spec version (1.0.0)** — Rejected because the document 
    version and the API specification version are independent concerns. Coupling them would
    force unnecessary document version bumps on unrelated API changes.
 
 3. **Tie apiVersion to API route version (/api/v1/)** — Rejected for the same reason — document
-   schema evolution and API route evolution are independent.
+    evolution and API route evolution are independent.
 
 4. **Use semver (1.0.0) for apiVersion** — Rejected in favour of Kubernetes-style API group
    versioning (`margo.org/v1-alpha1`) which is more expressive about stability stage
