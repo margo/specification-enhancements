@@ -40,8 +40,8 @@ It is an independent document  version identifier.
 
 | Document | apiVersion value |
 |---|---|
-| `ApplicationDescription` | `margo.org/v1alpha1` |
-| `ApplicationDeployment` | `application.margo.org/v1alpha1` |
+| `ApplicationDescription` | `v1alpha1` |
+| `ApplicationDeployment` | `v1alpha1` |
 
 These values are **independent** of:
 - OpenAPI spec version (`1.0.0`)
@@ -65,8 +65,8 @@ ApplicationDescription:
         This is independent of the OpenAPI specification version and API route version.
         MUST be one of the Margo defined stable value.
       enum:
-        - margo.org/v1alpha1
-      example: margo.org/v1alpha1
+        - v1alpha1
+      example: v1alpha1
     kind:
       type: string
       enum: [ApplicationDescription]
@@ -91,8 +91,8 @@ ApplicationDeployment:
         This is independent of the OpenAPI specification version and API route version.
         MUST be one of the Margo defined stable value.
       enum:
-        - application.margo.org/v1alpha1
-      example: application.margo.org/v1alpha1
+        - v1alpha1
+      example: v1alpha1
     kind:
       type: string
       enum: [ApplicationDeployment]
@@ -108,9 +108,9 @@ The progression path for breaking changes is:
 
 | Stage | ApplicationDescription | ApplicationDeployment |
 |---|---|---|
-| Current | `margo.org/v1alpha1` | `application.margo.org/v1alpha1` |
-| Next breaking change | `margo.org/v1alpha2` | `application.margo.org/v1alpha2` |
-| Stable release | `margo.org/v1` | `application.margo.org/v1` |
+| Current | `v1alpha1` | `v1alpha1` |
+| Next breaking change | `v1alpha2` | `v1alpha2` |
+| Stable release | `v1` | `v1` |
 
 **Rules:**
 
@@ -130,10 +130,10 @@ The progression path for breaking changes is:
 ### Version Independence Clarification
 
 ```
-OpenAPI spec version:   1.0.0                          ← spec metadata, semver
-API route version:      /api/v1/                       ← structure contract version via URL path segment
-ApplicationDescription: margo.org/v1alpha1            ← structure contract version via document
-ApplicationDeployment:  application.margo.org/v1alpha1 ← structure contract version via document
+OpenAPI spec version:   1.0.0    ← spec metadata, semver
+API route version:      /api/v1/ ← structure contract version via URL path segment
+ApplicationDescription: v1alpha1 ← structure contract version via document
+ApplicationDeployment:  v1alpha1 ← structure contract version via document
 
 These are three independent versioning axes.
 A change to the API route version does NOT require a change to apiVersion.
@@ -156,7 +156,7 @@ A change to apiVersion does NOT require a change to the API route version.
     evolution and API route evolution are independent.
 
 4. **Use semver (1.0.0) for apiVersion** — Rejected in favour of Kubernetes-style API group
-   versioning (`margo.org/v1-alpha1`) which is more expressive about stability stage
+   versioning (`v1alpha1`) which is more expressive about stability stage
    (alpha/beta/stable) and is familiar to edge/cloud-native implementors.
 
 ## Related PRs
