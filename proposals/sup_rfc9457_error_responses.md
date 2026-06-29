@@ -38,7 +38,7 @@ specification remains modern and interoperable.
 ### RFC 9457 Error Response Structure
 
 Implement the following standard error response format based on RFC 9457, including extension
-members (§3.5) for retry semantics and field-level validation errors:
+members (§3.2) for retry semantics and field-level validation errors:
 
 ```yaml
 ProblemDetail:
@@ -47,6 +47,11 @@ ProblemDetail:
     RFC 9457 Problem Details for HTTP APIs.
     Returned with Content-Type: application/problem+json.
     See https://www.rfc-editor.org/rfc/rfc9457
+
+    Extension members (RFC 9457 §3.2) are permitted via additionalProperties.
+    Vendors MAY add custom fields alongside standard margo fields.
+    Vendor-specific problem types MUST use their own URI namespace —
+    the https://margo.org/problems/ namespace is reserved for this specification.
   required:
     - type
     - title
@@ -56,11 +61,19 @@ ProblemDetail:
       type: string
       format: uri
       description: >
-        URI reference that identifies the problem type.
-        MUST be one of the stable registered URIs defined in the
-        Stable Type URI Registry section below.
+        URI reference identifying the problem type.
+
+        Margo implementations MUST use a URI from the Stable Type URI Registry
+        (https://margo.org/problems/*).
+
+        Vendor implementations MAY use their own URI namespace
+        (e.g. https://vendor.example.com/problems/sensor-fault).
+        Vendor URIs MUST NOT use the https://margo.org/problems/ namespace.
+
         Clients MUST use this field for programmatic error handling,
         NOT the status code or title.
+        Clients encountering an unknown type URI SHOULD fall back to
+        title, detail, and status for display and handling.
       example: https://margo.org/problems/invalid-certificate
     title:
       type: string
@@ -73,7 +86,7 @@ ProblemDetail:
     detail:
       type: string
       description: Human-readable explanation specific to this occurrence of the problem.
-      example: Certificate is not valid 
+      example: Certificate is not valid
     instance:
       type: string
       format: uri
@@ -118,7 +131,14 @@ ProblemDetail:
             description: Human-readable validation error message.
             example: must contain at least one valid role
   additionalProperties: true
-  # additionalProperties: true allows RFC 9457 §3.5 extension members
+  # additionalProperties: true permits RFC 9457 §3.2 extension members.
+  # Margo extension fields: retryable, retryAfterSeconds, backoffStrategy, errors
+  # Vendor extension examples:
+  #   x-vendor-component: "sensor-subsystem"
+  #   x-vendor-error-code: "ERR_4291"
+  # Vendor extension fields SHOULD be prefixed with x- to avoid
+  # collision with future margo-defined fields.
+
 ```
 
 ---
@@ -127,6 +147,47 @@ ProblemDetail:
 
 The following `type` URI values are stable and MUST be used by all implementations.
 Clients MUST use the `type` field for programmatic error handling.
+
+
+**Registry Governance**
+
+> **Note:** RFC 9457 does not define versioning, deprecation, or extension namespace
+> rules — these are intentionally left to the implementing specification.
+> The following rules apply to the margo problem type registry:
+
+**URI Stability and Versioning**
+
+Type URIs are **permanent stable identifiers and are intentionally unversioned**,
+consistent with RFC 9457 design intent and industry practice (Google APIs, Stripe, AWS).
+The URI identifies the error *concept*, not the API version.
+
+- `https://margo.org/problems/invalid-certificate` means "the certificate was invalid"
+  in v1, v2, and all future versions — the concept does not change between API versions
+- If an error concept changes significantly, a **new URI is added** and the old one
+  **deprecated** — both remain valid during the transition period
+- Existing URIs MUST NOT be repurposed or have their semantics changed
+- Clients MUST treat each `type` URI as an opaque stable string
+
+**Vendor Extensions**
+
+RFC 9457 §3.2 explicitly supports vendor-specific problem type URIs — there is no
+central registry. Suppliers MAY define additional problem types using their own URI
+namespace:
+
+- Vendor URIs MUST use the supplier's own domain
+  (e.g. `https://vendor.example.com/problems/sensor-fault`)
+- Vendor URIs MUST NOT use the `https://margo.org/problems/` namespace,
+  which is reserved for this specification
+- Clients encountering an unknown `type` URI SHOULD fall back to using
+  `title` and `detail` fields for display, and `status` for HTTP-level handling
+
+**Deprecations**
+
+- Deprecated URIs are marked with `(deprecated)` in this registry
+- Deprecated URIs remain valid for a minimum of two major specification versions
+- A replacement URI MUST be listed alongside any deprecated URI
+
+
 
 > **Note on URI Dereferenceability:** Per RFC 9457 §4.2, `type` URIs SHOULD be
 > dereferenceable — returning a human-readable page describing the problem type.
