@@ -121,6 +121,30 @@ The progression path for breaking changes is:
 - Both old and new `apiVersion` values SHOULD be supported simultaneously during a
   transition period of at least one major specification release
 
+#### Breaking changes:
+- Renaming an endpoint, properties/fields, enumeration value, or parameter
+- Removing an endpoint, properties/fields, enumeration value, or parameter
+- Changing data types or expected format
+- Making optional things required
+- Changing the semantics or behavior of an endpoint
+- Changing HTTP method or response codes
+- Making any validations stricter
+- Changing authentication/authorization rules
+
+#### Non-Breaking changes:
+- Adding new endpoints, properties/fields, or parameters
+- Adding optional parameters
+- Adding headers
+- Adding metadata
+- Fixing incorrect behaviors (bugs)
+
+#### Gray areas - can be breaking if not handled well:
+- Adding enumeration values
+- Changing defaults
+- Reordering fields
+- Changing error responses
+
+
 > **Note:** The versioning path (e.g. `v1alpha1` → `v1alpha2`) is not yet fully defined.
 > The exact criteria for what constitutes a "significantly breaking change" requiring a new
 > `apiVersion` is an open question to be resolved during SUP review.
