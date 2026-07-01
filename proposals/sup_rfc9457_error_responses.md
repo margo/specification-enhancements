@@ -63,18 +63,19 @@ ProblemDetail:
       description: >
         URI reference identifying the problem type.
 
-        Margo implementations MUST use a URI from the Stable Type URI Registry
-        (https://margo.org/problems/*).
+        Implementations MUST use the registered Margo type URI for any error
+        condition defined in the Margo specification.
 
-        Vendor implementations MAY use their own URI namespace
-        (e.g. https://vendor.example.com/problems/sensor-fault).
-        Vendor URIs MUST NOT use the https://margo.org/problems/ namespace.
+        For error conditions not defined in this specification, implementations
+        MAY define their own type URIs under their own namespace.
+        Implementations MUST NOT use the https://margo.org/problems/ namespace
+        for custom error types.
 
         Clients MUST use this field for programmatic error handling,
         NOT the status code or title.
         Clients encountering an unknown type URI SHOULD fall back to
         title, detail, and status for display and handling.
-      example: https://margo.org/problems/invalid-certificate
+      example: https://margo.org/problems/invalid-digest-header
     title:
       type: string
       description: Short human-readable summary of the problem type.
@@ -131,13 +132,17 @@ ProblemDetail:
             description: Human-readable validation error message.
             example: must contain at least one valid role
   additionalProperties: true
-  # additionalProperties: true permits RFC 9457 §3.2 extension members.
+  # additionalProperties: true permits RFC 9457 §4 extension members.
   # Margo extension fields: retryable, retryAfterSeconds, backoffStrategy, errors
+  #
+  # Vendor extension fields SHOULD follow RFC 9457 naming rules:
+  #   - Start with a letter (A-Z, a-z)
+  #   - Use only letters, digits, and underscores
+  #   - Be three characters or longer
+  #
   # Vendor extension examples:
-  #   x-vendor-component: "sensor-subsystem"
-  #   x-vendor-error-code: "ERR_4291"
-  # Vendor extension fields SHOULD be prefixed with x- to avoid
-  # collision with future margo-defined fields.
+  #   vendor_component: "sensor-subsystem"
+  #   vendor_error_code: "ERR_4291"
 
 ```
 
@@ -161,7 +166,7 @@ Type URIs are **permanent stable identifiers and are intentionally unversioned**
 consistent with RFC 9457 design intent and industry practice (Google APIs, Stripe, AWS).
 The URI identifies the error *concept*, not the API version.
 
-- `https://margo.org/problems/invalid-certificate` means "the certificate was invalid"
+- `https://margo.org/problems/invalid-digest-header` means "Missing or invalid content-digest header"
   in v1, v2, and all future versions — the concept does not change between API versions
 - If an error concept changes significantly, a **new URI is added** and the old one
   **deprecated** — both remain valid during the transition period
@@ -189,29 +194,33 @@ namespace:
 
 
 
-> **Note on URI Dereferenceability:** Per RFC 9457 §4.2, `type` URIs SHOULD be
-> dereferenceable — returning a human-readable page describing the problem type.
-> The URIs listed below currently return 404 as the error catalogue page at
-> `https://margo.org/problems/` has not yet been published. This is a known
-> limitation and a hosted error catalogue is planned as a follow-up documentation
-> task based on this SUP review (Do we really need to host URIs or not). The URIs remain valid stable identifiers regardless of dereferenceability.
+> **Note on URI Dereferenceability:** RFC 9457 §3.1.1 requires `type` to be a URI,
+> but does not require it to be an HTTP URL. Non-locator schemes such as `tag:` URIs
+> or URNs are valid identifiers with no hosting obligations.
+>
+> Margo has chosen `https://margo.org/problems/*` URLs as stable identifiers,
+> which carries a SHOULD-dereference expectation per RFC 9457 §3.1.1.
+> The error catalogue at `https://margo.org/problems/` has not yet been published —
+> this is a known limitation. The RFC tolerates interim 404s; the URIs remain valid
+> stable identifiers. A hosted catalogue is planned as a follow-up task.
+>
 > Clients MUST NOT fetch these URIs at runtime; they are identifiers only.
+
 
 
 | Type URI | HTTP Status | Description |
 |---|---|---|
-| `https://margo.org/problems/invalid-certificate` | 400 | Certificate is not valid |
 | `https://margo.org/problems/invalid-digest-header` | 400 | Missing or invalid content-digest header |
 | `https://margo.org/problems/signature-verification-failed` | 401 | Payload signature verification failed |
-| `https://margo.org/problems/certificate-not-trusted` | 403 | Client certificate not trusted or revoked |
-| `https://margo.org/problems/not-found` | 404 | Requested resource does not exist |
-| `https://margo.org/problems/conflict` | 409 | Request conflicts with current resource state |
-| `https://margo.org/problems/not-acceptable` | 406 | Server cannot produce requested media type |
 | `https://margo.org/problems/semantic-error` | 422 | Request body contains a semantic error |
-| `https://margo.org/problems/rate-limit-exceeded` | 429 | Rate limit exceeded |
-| `https://margo.org/problems/internal-error` | 500 | Unexpected server error |
-| `https://margo.org/problems/not-implemented` | 501 | Feature not yet implemented |
-| `https://margo.org/problems/service-unavailable` | 503 | Server temporarily unable to handle request |
+| `https://margo.org/problems/certificate-not-trusted` | 403 | Client certificate not trusted or revoked |
+| `about:blank` | 404 | Not Found  |
+| `about:blank` | 409 | Conflict  |
+| `about:blank` | 406 | Not Acceptable  |
+| `about:blank` | 429 | Rate limit exceeded |
+| `about:blank` | 500 | Internal Server Error |
+| `about:blank` | 501 | Not Implemented  |
+| `about:blank` | 503 | Service Unavailable |
 
 ---
 
@@ -366,7 +375,7 @@ components:
         type:
           type: string
           format: uri
-          example: https://margo.org/problems/invalid-certificate
+          example: https://margo.org/problems/invalid-digest-header
         title:
           type: string
           example: Invalid Certificate
@@ -413,7 +422,7 @@ Servers MUST NOT return `application/json` for error responses.
 
 ## Technical Acceptance Criteria
 
-- **AC1**: All error responses SHOULD use `Content-Type: application/problem+json`
+- **AC1**: All error responses MUST use `Content-Type: application/problem+json`
 - **AC2**: `type` field SHOULD be a stable URI from the Stable Type URI Registry above
 - **AC3**: `type`, `title`, and `status` are REQUIRED fields on all error responses
 - **AC4**: `429` and `503` responses SHOULD include `Retry-After` response header
