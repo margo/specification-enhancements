@@ -70,6 +70,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@singhmj-1 | Resource allocation and conflict resolution proposal for app workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/66) |
 |@vireshnavalli | RFC 9457 for common error responses | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/73) |
 |@vireshnavalli | Updates to apiVersion usage | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/74) |
+|@pperycz | Support for real-time workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/75) |
 
 ## SUP Owner SUP Checklist
 
