@@ -51,7 +51,7 @@ ProblemDetail:
     Extension members (RFC 9457 §3.2) are permitted via additionalProperties.
     Vendors MAY add custom fields alongside standard margo fields.
     Vendor-specific problem types MUST use their own URI namespace —
-    the https://margo.org/problems/ namespace is reserved for this specification.
+    the https://docs.margo.org/specification/problems/ namespace is reserved for this specification.
   required:
     - type
     - title
@@ -68,14 +68,14 @@ ProblemDetail:
 
         For error conditions not defined in this specification, implementations
         MAY define their own type URIs under their own namespace.
-        Implementations MUST NOT use the https://margo.org/problems/ namespace
+        Implementations MUST NOT use the https://docs.margo.org/specification/problems/ namespace
         for custom error types.
 
         Clients MUST use this field for programmatic error handling,
         NOT the status code or title.
         Clients encountering an unknown type URI SHOULD fall back to
         title, detail, and status for display and handling.
-      example: https://margo.org/problems/invalid-digest-header
+      example: https://docs.margo.org/specification/problems/invalid-digest-header
     title:
       type: string
       description: Short human-readable summary of the problem type.
@@ -166,7 +166,7 @@ Type URIs are **permanent stable identifiers and are intentionally unversioned**
 consistent with RFC 9457 design intent and industry practice (Google APIs, Stripe, AWS).
 The URI identifies the error *concept*, not the API version.
 
-- `https://margo.org/problems/invalid-digest-header` means "Missing or invalid content-digest header"
+- `https://docs.margo.org/specification/problems/invalid-digest-header` means "Missing or invalid content-digest header"
   in v1, v2, and all future versions — the concept does not change between API versions
 - If an error concept changes significantly, a **new URI is added** and the old one
   **deprecated** — both remain valid during the transition period
@@ -181,7 +181,7 @@ namespace:
 
 - Vendor URIs MUST use the supplier's own domain
   (e.g. `https://vendor.example.com/problems/sensor-fault`)
-- Vendor URIs MUST NOT use the `https://margo.org/problems/` namespace,
+- Vendor URIs MUST NOT use the `https://docs.margo.org/specification/problems/` namespace,
   which is reserved for this specification
 - Clients encountering an unknown `type` URI SHOULD fall back to using
   `title` and `detail` fields for display, and `status` for HTTP-level handling
@@ -198,22 +198,26 @@ namespace:
 > but does not require it to be an HTTP URL. Non-locator schemes such as `tag:` URIs
 > or URNs are valid identifiers with no hosting obligations.
 >
-> Margo has chosen `https://margo.org/problems/*` URLs as stable identifiers,
+> Margo has chosen `https://docs.margo.org/specification/problems/*` URLs as stable identifiers,
 > which carries a SHOULD-dereference expectation per RFC 9457 §3.1.1.
-> The error catalogue at `https://margo.org/problems/` has not yet been published —
-> this is a known limitation. The RFC tolerates interim 404s; the URIs remain valid
+> The error catalogue at `https://docs.margo.org/specification/problems/` will be published as part of specification update. The RFC tolerates interim 404s; the URIs remain valid
 > stable identifiers. A hosted catalogue is planned as a follow-up task.
->
 > Clients MUST NOT fetch these URIs at runtime; they are identifiers only.
 
 
 
 | Type URI | HTTP Status | Description |
 |---|---|---|
-| `https://margo.org/problems/invalid-digest-header` | 400 | Missing or invalid content-digest header |
-| `https://margo.org/problems/signature-verification-failed` | 401 | Payload signature verification failed |
-| `https://margo.org/problems/semantic-error` | 422 | Request body contains a semantic error |
-| `https://margo.org/problems/certificate-not-trusted` | 403 | Client certificate not trusted or revoked |
+| `https://docs.margo.org/specification/problems/invalid-certificate-format` | 400 | 	Invalid certificate format or structure.|
+| `https://docs.margo.org/specification/problems/invalid-digest-header` | 400 | Missing or invalid content-digest header. Ensure the SHA256 hash of the payload is included |
+| `https://docs.margo.org/specification/problems/invalid-request` | 400 | Invalid request |
+| `https://docs.margo.org/specification/problems/signature-verification-failed` | 401 | Signature verification failed. Ensure you are signing with the correct X.509 private key |
+| `https://docs.margo.org/specification/problems/semantic-error` | 422 | Request body contains a semantic error |
+| `https://docs.margo.org/specification/problems/certificate-not-trusted` | 403 | Client certificate not trusted or client rejected |
+| `https://docs.margo.org/specification/problems/invalid-client` | 404 | No client with the given clientID was found
+| `https://docs.margo.org/specification/problems/invalid-bundle` | 404 | Bundle not found for the given digest
+| `https://docs.margo.org/specification/problems/deployment-not-found` | 404 | Deployment not found for the given digest
+| `https://docs.margo.org/specification/problems/server-cannot-generate-response` | 406 | Not Acceptable - Server cannot generate a response matching the Accept header
 | `about:blank` | 404 | Not Found  |
 | `about:blank` | 409 | Conflict  |
 | `about:blank` | 406 | Not Acceptable  |
@@ -375,7 +379,7 @@ components:
         type:
           type: string
           format: uri
-          example: https://margo.org/problems/invalid-digest-header
+          example: https://docs.margo.org/specification/problems/invalid-digest-header
         title:
           type: string
           example: Invalid Certificate
