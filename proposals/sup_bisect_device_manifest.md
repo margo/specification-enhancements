@@ -17,7 +17,7 @@ The `sup_device_roles_to_capabilities` SUP removed `roles` and promoted all devi
 
 This proposal:
 
-1. Bisects the document into two separate documents with separate endpoints: **DeviceManifest** (identity only) and individual **ProfileState** documents (one per device profile attribute).
+1. Bisects the `DeviceCapabilitiesManifest` into two separate documents with separate endpoints: **DeviceManifest** (identity only) and individual **ProfileState** documents (one per device profile attribute).`
 2. Introduces the concept of **Device Profile** — a structured description of all hardware resources, interfaces, peripherals, and services available on a device.
 3. Removes the flat `peripherals` and `interfaces` enumerations entirely.
 4. Promotes all profile data — including base compute fields and services — into structured `ProfileState` documents, each posted individually to the profile endpoint.
@@ -110,10 +110,9 @@ By treating all of these under the unified **Device Profile** concept, we can de
 
 ### Pattern Extensibility
 
-This Device Profile pattern is designed to be reusable beyond devices. Similar profiles could be defined for:
+This Device Profile pattern is designed to be reusable beyond devices but they are not introduced yet in this SUP but similar profiles could be defined for:
 
-- **Workload Profile** — describing workload requirements and constraints
-- **Workflow Profile** — describing workflow execution environment needs
+- **WFM Profile** — describing fleet manager managed resources and services
 - **Gateway Profile** — describing gateway-specific resources and services
 
 This creates a consistent mental model across the Margo ecosystem.
@@ -141,8 +140,7 @@ DELETE /api/v1/clients/{clientId}/devices/{deviceId}/profile
 **Ordering requirement:** `DeviceManifest` MUST be registered before any `ProfileState` can be submitted for the same `deviceId`. If the WFM receives a `ProfileState` for an unknown `deviceId`, it MUST reject with `404 Not Found`.
 
 **Update granularity:**
-- **Individual updates (default):** Each POST or PUT to the profile endpoint carries exactly one `ProfileState` document. The WFM uses `id` to identify which profile attribute is being created or updated. Multiple attributes are registered by sending multiple requests.
-- **Bulk updates (optional):** Alternatively, clients MAY submit an array of `ProfileState` documents in a single request to reduce chattiness during initial onboarding:
+- **Bulk updates:** Each POST or PUT to the profile endpoint carries an array of `ProfileState` documents in a single request to reduce chattiness:
   ```json
   [
     { "id": "deviceprofile.margo.org/resource/cpu", "spec": { ... } },
@@ -266,7 +264,7 @@ The following profile URIs replace the flat fields from the baseline schema. All
 
 #### `deviceprofile.margo.org/resource/cpu`
 
-Replaces the `cpu` array field. Describes the total CPU capacity of the device (does not change unless physical hardware is replaced).
+Replaces the `cpu` array field. Describes the total CPU capacity of the device.
 
 **Schema:**
 
@@ -282,8 +280,13 @@ Replaces the `cpu` array field. Describes the total CPU capacity of the device (
         "minItems": 1,
         "items": {
           "type": "object",
-          "required": ["cores", "architecture"],
+          "required": ["coreUnit", "cores", "architecture"],
           "properties": {
+            "coreUnit": {
+              "type": "string",
+              "enum": ["millicore", "core"],
+              "description": "The unit for cpu cores",
+            },
             "cores": {
               "type": "integer",
               "minimum": 1,
@@ -313,7 +316,7 @@ Replaces the `cpu` array field. Describes the total CPU capacity of the device (
   "id": "deviceprofile.margo.org/resource/cpu",
   "spec": {
     "cpus": [
-      { "cores": 24, "architecture": "amd64", "model": "Intel Xeon" }
+      { "coreUnit": "core", "cores": 24, "architecture": "amd64", "model": "Intel Xeon" }
     ]
   }
 }
@@ -332,12 +335,20 @@ Replaces the `memory` field. Describes the total system memory capacity (does no
   "id": "deviceprofile.margo.org/resource/memory",
   "spec": {
     "type": "object",
-    "required": ["available"],
+    "required": ["total"],
     "properties": {
-      "available": {
-        "type": "string",
-        "pattern": "^\\d+\\s*(Gi|Mi|Ki|G|M|K)$",
-        "description": "Total memory in binary units (Gi, Mi, etc.) or SI units (G, M, etc.)"
+      "total": {
+        "type": "object",
+        "description": "Total memory in units(Gi, Mi, etc.)",
+        "properties": {
+          "memoryUnit": {
+            "type": "string",
+            "enum": ["bytes", "Ki", "Mi", "Gi"]
+          },
+          "memory": {
+            "type": "integer"
+          }
+        }
       }
     }
   }
@@ -350,7 +361,10 @@ Replaces the `memory` field. Describes the total system memory capacity (does no
 {
   "id": "deviceprofile.margo.org/resource/memory",
   "spec": {
-    "available": "59 Gi"
+    "total": {
+      "memoryUnit": "Gi",
+      "memory": 59
+    }
   }
 }
 ```
@@ -370,10 +384,18 @@ Replaces the `storage` field. Describes the total persistent storage capacity (d
     "type": "object",
     "required": ["available"],
     "properties": {
-      "available": {
-        "type": "string",
-        "pattern": "^\\d+\\s*(Gi|Mi|Ki|G|M|K)$",
-        "description": "Total storage in binary units (Gi, Mi, etc.) or SI units (G, M, etc.)"
+      "total": {
+        "type": "object",
+        "description": "Total memory in units(Gi, Mi, etc.) or SI units (G, M, etc.)",
+        "properties": {
+          "memoryUnit": {
+            "type": "string",
+            "enum": ["bytes", "Ki", "Mi", "Gi"]
+          },
+          "memory": {
+            "type": "integer"
+          }
+        }
       }
     }
   }
@@ -386,7 +408,10 @@ Replaces the `storage` field. Describes the total persistent storage capacity (d
 {
   "id": "deviceprofile.margo.org/resource/storage",
   "spec": {
-    "available": "1862 Gi"
+    "total": {
+      "memoryUnit": "Gi",
+      "memory": 1024
+    }
   }
 }
 ```
@@ -440,15 +465,15 @@ Replaces the `supportedRuntimes` and `supportedDeploymentTypes` fields. Describe
   "spec": {
     "type": "object",
     "properties": {
-      "runtimes": {
+      "containerRuntimes": {
         "type": "array",
         "items": { "type": "string" },
-        "description": "List of supported container/runtime standards (e.g., 'oci', 'wasm')"
+        "description": "List of supported container/runtime standards (e.g., 'oci')"
       },
       "deploymentTypes": {
         "type": "array",
         "items": { "type": "string" },
-        "description": "List of supported deployment mechanisms (e.g., 'helm', 'compose', 'bare')"
+        "description": "List of supported deployment mechanisms (e.g., 'helm', 'compose')"
       }
     }
   }
@@ -461,7 +486,7 @@ Replaces the `supportedRuntimes` and `supportedDeploymentTypes` fields. Describe
 {
   "id": "deviceprofile.margo.org/capability/runtimes",
   "spec": {
-    "runtimes": ["oci"],
+    "containerRuntimes": ["oci"],
     "deploymentTypes": ["helm", "compose"]
   }
 }
@@ -487,12 +512,8 @@ Replaces `peripherals` entries of type `gpu`. Describes GPU hardware available o
         "minItems": 1,
         "items": {
           "type": "object",
-          "required": ["devicePath", "model"],
+          "required": ["model", "architecture"],
           "properties": {
-            "devicePath": {
-              "type": "string",
-              "description": "Device path (e.g., '/dev/nvidia0')"
-            },
             "model": {
               "type": "string",
               "description": "GPU model name (e.g., 'NVIDIA A100')"
@@ -505,10 +526,6 @@ Replaces `peripherals` entries of type `gpu`. Describes GPU hardware available o
               "type": "number",
               "minimum": 0,
               "description": "Total GPU memory in GiB"
-            },
-            "allocatedTo": {
-              "type": "string",
-              "description": "If set, identifies the workload/deployment claiming this GPU. Empty string means unallocated."
             }
           }
         }
@@ -526,7 +543,6 @@ Replaces `peripherals` entries of type `gpu`. Describes GPU hardware available o
   "spec": {
     "gpus": [
       {
-        "devicePath": "/dev/nvidia0",
         "model": "NVIDIA A100",
         "architecture": "ampere",
         "vramGiB": 40,
@@ -661,6 +677,8 @@ This proposal makes important distinctions between different types of device sta
 
 The device profile state mechanism is appropriate for reporting capacity and allocation metadata. Real-time usage metrics should use the observability framework instead.
 
+Note: This SUP doesn't disable the real-time metrices in the Profile State, but it is upto the Margo community to decide while authoring a Device Profile definition.
+
 ---
 
 ## Profile Pattern Extensibility
@@ -668,8 +686,7 @@ The device profile state mechanism is appropriate for reporting capacity and all
 The Device Profile concept introduced here is intentionally reusable across the Margo ecosystem:
 
 - **Device Profile** (`deviceprofile.margo.org/*`) — Describes what resources, services, and capabilities are available on a device
-- **Workload Profile** (`workloadprofile.margo.org/*`, future) — Could describe workload requirements, constraints, and expected capabilities
-- **Workflow Profile** (`workflowprofile.margo.org/*`, future) — Could describe workflow execution environment needs and service dependencies
+- **WFM Profile** (`wfmprofile.margo.org/*`, future) — Describe what resources, services and capabilities are available on WFM
 - **Gateway Profile** (`gatewayprofile.margo.org/*`, future) — Could describe gateway-specific resources and services
 
 This creates a consistent mental model across the Margo specification ecosystem where any entity's profile is a structured collection of attributes organized by category (resource, interface, peripheral, service, capability).
@@ -681,11 +698,6 @@ This creates a consistent mental model across the Margo specification ecosystem 
 **Keep a single endpoint, rename to indicate broader scope.** Rejected. Separate endpoints make the lifecycle difference explicit — the WFM can apply different caching, validation, and update logic to identity vs. profile data without inferring it from the payload structure.
 
 **Keep `peripherals` and `interfaces` as deprecated fields alongside profile state.** Rejected. Keeping deprecated fields creates ambiguity about which is authoritative when both are present. A clean removal forces implementations to adopt the structured model immediately and avoids a dual-path validation burden on the WFM.
-
-**Wrap all profile attributes in a `DeviceProfileManifest` array.** Rejected. A wrapping manifest requires re-sending all attributes to update one. Individual `ProfileState` documents (with optional bulk array support) allow the device to update a single attribute (e.g., GPU allocation state) without touching others.
-
-**Encode the profile URI in the endpoint path.** Rejected. The `ProfileState` document already carries the URI in `id`. Duplicating it in the path adds no information and introduces encoding complexity for URIs containing slashes.
-
 
 ---
 
