@@ -1,699 +1,834 @@
-# Specification Update Proposal — Capability Definition Framework
+# Specification Update Proposal — Profile Discovery & Resolution Framework
+
+**Status:** Draft  
+**Owner:** @singhmj-1  
+**Depends on:** `sup_profile_state_framework`  
+**Extracted from:** `sup_capability_definition_framework`
+
+**Note:** This SUP establishes the mechanism by which applications discover and request profile attributes, and how the platform resolves those requests. It defines the discovery contract, evaluation semantics, and ownership model. It builds on the ProfileState Framework to enable applications to discover device-specific values at deployment time and prevent resource conflicts before deployment begins.
+
+---
 
 ## Table of Contents
 
 1. [Summary](#summary)
 2. [Motivation](#motivation)
-3. [Framework](#framework)
-   - [Redefining a Capability](#redefining-a-capability)
-   - [Model](#model)
-4. [Capability Definition](#capability-definition)
-   - [Identity and Scope](#identity-and-scope)
-   - [Source State](#source-state)
-   - [Discovery](#discovery)
-5. [Runtime Materialization](#runtime-materialization)
-   - [Capability State](#capability-state)
-   - [Capability Request](#capability-request)
-6. [Request Evaluation Model](#evaluation-model)
-   - [How Evaluation Works](#how-evaluation-works)
-7. [Ownership Model](#ownership-model)
-   - [Capability Authors](#capability-definition-authors)
-   - [Device Vendors](#device-vendors)
-   - [WFM Vendors](#wfm-vendors)
-   - [Application Operators](#application-operators)
-8. [Extensibility](#extensibility)
-9. [Schema Changes](#schema-changes)
-10. [Use Cases](#use-cases)
-11. [Design Decisions](#design-decisions)
-12. [Open Questions](#open-questions)
+3. [Framework Concepts](#framework-concepts)
+4. [Profile Definition](#profile-definition)
+5. [Profile Discovery Request](#profile-discovery-request)
+6. [Resolution Model](#resolution-model)
+7. [Fleet-Scoped Profiles](#fleet-scoped-profiles)
+8. [Ownership Model](#ownership-model)
+9. [Use Cases](#use-cases)
+10. [Design Decisions](#design-decisions)
+11. [Open Questions](#open-questions)
+
+---
 
 ## Summary
 
-Applications deployed on edge devices frequently depend on platform-managed 
-concerns — GPUs, network ports, storage classes, API gateways etc. — whose   
-availability, occupancy, exact identifiers and hierarchies are only known by the
-platform at deployment time. The current specification has no mechanism to
-express, discover, or resolve these concerns in a structured way.
+Applications deployed on edge devices frequently depend on platform-managed resources and services — GPUs, network ports, storage classes, secrets, API gateways — whose exact identifiers and availability are only known by the platform at deployment time.
 
-This results in four concrete gaps: device-specific values must be supplied 
-manually by operators; resource conflicts between applications are only detected
-at runtime; adding new resource types requires modifying the core specification;
-and complex resources cannot be modeled beyond flat boolean or string fields.
+This proposal establishes the **Profile Discovery & Resolution Framework** — a mechanism by which:
 
-This framework solves that problem by rethinking the capabilities from ground-up.
+1. Application operators declare what profile attributes they need to discover
+2. The platform resolves those declarations against runtime profile state
+3. Resolved values are injected into application configuration
+4. Resource conflicts are detected and prevented before deployment
 
----
+This framework solves four concrete problems:
 
-# Motivation
-
-The current specification is :
-
-* **Unable to model complex platform resources.**
-  A flat capability field like `"gpu": true` cannot express that a GPU has 
-  40 GiB VRAM, is available at `/dev/nvidia0`, and is currently allocated to 
-  another deployment. Structured, typed schemas are required.
-
-* **Unable to extend the capability framework without modifying the core 
-specification.**
-  Adding support for a new resource type — such as a CAN Bus channel or an 
-  FPGA partition — requires changes directly to the `DeviceCapabilitiesManifest`
-  schema, and there is no framework as of now to extend this without modifying 
-  it.
-
-* **Unable to resolve device-specific values at deployment time.**
-  A GPU device path, an available network port, or a storage class name are 
-  only known by the platform at deployment time. Today, operators must discover 
-  and supply these values manually.
-
-* **Unable to prevent resource conflicts before deployment.**
-  Two applications defaulting to port `8080` on the same device will not 
-  conflict until one of them crashes at runtime. There is no mechanism as of now
-  to detect or prevent this before deployment begins.
-
-
-This proposal establishes a uniform mechanism for defining and discovering 
-capabilities.
+- Device-specific values must no longer be supplied manually by operators
+- Resource conflicts between applications are now detected before deployment
+- New profile types require no core specification changes
+- Complex resolution logic is standardized and reusable
 
 ---
 
-# Framework
+## Motivation
 
-## Redefining a Capability
+The ProfileState Framework defines *what* profile information is available. This framework defines *how* applications discover it and *when* conflicts are prevented.
 
-So far, the definition of a capability is restrictive, but this framework 
-expands it:
+### Problem 1 — Device-specific values are unknown at authoring time
 
-> A capability represents wide variety of **platform-managed concerns** 
-including the following:
-> * "Hardware resources" such as GPUs, cameras, fieldbus channels etc.
-> * "Software capabilities" such as persistent storage, pre-installed 
-runtimes etc.
-> * "Platform services" such as api gateways, security vaults, otel collectors 
-endpoints, pki, message buses etc.
+A GPU device path, an available network port, or a vault secret path are only known by the platform at deployment time. Today, operators must manually discover and supply these values. If the value changes or becomes invalid, the deployment fails at runtime with unclear errors.
 
----
+### Problem 2 — Resource conflicts are only detected at runtime
 
-## Model
+Two applications deployed to the same device both request port `8080` or hostname `app.example.com`. Only one can succeed. The conflict surfaces at runtime — through cryptic infrastructure errors, not through the Margo management plane. By then, partial deployments have occurred.
 
-A capability is defined once through an authoritative definition and is
-subsequently materialized by different actors throughout its lifecycle. Its 
-sole purpose is to establish identity, purpose, and discovery mechanism for a
-capability.
+### Problem 3 — Discovery logic is scattered and inconsistent
 
+There is no standard mechanism for applications to declare "I need a GPU with 8 GiB VRAM" or "I need an available network port" or "I need a secret from the vault." Each implementation invents its own approach. No cross-implementation conflict detection is possible.
 
-```text
-                    CapabilityDefinition
-                              │
-                              │
-                    Defines The Rules
-                              │
-                              ▼
+### Problem 4 — Operators cannot distinguish between resources
 
-         ┌─────────────────────────────────────┐
-         │      Capability Type Semantics      │
-         └─────────────────────────────────────┘
-
-                    ▲                 ▲
-                    │                 │
-
-                    │                 │
-
-            CapabilityState     CapabilityDiscoveryRequest
-```
-
-The rest of this document defines each of these artifacts in detail, starting 
-first with the `CapabilityDefinition` itself.
+When a device has multiple GPUs or multiple storage volumes, the operator has no way to express preferences (e.g., "use the GPU with the most VRAM") or constraints (e.g., "use an exclusive channel"). Discovery becomes trial-and-error.
 
 ---
 
-# Capability Definition
+## Framework Concepts
 
-## Purpose
+### ProfileDefinition
 
-A `CapabilityDefinition` is the single authoritative document for a capability 
-type. It is authored once — by a Margo specification author or a vendor.
+A **ProfileDefinition** is the authoritative schema for a profile attribute. It answers three questions:
 
-It answers three questions:
+**What is this profile attribute?** — its URI, scope (device or fleet), and description.
 
-**What is this capability?** — its URI, scope, and description.
+**What does the platform publish?** — the `sourceState` schema defining what the platform knows about this attribute.
 
-**What does the platform publish about it?** — the state that devices or the WFM
- populate at runtime.
+**How can applications discover it?** — the `discovery` schema defining request inputs, output values, and failure outcomes.
 
-**How does an application discover it?** — the discovery schema defining inputs,
- outputs, and failure outcomes.
-
-This is just a definition document and hence contains no runtime data.
-But other artifacts mentioned below in this framework — `CapabilityState`, 
-`CapabilityDiscoveryRequest` — are the runtime materialization of this definition.
-
-## Structure
+**Structure:**
 
 ```yaml
 apiVersion: margo.org/v1
-kind: CapabilityDefinition
+kind: ProfileDefinition
 
 metadata:
-  id: capability.margo.org/network/port
+  id: deviceprofile.margo.org/peripherals/gpu
 
 spec:
-
   scope: device | fleet
-
-  description: |
-    Provides network port information, and a discovery schema for their 
-    selection and conflict detection.
+  description: "..."
 
   sourceState:
-
     schema:
-      ...
+      type: object
+      properties:
+        gpus:
+          type: array
+          # ...
 
   discovery:
-
     requestSchema:
-      ...
+      type: object
+      properties:
+        minVramGiB:
+          type: number
+        architecture:
+          type: string
 
     outputSchema:
-      ...
+      type: object
+      properties:
+        devicePath:
+          type: string
+        vramGiB:
+          type: number
 
     failureCodes:
-      ...
+      - NoGPUAvailable
+      - InsufficientVRAM
+      - GPUAlreadyAllocated
 ```
 
-## Identity and Scope
+### ProfileDiscoveryRequest
 
-### Unique Identity
+A **ProfileDiscoveryRequest** is authored by an application operator inside an `ApplicationDeployment`. It expresses what the application needs the platform to discover about a specific profile attribute.
 
-Every capability is uniquely identified by a URI across the Margo ecosystem.
+It is a **deferred declaration** — authored before deployment, resolved by the platform at evaluation time (when the deployment is triggered).
 
-URI Example:
+**Structure:**
+
+```yaml
+discoverProfiles:
+  gpuForInference:                        # unique name within this deployment
+    id: deviceprofile.margo.org/peripherals/gpu  # references ProfileDefinition URI
+    request:                              # conforms to discovery.requestSchema
+      minVramGiB: 8
+      architecture: ampere
+```
+
+### The `valueFrom` Mechanism
+
+Profile discovery outputs are unknown at authoring time. The `valueFrom` mechanism bridges this gap — a **deferred value binding** that references resolved outputs.
+
+**Usage:**
+
+```yaml
+parameters:
+  gpuDevicePath:
+    valueFrom: discoverProfiles.gpuForInference.output.devicePath
+    targets:
+      - pointer: env.GPU_DEVICE_PATH
+        components: ["ml-inference"]
+```
+
+The binding is not evaluated at authoring time. It is resolved by the platform at evaluation time and the concrete value is injected into the parameter.
+
+---
+
+## Profile Definition
+
+### Purpose
+
+A `ProfileDefinition` is the single authoritative document for a profile attribute type. It establishes identity, purpose, and discovery mechanism.
+
+This is a definition document — it contains no runtime data. Other artifacts — `ProfileState`, `ProfileDiscoveryRequest` — are runtime materializations of this definition.
+
+### Identity and Scope
+
+Every profile attribute is uniquely identified by a URI. Examples:
 
 ```text
-capability.margo.org/network/port
-capability.margo.org/hardware/gpu
-capability.margo.org/storage/class
+deviceprofile.margo.org/resource/cpu
+deviceprofile.margo.org/peripherals/gpu
+deviceprofile.acme.com/fieldbus/canbus
+workloadprofile.margo.org/constraint/memory-limit
 ```
 
-### Capability Scopes
+**Scope** determines who resolves discovery requests:
 
-- Device-scoped capabilities are resolved by the Device Agent.
+- **Device-scoped** — resolved by the Device Agent against local device state
+- **Fleet-scoped** — resolved by the WFM against fleet-wide state
 
-- Fleet-scoped capabilities are resolved by the WFM.
+**Device-scoped examples:**
+- `deviceprofile.margo.org/peripherals/gpu` — device agent selects a free GPU
+- `deviceprofile.margo.org/interface/ethernet` — device agent selects an available port
+- `deviceprofile.acme.com/fieldbus/canbus` — device agent selects a free CAN channel
 
-_Note: The examples are documented separately for these scope types._
+**Fleet-scoped examples:**
+- `deviceprofile.margo.org/security/secret` — WFM resolves from vault
+- `deviceprofile.margo.org/network/ingress` — WFM manages ingress hostname allocation across fleet
+- `workloadprofile.margo.org/certificate` — WFM provisions TLS certificates
 
-## Source State
+### Source State Schema
 
-The source state schema defines the shape of information that platform actors 
-will publish, i.e. it defines the schema of the data that the capability's 
-owning actor — a device or the WFM — publishes to describe the current condition
-of this capability. This may include what is available, what is already 
-occupied, or any meta data about them. The schema is fixed by the
-**CapabilityDefinition Author**; whereas the runtime values conforming to this
-schema are published through `CapabilityState`, described in 
-[Runtime Materialization](#runtime-materialization).
+The `sourceState` schema defines what the platform publishes about a profile attribute. It answers: *What information does the platform know about this?*
 
-Example:
+For a GPU, the platform knows:
+- Device paths
+- Model names
+- VRAM capacity
+- Current allocation state
+
+For a vault service, the platform knows:
+- Whether it's reachable
+- What backend is configured
+
+For a secret, the platform knows:
+- Whether the vault is available
+
+**Example:**
 
 ```yaml
 sourceState:
   schema:
     type: object
     properties:
-      occupiedPorts:
+      gpus:
         type: array
         items:
-          type: integer
+          type: object
+          properties:
+            devicePath:
+              type: string
+            model:
+              type: string
+            vramGiB:
+              type: number
+            allocation:
+              type: object
+              properties:
+                allocatable:
+                  type: boolean
+                model:
+                  type: string
+                  enum: [exclusive]
+                claims:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      resource:
+                        type: string
 ```
 
----
+### Discovery Schema
 
-## Discovery Schema
+The `discovery` schema defines a **deferred request/response contract** between applications and the platform. It is not an API call — the application does not invoke anything at authoring time. Instead, it declares what it needs, and the platform fulfills that declaration at evaluation time.
 
-The discovery schema defines a **deferred request/response contract** between 
-an application and the platform. It is not an API call — the application does 
-not invoke anything at authoring time. Instead, it declares what it needs, and 
-the platform fulfills that declaration at evaluation time, which occurs when a 
-deployment is triggered against a specific device or fleet.
+**Three parts:**
 
-Example:
-```yaml
-apiVersion: margo.org/v1
-kind: CapabilityDefinition
+#### requestSchema
 
-metadata:
-  id: capability.margo.org/network/port
+The inputs an application declares when it needs this profile attribute. These are the application's requirements, not platform state.
 
-spec:
-  ...
-
-  discovery:
-    requestSchema:
-      type: object
-      properties:
-        preferredPort:
-          type: integer
-        findNextAvailable:
-          type: boolean
-    outputSchema:
-      type: object
-      properties:
-        availablePort:
-          type: integer
-    failureCodes:
-      - PortUnavailable
-      - NoFreePortFound
-```
-
-The term **discovery** is deliberate. The application is not requesting an 
-allocation or a reservation. It is declaring what it needs to discover about the
-platform, and the platform resolves that declaration against real runtime state
-when the time comes.
-
-It has three parts that together describe this request and deferred response 
-cycle:
-
-**requestSchema** — the inputs an application declares when it needs this 
-capability. These are the application's requirements, not platform state.
-
-**outputSchema** — the values the platform will generate upon successful 
-resolution. These values are unknown at authoring time and only exist after 
-evaluation.
-
-**failureCodes** — the exhaustive set of named failure outcomes the platform 
-may return if resolution cannot succeed. Each code is machine-readable and 
-actionable.
-
-Applications materialize this contract through `CapabilityDiscoveryRequest`, 
-described in [Runtime Materialization](#runtime-materialization).
-
-> **Discovery is not Allocation.**
->
-> The discovery does not reserve or allocate a resource. It declares
-> what the application needs the platform to resolve. The platform evaluates that
-> declaration against current state and produces an output — but the framework itself
-> takes no position on whether that evaluation constitutes a reservation, a soft
-> preference, or a hard allocation.
->
-> That distinction is intentionally left to the capability implementation. A network
-> port capability may choose to mark a port as occupied after resolution. A GPU
-> capability may choose to enforce exclusive access. A storage class capability may
-> simply return a name with no locking at all. The framework defines the contract —
-> not the enforcement policy.
->
-> This keeps the framework free of provisioning semantics and allows capability
-> authors to define enforcement behavior appropriate to their resource type.
->
-> Capability resolution may return an available resource with no allocation, perform a soft reservation, or perform a hard allocation. The framework does not require or enforce any of these. Conflict prevention is best-effort only.
-
----
-
-# Runtime Materialization
-
-## Capability State - Owned by Device/WFM
-
-CapabilityState is a materialized contract derived from the 
-`CapabilityDefinition.sourceState`. It represents runtime information published 
-by the platform actor (device or wfm) and is descriptive. It communicates what 
-the actor currently knows about the capability.
-
-Example:
+**Example:**
 
 ```yaml
-apiVersion: margo.org/v1
-kind: CapabilityState
-
-metadata:
-  capability: capability.margo.org/network/port
-
-spec:
-  occupiedPorts:
-    - 22
-    - 80
-    - 443
-    - 8080
-  availableRangeOfPorts:
-    - [11, 1000]
+requestSchema:
+  type: object
+  properties:
+    minVramGiB:
+      type: number
+      description: Minimum GPU VRAM required
+    architecture:
+      type: string
+      description: Preferred GPU architecture (e.g., ampere, ada)
 ```
+
+#### outputSchema
+
+The values the platform will generate upon successful resolution. These values are unknown at authoring time and only exist after evaluation.
+
+**Example:**
+
+```yaml
+outputSchema:
+  type: object
+  properties:
+    devicePath:
+      type: string
+      description: Kernel device path of the assigned GPU
+    model:
+      type: string
+      description: GPU model name
+    vramGiB:
+      type: number
+      description: GPU memory in GiB
+```
+
+#### failureCodes
+
+The exhaustive set of named failure outcomes the platform may return if resolution cannot succeed. Each code is machine-readable and actionable.
+
+**Example:**
+
+```yaml
+failureCodes:
+  - NoGPUAvailable
+  - InsufficientVRAM
+  - GPUAlreadyAllocated
+  - UnsupportedArchitecture
+```
+
+### Discovery vs. Allocation
+
+**Important distinction:** Discovery does not necessarily allocate or reserve a resource. It declares what the application needs the platform to discover, and the platform evaluates that declaration against current state.
+
+The framework defines the contract — inputs, outputs, failure modes — but does not mandate what happens after resolution:
+
+- A network port discovery may mark the port as occupied after resolution
+- A GPU discovery may enforce exclusive access
+- A storage class discovery may simply return a name with no locking
+- A secret discovery may return a value with no allocation
+
+The platform implementation chooses the enforcement policy appropriate to the resource type.
+
 ---
 
-## Capability Discovery Request — Owned by Application Operators
-
-### What Is It?
-
-A `CapabilityDiscoveryRequest` is the runtime materialization of a 
-`CapabilityDefinition.discovery` contract. It is authored by an application 
-operator inside an `ApplicationDeployment` and expresses what the application 
-needs the platform to resolve about a specific capability.
-
-It is a declaration of intent — authored before deployment, fulfilled by the 
-platform at evaluation time.
+## Profile Discovery Request
 
 ### Structure
 
-A `CapabilityDiscoveryRequest` appears inside the `discoverCapabilities` map 
-of an `ApplicationDeployment`. Each entry is keyed by a name that is unique 
-within that deployment.
+A `ProfileDiscoveryRequest` appears inside the `discoverProfiles` map of an `ApplicationDeployment`. Each entry is keyed by a name unique within that deployment.
 
 ```yaml
-discoverCapabilities:
-  webPort:                                      # unique name within this deployment
-    id: capability.margo.org/network/port       # references CapabilityDefinition URI
-    request:                                    # conforms to discovery.requestSchema
-      preferredPort: 8080
-      findNextAvailable: true
+discoverProfiles:
+  inferenceGPU:                                   # unique key within deployment
+    id: deviceprofile.margo.org/peripherals/gpu   # references ProfileDefinition URI
+    request:                                      # conforms to discovery.requestSchema
+      minVramGiB: 8
+      architecture: ampere
 ```
 
+### Using Discovery Outputs
+
+Resolved values are injected into application configuration via `valueFrom`:
+
+```yaml
+parameters:
+  gpuDevicePath:
+    valueFrom: discoverProfiles.inferenceGPU.output.devicePath
+    targets:
+      - pointer: env.GPU_DEVICE_PATH
+        components: ["ml-inference"]
+  gpuModel:
+    valueFrom: discoverProfiles.inferenceGPU.output.model
+    targets:
+      - pointer: env.GPU_MODEL
+        components: ["ml-inference"]
+```
+
+The `valueFrom` reference is not evaluated at authoring time. It is resolved by the platform at evaluation time, and the concrete value is injected before the deployment is applied.
+
+### Guard vs. Generator Discoveries
+
+**Generator discovery:** The platform produces values the application does not know at authoring time.
+
+- Examples: GPU device path, available port number, resolved secret value
+- Uses `valueFrom` to inject outputs
+- Outputs are empty string if not generated
+
+**Guard discovery:** The platform validates a known value rather than generating one.
+
+- Examples: Hostname uniqueness, port availability, channel occupancy
+- Uses `valueFrom` but outputs are empty or minimal
+- Primary purpose is conflict detection before deployment
+
 ---
 
-### How to use the response of the discovery?
+## Resolution Model
 
-By using `valueFrom` semantics in the application deployment manifest.
+### How Resolution Works
 
-> ### The `valueFrom` Mechanism — A Brief Introduction
-> The discovery schema defines outputs the platform will
-> produce at evaluation time — values like an assigned port number, a GPU device 
-> path, or a resolved secret. These values do not exist when the application
-> operator authors the deployment. They only exist after the platform evaluates
-> the request.
-> 
-> `valueFrom` is the mechanism that bridges this gap. It is a 
-> **deferred value binding** — a reference that says:
-> 
-> *"When the platform resolves this capability request, take the output named
-> here and place it into this parameter."*
-> 
-> It is written as a dotted path that identifies the source:
-> 
-> ```yaml
-> # General form
-> valueFrom: discoverCapabilities.<requestName>.output.<outputField>
-> 
-> # Example — reference the port assigned by the webPort request
-> valueFrom: discoverCapabilities.webPort.output.availablePort
-> ```
-> 
-> The binding is not evaluated at authoring time. It is resolved by the platform 
-> — Device Agent or WFM — at evaluation time.
-
----
-
-# Evaluation Model
-
-## How Evaluation Works
-
-Device-scoped capabilities are resolved by the Device Agent. Fleet-scoped 
-capabilities are resolved by the WFM.
-
-The WFM MAY perform a pre-flight check using the last known CapabilityState 
-published by the device — but this check is advisory. It does not substitute for
- the device agent's authoritative resolution at apply time.
-
-
-## Capability Evaluation
-
-Capability evaluation combines:
+Resolution combines three artifacts:
 
 ```text
-CapabilityDefinition
-         +
-CapabilityState
-         +
-CapabilityDiscoveryRequest
+ProfileDefinition
+      +
+ProfileState
+      +
+ProfileDiscoveryRequest
+         ↓
+   Resolution Engine
+         ↓
+   (Success / Failure)
+      +
+   Output Values (if success)
 ```
 
-The framework defines the **contract** for evaluation — its inputs, outputs, and
-failure modes. It does not define a universal evaluation engine. Evaluation 
-logic is implemented by the resolving actor for each capability it supports.
+**Device-scoped resolution:**
+- Triggered when a deployment is applied to a device
+- Performed by the Device Agent
+- Evaluated against the device's current ProfileState
+- Resolution may update ProfileState (e.g., mark GPU as allocated)
 
-This means:
+**Fleet-scoped resolution:**
+- Triggered when a deployment is dispatched by the WFM
+- Performed by the WFM
+- Evaluated against WFM-managed state
+- WFM injects outputs into the deployment before sending to device
 
-- A Device Agent that supports `capability.margo.org/hardware/gpu` contains the 
-logic to match a `CapabilityDiscoveryRequest` against its local GPU capability
-and produce a `devicePath` output.
-- A WFM that supports `capability.margo.org/security/secret` contains the logic 
-to connect to a vault backend and resolve a secret by name.
+### Evaluation Timing
 
-Evaluation may produce:
+1. **Authoring time** — Operator declares `ProfileDiscoveryRequest` with `valueFrom` references
+2. **Pre-flight time (WFM)** — WFM validates request against `requestSchema` and may perform advisory checks using last known `ProfileState`
+3. **Evaluation time (WFM/Device)** — Platform resolves request against current state:
+   - WFM resolves fleet-scoped profiles
+   - Device Agent resolves device-scoped profiles
+4. **Injection time** — Resolved values replace `valueFrom` references in parameters
+5. **Execution time** — Deployment executes with concrete values
 
-* Success
-* Failure
-* Generated outputs
+### Device-Scoped Resolution
 
-Evaluation occurs before deployment execution.
+The Device Agent resolves against its local `ProfileState`:
+
+```yaml
+# Device publishes this ProfileState
+apiVersion: margo.org/v1
+kind: ProfileState
+metadata:
+  entity: device-001
+spec:
+  id: deviceprofile.margo.org/peripherals/gpu
+  spec:
+    gpus:
+      - devicePath: /dev/nvidia0
+        model: NVIDIA A100
+        vramGiB: 40
+        allocation:
+          allocatable: true
+          model: exclusive
+          claims:
+            - id: ""  # unclaimed
+              resource: /dev/nvidia0
+      - devicePath: /dev/nvidia1
+        model: NVIDIA A100
+        vramGiB: 40
+        allocation:
+          allocatable: true
+          model: exclusive
+          claims:
+            - id: deployment-video-001
+              resource: /dev/nvidia1
+```
+
+**Application requests:**
+
+```yaml
+discoverProfiles:
+  gpu:
+    id: deviceprofile.margo.org/peripherals/gpu
+    request:
+      minVramGiB: 8
+      architecture: ampere
+```
+
+**Device Agent evaluation:**
+- Scans available GPUs in ProfileState
+- Finds `/dev/nvidia0` matches criteria and is unclaimed
+- Resolves to:
+  ```yaml
+  output:
+    devicePath: /dev/nvidia0
+    model: NVIDIA A100
+    vramGiB: 40
+  ```
+- Updates ProfileState to mark `/dev/nvidia0` as allocated to this deployment
+- Injects `devicePath: /dev/nvidia0` into application parameter
+
+**If no GPU matches:**
+- Returns failure code: `InsufficientVRAM` or `GPUAlreadyAllocated`
+- Deployment is rejected before any component is installed
+- WFM surfaces structured failure to operator
+
+### Fleet-Scoped Resolution
+
+The WFM resolves against fleet-managed state. Example: Secret resolution.
+
+```yaml
+# WFM publishes this ProfileState
+apiVersion: margo.org/v1
+kind: ProfileState
+metadata:
+  scope: fleet
+spec:
+  id: deviceprofile.margo.org/security/secret
+  spec:
+    available: true
+    backend: hashicorp-vault
+```
+
+**Application requests:**
+
+```yaml
+discoverProfiles:
+  databasePassword:
+    id: deviceprofile.margo.org/security/secret
+    request:
+      secretName: production/db/password
+      field: password
+```
+
+**WFM evaluation:**
+- Connects to configured vault backend
+- Retrieves `production/db/password`
+- Extracts field `password`
+- Resolves to:
+  ```yaml
+  output:
+    value: s3cr3t-p@ssw0rd
+  ```
+- Injects value into application parameter before dispatch to device
+- Device never sees the `valueFrom` reference or the secret
+
+**If secret not found:**
+- Returns failure code: `SecretNotFound` or `VaultUnavailable`
+- Deployment is blocked entirely
+- WFM surfaces structured failure to operator
+
+### Conformance Requirements
+
+A resolving actor (Device Agent or WFM) that declares support for a profile attribute MUST:
+
+- Accept `ProfileDiscoveryRequest` inputs conforming to `discovery.requestSchema`
+- Produce outputs conforming to `discovery.outputSchema` on success
+- Return only failure codes declared in `discovery.failureCodes`
+- Never return a failure code not declared in the `ProfileDefinition`
+- Return a structured failure indicating unsupported profile URI; never silently ignore
 
 ---
 
-### Conformance Requirement
+## Fleet-Scoped Profiles
 
-A resolving actor that declares support for a capability URI MUST:
+Fleet-scoped profiles are managed and resolved by the WFM, not individual devices. They represent fleet-wide state or services.
 
-- Accept `CapabilityDiscoveryRequest` inputs conforming to the capability's `requestSchema`
-- Produce outputs conforming to the capability's `outputSchema` on success
-- Return only failure codes declared in the capability's `failureCodes` on failure
-- Never return a failure code not declared in the `CapabilityDefinition`
+### Examples
 
-A resolving actor that does not support a capability URI MUST return a
-structured failure indicating the capability is unsupported. It MUST NOT 
-silently ignore the request or proceed with deployment.
+**Networking/Ingress:**
+```yaml
+id: deviceprofile.margo.org/network/ingress
+scope: fleet
+description: "Manages ingress hostname allocation across the fleet"
+```
+
+**Certificates:**
+```yaml
+id: deviceprofile.margo.org/network/certificate
+scope: fleet
+description: "Provisions TLS certificates for deployments"
+```
+
+**Identity/Provisioning:**
+```yaml
+id: deviceprofile.margo.org/identity/service-account
+scope: fleet
+description: "Provisions service accounts for workloads"
+```
+
+### FleetProfileState
+
+The WFM publishes `FleetProfileState` for attributes it manages:
+
+**Security/Secrets:**
+```yaml
+id: wfmprofile.margo.org/security/secret
+scope: fleet
+description: "Resolves secrets from a centralized vault"
+```
 
 ---
 
-# Ownership Model
+## Ownership Model
 
-Each artifact in this framework has a clearly designated owner. No actor may 
-produce an artifact it does not own.
+Each artifact has a clearly designated owner. No actor may produce an artifact it does not own.
 
-## Capability Definition Authors
+### ProfileDefinition Authors
 
-### Who is this?
-- Margo TWG members
-- Device vendors
-- WFM vendors
+**Who:** Margo TWG members, device vendors, WFM vendors
 
-### Responsibilities
-- Define the URI
-- Define the scope (device | fleet)
-- Author the sourceState schema
-- Author the discovery schema (request, output, failureCodes)
+**Responsibilities:**
+- Define the profile URI
+- Define the scope (device or fleet)
+- Author the `sourceState` schema
+- Author the `discovery` schema (requestSchema, outputSchema, failureCodes)
 - Version the definition on breaking changes
 
-### Rules
-- MUST declare possible failureCodes
-- MUST use namespaced URIs for custom capabilities
+**Rules:**
+- MUST declare all possible `failureCodes`
+- MUST use namespaced URIs for custom profiles
+- Standard profiles use `margo.org` namespace
+- Vendor profiles use vendor domain namespace
 
-## Device Vendors
+### Device Vendors
 
-### Role in the Framework
-Device vendors are responsible for publishing `CapabilityState`
-for every capability their device supports.
+**Role:** Publish `ProfileState` for device-scoped profiles
 
-### Responsibilities
-- Discover hardware resources at runtime
-- Publish `CapabilityState` conforming to `CapabilityDefinition.sourceState`
-- Update `CapabilityState` when resource availability changes
-- Enforce resolution logic for device-scoped capabilities
+**Responsibilities:**
+- Discover resources at runtime (GPUs, interfaces, storage, etc.)
+- Publish `ProfileState` conforming to `ProfileDefinition.sourceState`
+- Update `ProfileState` when resource availability changes
+- Implement resolution logic for device-scoped profiles
+- Update allocation metadata when resources are claimed
 
-## WFM Vendors
+### WFM Vendors
 
-### Role in the Framework
-WFM vendors are responsible for:
-- Maintaining the Capability Registry [TBD]
-- Validating `CapabilityDiscoveryRequests` against `CapabilityDefinitions`
-- Resolving fleet-scoped capabilities
-- Forwarding device-scoped resolution to Device Agents
+**Role:** Manage profile registry, validate requests, resolve fleet-scoped profiles
 
-### Responsibilities
-- Host and serve CapabilityDefinitions from Capbility Registry
-- Validate incoming `CapabilityState` from devices against the Definitions
-- Evaluate fleet-scoped `CapabilityDiscoveryRequests`
+**Responsibilities:**
+- Host and serve `ProfileDefinitions` from a registry
+- Validate `ProfileDiscoveryRequest` inputs against `requestSchema`
+- Evaluate fleet-scoped discovery requests
+- Inject resolved values into deployments before device dispatch
+- Publish `FleetProfileState` for managed profiles
 - Block deployment if resolution fails
+- Perform pre-flight advisory checks using last known device `ProfileState`
 
-## Application Operators
+### Application Operators
 
-### Role in the Framework
-Application vendors declare capability requirements inside
-ApplicationDescriptions. They do not interact with platform
-state directly.
+**Role:** Declare profile discovery requirements
 
-### Responsibilities
-- Declare `CapabilityDiscoveryRequests` referencing capability URIs
-- Define request inputs conforming to `requestSchema`
-- Reference generated outputs via inject mappings (i.e. `valueFrom`)
-- Handle failure codes in fallback strategies
-
----
-
-# Extensibility
-
-Please read [this document](02-extensibility.md#extensibility) to understand
-how this framework introduces extensiblilty.
+**Responsibilities:**
+- Author `ProfileDiscoveryRequest` inside `ApplicationDeployment`
+- Conform request inputs to `discovery.requestSchema`
+- Reference generated outputs via `valueFrom`
+- Handle failure codes in deployment fallback strategies
+- Ensure requested profile URIs are supported by target devices/WFM
 
 ---
 
-# Use Cases:
+## Use Cases
 
-The example use-cases can be found under `use-cases/` directory. 
+### Use Case 1 — GPU Resource Discovery and Allocation
+
+**Problem:** An AI inference workload requires a GPU. Device paths, models, and availability are unknown at deployment time.
+
+**Solution:** Application operator uses GPU discovery to request a GPU with minimum VRAM and preferred architecture. Device Agent selects a suitable free GPU, updates allocation metadata, and injects device path into application.
+
+**ProfileDefinition:**
+```yaml
+id: deviceprofile.margo.org/peripherals/gpu
+scope: device
+sourceState:
+  # schema includes gpus array with allocation metadata
+discovery:
+  requestSchema:
+    properties:
+      minVramGiB: number
+      architecture: string
+  outputSchema:
+    properties:
+      devicePath: string
+      model: string
+      vramGiB: number
+  failureCodes:
+    - NoGPUAvailable
+    - InsufficientVRAM
+    - GPUAlreadyAllocated
+```
+
+### Use Case 2 — CAN Bus Channel Discovery (Vendor-Defined)
+
+**Problem:** Industrial application needs a CAN bus channel. Multiple channels exist with different baud rates and protocols. Device agent must prevent two deployments from claiming the same channel.
+
+**Solution:** Vendor defines profile under their namespace. Application operator requests channel with specific baud rate and protocol. Device Agent validates against current allocations and assigns unclaimed channel.
+
+**ProfileDefinition:**
+```yaml
+id: deviceprofile.acme.com/fieldbus/canbus
+scope: device
+sourceState:
+  # schema includes channels array with allocation metadata
+discovery:
+  requestSchema:
+    properties:
+      baudRate: integer
+      protocol: string
+  outputSchema:
+    properties:
+      channelId: string
+  failureCodes:
+    - NoChannelAvailable
+    - BaudRateMismatch
+    - ProtocolMismatch
+    - ChannelAlreadyAllocated
+```
+
+### Use Case 3 — Secret Resolution from Vault
+
+**Problem:** Application needs database password from vault. Operator must not manually inject secrets into deployment manifests.
+
+**Solution:** WFM resolves secret request by connecting to vault backend. Resolved value is injected into deployment before it reaches device. Device never sees secret reference.
+
+**ProfileDefinition:**
+```yaml
+id: deviceprofile.margo.org/security/secret
+scope: fleet
+sourceState:
+  properties:
+    available: boolean
+    backend: string
+discovery:
+  requestSchema:
+    properties:
+      secretName: string
+      field: string (optional)
+      version: string (optional)
+  outputSchema:
+    properties:
+      value: string
+      resolvedVersion: string
+  failureCodes:
+    - SecretNotFound
+    - VaultUnavailable
+    - AccessDenied
+    - InvalidSecretPath
+```
+
+### Use Case 4 — Hostname Allocation Guard
+
+**Problem:** Two applications both request hostname `app.example.com`. Only one can own it. Conflict should be detected before deployment, not at runtime.
+
+**Solution:** WFM validates hostname request against fleet-wide ingress state. If hostname is taken, deployment is rejected immediately. If available, allocation is recorded and deployment proceeds.
+
+**ProfileDefinition:**
+```yaml
+id: deviceprofile.margo.org/network/ingress
+scope: fleet
+sourceState:
+  properties:
+    domain: string
+    allocatedHostnames: array
+discovery:
+  requestSchema:
+    properties:
+      hostname: string
+      tlsRequired: boolean
+  outputSchema: {}  # guard only, no output
+  failureCodes:
+    - HostnameAlreadyAllocated
+    - InvalidHostnameFormat
+```
 
 ---
 
-# Schema Changes
+## Design Decisions
 
-The schema changes are documented under `schema-changes/` directory.
+### Q1. Why separate `ProfileDefinition` from runtime `ProfileState` and `ProfileDiscoveryRequest`?
 
----
+**Because the definition is authoritative and stable, while runtime state changes constantly.**
 
-# Design Decisions
+The `ProfileDefinition` is authored once and rarely changes. It establishes the contract: what can be requested, what will be output, what failures are possible.
 
-### Q1. Why are `sourceState` and `discovery` defined in the same
-`CapabilityDefinition`? Why not separate documents?
+`ProfileState` changes every time a resource becomes available or is allocated. Mixing them would force re-validating the definition on every state change.
 
-**Because they are two sides of the same contract.**
+`ProfileDiscoveryRequest` is authored by operators at deployment time. Coupling it to the definition would prevent independent versioning.
 
-`sourceState` defines what the platform knows about a capability.
-`discovery` defines what an application can ask about that same capability. 
-They are semantically coupled — you cannot author a valid 
-`discovery.requestSchema` without knowing what the platform will publish in 
-`sourceState`, and you cannot validate a `CapabilityDiscoveryRequest` without 
-knowing both.
+Separation keeps concerns clear: definition = contract, state = runtime reality, request = intent.
 
-Separating them into two documents would:
-- Allow them to drift out of sync independently
-- Require a join operation at evaluation time across two separately versioned 
-documents
-- Create ambiguity about which version of `discovery` applies to which version 
-of `sourceState`
+### Q2. Why use `valueFrom` instead of direct API calls?
 
-Binding them in one document makes the coupling explicit and keeps versioning 
-atomic — a breaking change to either side produces a new version of the whole 
-definition.
+**Because deployment-time values are not yet known, and we need to defer resolution to evaluation time.**
 
----
+Applications cannot know GPU device paths or resolved secrets when they're being authored. Direct API calls would require runtime state inspection before authoring, which is impractical.
 
-### Q2. Why a URI as the identifier? Why not a simple name or integer ID?
+`valueFrom` is a **deferred binding** — a reference that says "fill this in at evaluation time." This defers resolution to when the platform has current state.
 
-**Because capabilities need to be globally unique, human-readable, and 
-namespace-safe across vendors.**
-
-A simple name like `gpu` is ambiguous — a device vendor's GPU capability and a 
-platform vendor's GPU capability would collide. An integer ID requires a central
- registry to assign and track IDs.
-
-A URI like `capability.margo.org/hardware/gpu` is:
-- **Globally unique** — namespaced by domain ownership
-- **Vendor-extensible** — a vendor can introduce 
-`capability.vendor.com/hardware/fpga` without any central coordination
-
----
-
-### Q3. Why are `failureCodes` exhaustive and defined upfront? Why not let the 
-platform return free-form error messages?
+### Q3. Why exhaustive `failureCodes` instead of free-form error messages?
 
 **Because free-form errors cannot be acted upon programmatically.**
 
-If the platform returns `"sorry, no GPU available"`, the WFM cannot:
-- Distinguish between a temporary conflict and a permanent hardware absence
-- Trigger a fallback strategy based on the specific failure reason
-- Surface a structured, actionable error to the operator
+If resolution fails with "sorry, no GPU available," the WFM cannot:
+- Distinguish temporary conflicts from permanent hardware absence
+- Trigger fallback strategies based on failure type
+- Surface predictable errors to operators
 
-Exhaustive, named `failureCodes` defined in the `CapabilityDefinition` mean:
-- Every possible failure outcome is known at authoring time
+Named, exhaustive `failureCodes` defined in `ProfileDefinition` mean:
+- Every failure outcome is known upfront
 - Application vendors can write explicit fallback strategies per code
-- The WFM can make scheduling decisions based on failure type
-- Operators see consistent, predictable error surfaces across all capability types
+- WFM can make scheduling decisions based on failure type
+- Operators see consistent error surfaces across all profile types
 
----
-
-### Q4. Why is device-scoped resolution authoritative at the device and not at 
-the WFM?
+### Q4. Why is device-scoped resolution authoritative at the device, not the WFM?
 
 **Because the WFM's view of device state is always potentially stale.**
 
-The device publishes CapabilityState to the WFM periodically. By the time
-a deployment is triggered, that state may no longer reflect reality — a port
-may have become occupied, a GPU may have been allocated to another process.
+The device publishes `ProfileState` to the WFM periodically. By the time a deployment is triggered, that state may no longer reflect reality — a GPU might have been allocated, a channel might have become occupied.
 
-The device agent resolves against its own current state at apply time, which
-is always accurate. The WFM's pre-flight check is a best-effort early warning,
-not an authoritative gate.
+The device agent resolves against its own current state at apply time, which is always accurate. The WFM's pre-flight check is a best-effort early warning, not an authoritative gate.
 
----
-
-### Q5. If the device resolves device-scoped capabilities itself, why does it 
-publish CapabilityState to the WFM at all?
+### Q5. Why do devices publish `ProfileState` to the WFM if the device resolves locally?
 
 **Because the WFM needs it for reasons beyond resolution.**
 
-Resolution is only one consumer of `CapabilityState`. The WFM uses it for:
+Resolution is only one consumer. The WFM uses `ProfileState` for:
 
-1. **Pre-flight validation** — Before sending a deployment, the WFM can check 
-whether the device is even likely to satisfy the request. If the last known 
-state shows no GPU at all, the WFM can fail fast and surface the error to the 
-operator immediately — without waiting for the device to pull and reject the 
-deployment.
-
-2. **Scheduling decisions** — When a deployment can target multiple devices,
-the WFM uses published `CapabilityState` to select the most suitable device.
-Without it, scheduling is blind.
-
-3. **Operator visibility** — Operators need to see what capabilities each device
-has. The WFM is the management plane — it surfaces device state to dashboards, 
-CLIs, and APIs. Without `CapabilityState`, the operator has no visibility into 
-what the fleet can support.
-
-4. **Fleet-scoped resolution** — Fleet-scoped capabilities are resolved entirely
-by the WFM. It cannot do this without knowing the state of the resources it 
-manages.
-
-5. **Conflict detection across deployments** — The WFM tracks which capabilities
-are occupied across all deployments on a device. Without published state, it 
-cannot detect cross-deployment conflicts even at the advisory level.
-
-The device's local resolution at apply time is authoritative — but the WFM's 
-access to `CapabilityState` is what makes the system observable, schedulable, 
-and operable.
-
-### Q6. Should the specification define concurrency and locking semantics?
-
-**Short Answer:** Not in this version.
-
-This framework does not define:
-- Locking models
-- Reservation guarantees
-- Conflict resolution strategies under concurrent evaluation
-
-These concerns are highly dependent on:
-- Capability type (GPU vs port vs DNS)
-- Platform architecture
-- Deployment model
-
-Instead, the spec defines a deterministic input/output contract for capability 
-evaluation.
-
-Concurrency handling is left to implementations.
-
-Future versions MAY standardize optional concurrency patterns.
-
-### Q7. How is versioning handled?
-
-Versioning is not defined in this version of the specification.
-
-Rationale:
-- The framework itself is still evolving
-- Premature standardization of versioning may constrain extensibility
-
-Current expectation:
-- CapabilityDefinitions are versioned out-of-band (e.g. URI suffix, registry 
-versioning)
-
-Future versions of this specification will formalize:
-- Version negotiation
-- Backward compatibility guarantees
+1. **Pre-flight validation** — Check if device is likely to satisfy request before dispatch
+2. **Scheduling** — Select most suitable device from multiple candidates
+3. **Operator visibility** — Surface device capabilities via dashboards and APIs
+4. **Fleet-scoped resolution** — WFM needs to know state of resources it manages
+5. **Conflict detection** — Track which profiles are occupied across deployments
 
 ---
 
-# Open Questions
+## Open Questions
 
-1. Schema versioning.
-2. Registration and distribution of custom capabilities with WFM.
+1. **Profile versioning** — How should breaking changes to `ProfileDefinition` be handled? Separate URIs? Numeric suffixes? Registry negotiation?
+
+2. **Conflict resolution strategy** — Should the framework define strategies for resolving conflicts when multiple deployments request the same discrete resource? (First-come-first-served, priority, etc.)
+
+3. **Partial resolution** — If an `ApplicationDeployment` has multiple `discoverProfiles` entries and one fails, should the entire deployment be rejected or should partial success be allowed?
+
+4. **Conditional discovery** — Should profile discovery support conditional evaluation? (e.g., "only if this other profile resolution succeeded")
+
+5. **Cross-device discovery** — Can applications discover profiles across multiple candidate devices? How does selection work?
+
+6. **Async resolution** — Should resolution be purely synchronous, or support async/eventual resolution for resources that take time to provision (e.g., certificates)?
+
+7. **Profile caching** — Should WFM cache profile resolutions, or always re-resolve? What cache invalidation strategy?
+```
+
+This captures all the discovery, resolution, and allocation concepts from the original Capability Framework, but:
+
+- Uses ProfileState terminology consistently
+- Builds on ProfileState Framework as foundation
+- Removes device-specific examples (those stay in ProfileState Framework as instantiations)
+- Focuses on the meta-framework for HOW discovery/resolution works
+- Includes all the important design decisions and semantics
+- Has use cases that demonstrate both device and fleet scoped patterns
+- Opens questions for future refinement
