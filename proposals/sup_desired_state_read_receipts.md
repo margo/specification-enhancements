@@ -205,6 +205,15 @@ states is the WFM's responsibility.
   from the manifest fetch. Adding a separate generation number to the `ApplicationDeployment`
   would be a change on both the desired state and status sides to convey information that is
   already on the wire. That adds surface area for no gain over the existing version.
+- **Echo the deployment's `digest` in the status report.** The `digest` names the exact content
+  the client applied, so for a single deployment it can answer "is the client on the current
+  target?" by equality, and it needs no rule about when the reported value advances. We report
+  `observedManifestVersion` instead because it is monotonic and a `digest` is not. Ordering is
+  what the WFM interpretation relies on ("at or above target"): it lets the WFM place a report on
+  its publication timeline, tell how far behind a client is, and track rollout progress, none of
+  which equality against the current `digest` gives. Content can also repeat (a revert, or a
+  re-publish of identical content), so a `digest` does not uniquely place a report in time,
+  whereas `manifestVersion` never repeats.
 
 ## Rejection reason
 
