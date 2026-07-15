@@ -115,6 +115,9 @@ Semantics:
 - `observedManifestVersion = N` means the client is running the deployment as manifest N defined
   it, so the version it reports MUST match the revision it actually holds. A client still on an
   older revision reports that older version, and the WFM sees it has not caught up.
+- Fetching a newer manifest does not by itself advance `observedManifestVersion` for a
+  deployment. Until the client begins applying that deployment's newer revision, it keeps
+  reporting the version of the revision it still holds and is applying or running.
 - The reported version need not be the one at which the deployment last changed. A client that
   has lost its local state and resynchronized reports the version it resynchronized against,
   which can be later. The WFM treats any version at or above its own target for the deployment
@@ -146,6 +149,7 @@ to `targetVersion`, together with `status.state`:
 | at or above | `installing` / `pending` | WFM client has taken up the current desired state and is applying it |
 | at or above | `failed` | WFM client took up the current desired state and failed applying it (the `state` on each component localizes it) |
 | below | `installed` | WFM client is still running a previous desired state; it has not yet picked up the change |
+| below | `installing` / `pending` | WFM client is still applying a previous revision and has not yet started on the current one |
 | below | `failed` | WFM client failed on a previous desired state while a newer one is published |
 
 Because manifest versions never repeat, this comparison stays correct across reverts. After
@@ -154,6 +158,13 @@ Because manifest versions never repeat, this comparison stays correct across rev
 holds; it reports `D2`'s version, which is below `targetVersion`, so the WFM reads it as stale
 rather than converged, even though the current content matches `D1` again. Once the client takes
 up the re-published `D1`, it reports the third version and the WFM reads it as current.
+
+The same rule handles newer content that arrives while an earlier apply is still running.
+Suppose manifest `N` sets a deployment's revision, the client starts applying it, and manifest
+`N+1` changes that deployment again before the first apply finishes. Having fetched `N+1` does
+not advance the reported version: the client still holds and is applying `N`'s revision, so it
+reports `N` with `installing` until it actually begins applying `N+1`'s revision, at which point
+it reports `N+1`. The WFM therefore always knows which revision an `installing` refers to.
 
 The WFM client is required only to report the version it took up and the outcome. Deriving these
 states is the WFM's responsibility.
