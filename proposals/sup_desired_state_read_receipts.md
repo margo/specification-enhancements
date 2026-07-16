@@ -25,8 +25,8 @@ back which revision a client actually took up. This SUP adds one field to the
 `DeploymentStatusManifest` that the WFM client sends the Workload Fleet Manager (WFM), so that
 each status report says which desired state it is reporting on:
 
-- `observedManifestVersion`: the `manifestVersion` of the most recent state manifest the WFM
-  client has reconciled this deployment against.
+- `adoptedManifestVersion`: the `manifestVersion` of the most recent state manifest the WFM
+  client has adopted for this deployment.
 
 It lets the WFM tell, for each deployment, whether the WFM client has picked up the current
 desired state. Manifest versions increase monotonically and never repeat, so the WFM can place
@@ -61,7 +61,7 @@ each deployment.
 
 The value is already available to the WFM client: it holds the `manifestVersion` from the
 manifest it fetched. This SUP asks the client to record, next to each deployment it reconciles,
-the version of the manifest it reconciled against, and to report it. No new computation and no
+the version of the manifest it adopted, and to report it. No new computation and no
 extra fetch.
 
 ## Requirements alignment acknowledgement
@@ -75,7 +75,7 @@ change keeps the same `deploymentId` and yields a new digest.
 
 What this SUP changes in the specification:
 
-- `DeploymentStatusManifest` gains one field, `observedManifestVersion`.
+- `DeploymentStatusManifest` gains one field, `adoptedManifestVersion`.
 - It reuses a value already defined: the `manifestVersion` on the State Manifest.
 
 Out of scope, including the parts of #156 left to other SUP(s):
@@ -103,19 +103,19 @@ separate SUP.
 
 ### New field on `DeploymentStatusManifest`
 
-Add one required field, `observedManifestVersion`. It is required, so this is a breaking change
+Add one required field, `adoptedManifestVersion`. It is required, so this is a breaking change
 to the status report.
 
 | Field | Type | Required? | Description |
 |-------|------|-----------|-------------|
-| observedManifestVersion | number | Y | The `manifestVersion` (see [State Manifest](https://docs.margo.org/specification/margo-management-interface/desired-state#endpoints---state-manifest)) of the most recent state manifest the WFM client has reconciled this deployment against: the latest manifest whose revision of the deployment the client holds and is applying or running. Manifest versions are monotonic and never repeat across a client's manifest history, so the WFM can order this report against the versions it has published. |
+| adoptedManifestVersion | number | Y | The `manifestVersion` (see [State Manifest](https://docs.margo.org/specification/margo-management-interface/desired-state#endpoints---state-manifest)) of the most recent state manifest the WFM client has adopted for this deployment: the latest manifest whose revision of the deployment the client holds and is applying or running. Manifest versions are monotonic and never repeat across a client's manifest history, so the WFM can order this report against the versions it has published. |
 
 Semantics:
 
-- `observedManifestVersion = N` means the client is running the deployment as manifest N defined
+- `adoptedManifestVersion = N` means the client is running the deployment as manifest N defined
   it, so the version it reports MUST match the revision it actually holds. A client still on an
   older revision reports that older version, and the WFM sees it has not caught up.
-- Fetching a newer manifest does not by itself advance `observedManifestVersion` for a
+- Fetching a newer manifest does not by itself advance `adoptedManifestVersion` for a
   deployment. Until the client begins applying that deployment's newer revision, it keeps
   reporting the version of the revision it still holds and is applying or running.
 - The reported version need not be the one at which the deployment last changed. A client that
@@ -124,15 +124,15 @@ Semantics:
   as current (see WFM interpretation).
 - The field says which desired state the report is about; it does not claim the deployment
   applied successfully. Whether application succeeded is carried by `status.state`, as it is
-  today. A `failed` status with an `observedManifestVersion` at or above the WFM's target means
+  today. A `failed` status with an `adoptedManifestVersion` at or above the WFM's target means
   the client took up the current desired state and failed applying it.
 - The field is present in every status report. A client learns of a deployment from a versioned
   state manifest, so it always has a version to report for a deployment it has taken up.
 
 ### Client requirement
 
-A conformant client MUST populate `observedManifestVersion` with the version of the most recent
-state manifest it has reconciled the reported deployment against. The reported version MUST
+A conformant client MUST populate `adoptedManifestVersion` with the version of the most recent
+state manifest it has adopted for the reported deployment. The reported version MUST
 match the revision of the deployment the client holds.
 
 ### WFM interpretation (informative)
@@ -140,10 +140,10 @@ match the revision of the deployment the client holds.
 A `manifestVersion` counts publications for the whole manifest, so a new version does not
 necessarily change a given deployment's target. For each deployment, the WFM records the version
 at which it last changed that deployment's target (call it `targetVersion`). It decides whether
-the WFM client is running its current intent by comparing the reported `observedManifestVersion`
+the WFM client is running its current intent by comparing the reported `adoptedManifestVersion`
 to `targetVersion`, together with `status.state`:
 
-| `observedManifestVersion` vs. `targetVersion` | `status.state` | Interpretation |
+| `adoptedManifestVersion` vs. `targetVersion` | `status.state` | Interpretation |
 |---|---|---|
 | at or above | `installed` | WFM client is running the current desired state |
 | at or above | `installing` / `pending` | WFM client has taken up the current desired state and is applying it |
@@ -171,9 +171,9 @@ states is the WFM's responsibility.
 
 ### Specification changes
 
-- `workload-management-api-1.0.0.yaml`: add `observedManifestVersion` (a reference to the
+- `workload-management-api-1.0.0.yaml`: add `adoptedManifestVersion` (a reference to the
   `ManifestVersion` schema) to the `DeploymentStatusManifest` schema and to its `required` list.
-- `deployment-status.md`: add `observedManifestVersion` to the Request Body Attributes table
+- `deployment-status.md`: add `adoptedManifestVersion` to the Request Body Attributes table
   with the semantics above, and update the example manifest.
 - `desired-state.linkml.yaml`: state on the `id` field that a content change keeps the same
   `deploymentId` and yields a new digest, and that a different `deploymentId` is a different
@@ -187,7 +187,7 @@ states is the WFM's responsibility.
     "kind": "DeploymentStatusManifest",
     "deploymentId": "a3e2f5dc-912e-494f-8395-52cf3769bc06",
     "deviceId": "plant-omega-zone1-edge01",
-    "observedManifestVersion": 7,
+    "adoptedManifestVersion": 7,
     "status": {
         "state": "installed"
     },
@@ -208,7 +208,7 @@ states is the WFM's responsibility.
 - **Echo the deployment's `digest` in the status report.** The `digest` names the exact content
   the client applied, so for a single deployment it can answer "is the client on the current
   target?" by equality, and it needs no rule about when the reported value advances. We report
-  `observedManifestVersion` instead because it is monotonic and a `digest` is not. Ordering is
+  `adoptedManifestVersion` instead because it is monotonic and a `digest` is not. Ordering is
   what the WFM interpretation relies on ("at or above target"): it lets the WFM place a report on
   its publication timeline, tell how far behind a client is, and track rollout progress, none of
   which equality against the current `digest` gives. Content can also repeat (a revert, or a
