@@ -129,7 +129,7 @@ A `ProfileDefinition` is authored once — by Margo Community, a device vendor, 
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `profileDefinitionId` | string | Y | URI uniquely identifying this profile type. |
+| `profileDefinitionId` | string | Y | URI uniquely identifying this profile type. It must be a lower-case Reverse DNS string (e.g., deviceprofile.margo.org/peripherals/gpu). |
 | `scope` | enum | Y | `device` — owned and published by Device Agent, `fleet` - owned by WFM(not introduced in this SUP) |
 | `category` | enum | Y | One of `resource`, `interface`, `peripheral`, `service`, `capability`. Formally declares which category this profile belongs to. |
 | `schemaVersion` | string | Y | Semantic version of this `ProfileDefinition` schema (e.g. `1.0.0`). Used to detect schema evolution and trigger re-validation of existing `ProfileState` documents. |
@@ -177,24 +177,16 @@ A `ProfileState` is submitted by the profile owner after device onboarding and u
 
 ## Introducing Device Profile
 
-A Device Profile is a complete list of everything a device has to offer. It describes all the hardware resources, communication tools, extra plug-in parts, and built-in software services available on that machine.
+A Device Profile is a complete list of Profiles it has to offer. It describes all the hardware resources, communication tools, extra plug-in parts, and built-in software services available on that machine.
 
 A Device Profile groups these features into five categories:
 * **Resources:** Countable hardware parts like CPU cores, system memory (RAM), and disk drive storage space.
 * **Interfaces:** Parts that connect the device to networks or other hardware, such as Ethernet ports, Wi-Fi chips, CAN Bus links, and USB ports.
 * **Peripherals:** Extra physical hardware parts built into or attached to the device, like graphics cards (GPUs), cameras, or microphones.
-* **Services:** Built-in software features run by the device itself, such as a secure password vault, a local DNS server, or an OpenTelemetry (OTel) log collector.
+* **Services:** Built-in software features run by the device itself, such as a secure password vault, a local DNS server, a centralized message queue, or an OpenTelemetry (OTel) server.
 * **Capabilities:** The actual actions the device can do (like processing AI models, encoding video files, or gathering system metrics) because it has the right mix of hardware and services.
 
-## Important Difference: Things vs. Capabilities
-
-To keep your configuration clear, do not confuse a physical thing with what that thing can do (its capability). Things are pieces of hardware or software services that work together to make a capability possible.
-
-* A GPU (a thing) is not a capability. It is a part that makes AI acceleration and video encoding (capabilities) possible.
-* A Secret Vault (a thing) is not a capability. It is a service that makes secure password saving (a capability) possible.
-* An Ethernet Interface (a thing) is not a capability. It is a port that makes network communication (a capability) possible.
-
-A `ProfileDefinition` with `category: capability` MUST describe an action or outcome the device can perform — not a hardware part or software service. The WFM SHOULD warn if a capability `ProfileDefinition` is submitted whose `profileDefinitionId` path segment matches a known hardware or service type name.
+NOTE: We can add more or change them based on the consensus amongst the community.
 
 ## Room to Grow (Future Profiles)
 
@@ -247,7 +239,7 @@ Each POST or PUT to the profile endpoint carries an array of `ProfileState` docu
 ]
 ```
 
-The WFM processes all items atomically: either all succeed or all fail. When a batch fails, the WFM MUST return a `422 Unprocessable Content` response identifying which `profileDefinitionId` caused the failure:
+The WFM processes all items atomically: either all succeed or all fail. When it fails, the WFM MUST return a `422 Unprocessable Content` response identifying which `profileDefinitionId` caused the failure:
 
 ```json
 {
