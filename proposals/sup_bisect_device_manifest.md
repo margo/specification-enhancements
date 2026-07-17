@@ -255,13 +255,7 @@ The WFM processes all items atomically: either all succeed or all fail. When it 
 
 **Gateway hierarchy submission rules:**
 - A gateway MAY submit `ProfileState` documents on behalf of child devices using the hierarchical `{deviceId}` path (e.g. `gateway1/deviceA`).
-- The gateway's client certificate MUST be authorized for the parent `clientId`.
-- Scope enforcement applies to the gateway client role, not the child device.
 - The `{deviceId}` path hierarchy encoding is retained unchanged on all endpoint groups.
-
-**DeviceManifest deletion cascade:**
-- When a `DeviceManifest` is deleted, the WFM MUST automatically and atomically delete all associated `ProfileState` documents for that `deviceId`.
-- The WFM MUST NOT leave orphaned `ProfileState` documents after a `DeviceManifest` deletion.
 
 ---
 
