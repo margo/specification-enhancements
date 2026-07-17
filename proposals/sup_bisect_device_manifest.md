@@ -96,7 +96,7 @@ A `ProfileDefinition` is authored once — by Margo Community, a device vendor, 
 ```json
 {
   "profileDefinitionId": "deviceprofile.margo.org/peripherals/gpu",
-  "description": "Profile Definition for GPU peripherals",
+  "description": "Profile Definition for GPU peripheral hardware",
   "scope": "device",
   "category": "peripheral",
   "schemaVersion": "1.0.0",
@@ -111,10 +111,16 @@ A `ProfileDefinition` is authored once — by Margo Community, a device vendor, 
           "type": "object",
           "required": ["model", "manufacturer"],
           "properties": {
-            "manufacturer": { "type": "string" },
-            "model": { "type": "string" },
-            "vram": { "type": "string" },
-            "architecture": { "type": "string" }
+            "manufacturer": { "type": "string", "description": "GPU manufacturer name" },
+            "model": { "type": "string", "description": "GPU model name" },
+            "vram": {
+              "type": "object",
+              "description": "Video RAM capacity",
+              "properties": {
+                "unit": { "type": "string", "enum": ["bytes", "Ki", "Mi", "Gi"] },
+                "value": { "type": "integer", "minimum": 1 }
+            },
+            "architecture": { "type": "string", "description": "GPU compute architecture (e.g. Ampere)" }
           }
         }
       }
@@ -158,7 +164,7 @@ A `ProfileState` is submitted by the profile owner after device onboarding and u
       {
         "manufacturer": "NVIDIA",
         "model": "A100",
-        "vram": "80Gi",
+        "vram": { "unit": "Gi", "value": 10 },
         "architecture": "Ampere"
       }
     ]
@@ -490,22 +496,16 @@ Carries device identity only. Sent once at onboarding. Updated only if identity 
         "minItems": 1,
         "items": {
           "type": "object",
-          "required": ["manufacturer"],
+          "required": ["model", "manufacturer"],
           "properties": {
             "manufacturer": { "type": "string", "description": "GPU manufacturer name" },
             "model": { "type": "string", "description": "GPU model name" },
-            "vram": { 
-              "unit": {
-                "type": "string",
-                "enum": ["bytes", "Ki", "Mi", "Gi"],
-                "description": "Binary unit for memory measurement"
-              },
-              "value": {
-                "type": "integer",
-                "minimum": 1,
-                "description": "Total memory value in the specified unit"
-              },
-              "description": "Video RAM capacity (e.g. 80Gi)"
+            "vram": {
+              "type": "object",
+              "description": "Video RAM capacity",
+              "properties": {
+                "unit": { "type": "string", "enum": ["bytes", "Ki", "Mi", "Gi"] },
+                "value": { "type": "integer", "minimum": 1 }
             },
             "architecture": { "type": "string", "description": "GPU compute architecture (e.g. Ampere)" }
           }
