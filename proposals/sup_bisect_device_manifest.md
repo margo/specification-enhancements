@@ -54,13 +54,15 @@ Identity data rarel changes. Resource related data changes often. Sending them t
 * No independent updates: You cannot version or evolve identity fields and resource fields separately.
 
 ### Problem 2: Limited descriptions for hardware and networks
-The current setup uses basic labels that cannot share real-world details.
+The current setup uses basic labels that cannot share real-world details, as of now:
 
-* A graphics card (GPU) can only list its type and manufacturer. It cannot show its VRAM size, system path, or architecture.
-* A network connection (like CAN Bus) can only list its type. It cannot show its speed, protocol, or channel ID.
+* A graphics card (GPU) lists only type and manufacturer. It doesn't show its VRAM size, system path, or architecture etc.
+* A network connection (like CAN Bus) has only a type field. It doesn't show its speed, protocol, or channel ID etc.
+
+The point to make here is that there would be requirement for a much complexer data structure for different resources and capabilities provided by platforms. It would be better to detach give them their dedicated documents.
 
 ### Problem 3: Basic computing fields cannot grow
-Standard fields like cpu, memory, and storage are treated as rigid, flat text blocks. You cannot expand their rules. They need to become standalone profile files with their own flexible rulebooks.
+Standard fields like cpu, memory, and storage are treated as rigid, flat text blocks. You cannot expand their structure easily. They need to become standalone profile files with their own flexible rulebooks.
 
 ### Problem 4: Hardware types are hardcoded
 Adding a new piece of hardware (like an AI accelerator or secure chip) forces a complete update to the core system specification. This creates a bottleneck. Device makers cannot launch new features until the main community updates the global rules.
