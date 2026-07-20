@@ -453,7 +453,7 @@ APP_DATA_HOST_PATH=/srv/margo/app-data/factory-insights
 
 #### Helm Chart Example
 
-The following is a minimal Helm chart example showing how to use the mchanics of this SUP in an appliation deployment using Margo Helm, the ``ApplicationDescription`` example shown above, and the device-supplied parameters (e.g. hostname, storageClassName, etc.).
+The following is a minimal Helm chart example showing how to use the echanics of this SUP in an application deployment using Margo Helm, the ``ApplicationDescription`` example shown above, and the device-supplied parameters (e.g. hostname, storageClassName, etc.).
 
 ``` 
 factory-insights/
