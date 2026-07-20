@@ -399,7 +399,7 @@ Inclusion of new `installContext` element, as a dictionary of device-supplied pa
       },
       "margo.cluster.storageClass": {
         "type": "string",
-        "value": "standard",
+        "value": "edge-fast-local",
         "description": "Kubernetes preferred StorageClass  when the application requests persistent storage.",
         "mutable": true
       }    
@@ -453,9 +453,9 @@ APP_DATA_HOST_PATH=/srv/margo/app-data/factory-insights
 
 #### Helm Chart Example
 
-Using Compose (see above), we inject environment variables. 
+The following is a minimal Helm chart example showing how to use the mchanics of this SUP in an appliation deployment using Margo Helm, the ``ApplicationDescription`` example shown above, and the device-supplied parameters (e.g. hostname, storageClassName, etc.).
 
-```
+``` 
 factory-insights/
   Chart.yaml
   values.yaml
@@ -466,8 +466,166 @@ factory-insights/
     pvc.yaml
 ```
 
+##### 1. Chart.yaml
+
+This is the entry point to the Helm specified application.
+
+```yaml
+apiVersion: v2
+name: factory-insights
+description: Helm chart for Factory Insights edge application
+type: application
+version: 1.2.0
+appVersion: "1.2.0"
+```
+
+##### 2. values.yaml
+
+This is the key part: after resolving ``valueFrom.device`` keys in the ``ApplicationDescription``, concrete values are resolved as inidcated in the comments of the example below.
+
+```yaml
+replicaCount: 1
+
+image:
+  repository: registry.example.vendor.com/factory-insights
+  tag: "1.2.0"
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8080
+
+app:
+  supportEmail: "support@example.vendor.com"
+
+ingress:
+  enabled: true
+  ingressClassName: "" # after resolving: "nginx"
+  host: "" # after resolving: "edge01.plant-a.example.com"
+  path: /
+  pathType: Prefix
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClassName: "" # after resolving: "edge-fast-local"
+```
+
+In summary, the mapping between device-specified parameter values and Helm Chart values is as such:
+
+| Device-specified parameter | Helm Chart value |
+| --------------- | ---------- |
+| margo.cluster.storageClass | persistence.storageClassName |
+| margo.cluster.ingressClass | ingress.ingressClassName |
+| margo.cluster.hostname | ingress.host | 
 
 
+##### 3. templates/deployment.yaml
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app.kubernetes.io/name: factory-insights
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: factory-insights
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: factory-insights
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: factory-insights
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+
+          env:
+            - name: SUPPORT_EMAIL
+              value: {{ .Values.app.supportEmail | quote }}
+
+          volumeMounts:
+            - name: app-data
+              mountPath: /var/lib/factory-insights
+
+      volumes:
+        - name: app-data
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-data
+```
+
+##### 4.  templates/service.yaml
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  selector:
+    app.kubernetes.io/name: factory-insights
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - port: 80
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+```
+
+##### 5. templates/service.yaml
+
+```yaml
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+spec:
+  {{- if .Values.ingress.ingressClassName }}
+  ingressClassName: {{ .Values.ingress.ingressClassName | quote }}
+  {{- end }}
+
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.path | quote }}
+            pathType: {{ .Values.ingress.pathType }}
+            backend:
+              service:
+                name: {{ .Release.Name }}
+                port:
+                  number: 80
+{{- end }}
+```
+
+##### 6. templates/pvc.yaml
+
+```yaml
+{{- if .Values.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Release.Name }}-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size }}
+
+  {{- if .Values.persistence.storageClassName }}
+  storageClassName: {{ .Values.persistence.storageClassName | quote }}
+  {{- end }}
+{{- end }}
+```
 
 ## Alternatives considered (optional)
 
