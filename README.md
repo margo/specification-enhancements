@@ -67,8 +67,8 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@phil-abb | Alternative proposal for supporting device specific runtimes | P2 | [PR](https://github.com/margo/specification-enhancements/pull/59) |
 |@vireshnavalli | RFC 9457 for common error responses | P2 | [PR](https://github.com/margo/specification-enhancements/pull/73) |
 |@matlec | Read receipts for desired state | P2 | [PR](https://github.com/margo/specification-enhancements/pull/77) |
+|@arne-broering | Device specific parameter values | P2 | [PR](https://github.com/margo/specification-enhancements/pull/54) |
 |@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40) |
-|@arne-broering | Device specific parameter values | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/54) |
 |@vireshnavalli | Updates to apiVersion usage | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/74) |
 |@pperycz | Support for real-time workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/75) |
 |@singhmj-1 | DeviceCapabilities improvements | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/76) |
