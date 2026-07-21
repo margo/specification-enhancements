@@ -259,7 +259,7 @@ For `ContainsAll` and `ContainsAny`:
 * `itemSelector.matchExpressions` MUST contain one or more expressions
 * `values` MUST be omitted
 * Keys within `itemSelector.matchExpressions` are JSON Pointers relative to each array element (not absolute)
-* Expressions within `itemSelector.matchExpressions` are combined using AND logic
+* Expressions within `itemSelector.matchExpressions` are combined using `AND` logic for `ContainsAll` and `OR` logic for `ContainsAny`
 
 #### Object Array Item Matching
 
