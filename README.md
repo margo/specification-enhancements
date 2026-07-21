@@ -57,7 +57,6 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |-----|-----------|-----|----|
 |@silvanoc | Data model single source of truth with LinkML | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/data-model_linkml.md)
 |@ajcraig | Moving away from Device Roles to capabilities | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_device_roles_to_capabilities.md) |
-|@phil-abb | Supporting specification extensions | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_enable_vendor_extensions.md) |
 |@matlec | Margo Identity and Authorization Framework | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/margo-identity-and-authorization-framework.md) |
 |@matlec | WFM Identity Profile | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/wfm-identity-profile.md) |
 |@javatask | Canonical OCI component publishing pattern | P2 | [PR](https://github.com/margo/specification-enhancements/pull/67) |
