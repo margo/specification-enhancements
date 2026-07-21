@@ -4,7 +4,7 @@
 **Owner:** @singhmj-1
 **Depends on:** `sup_bisect_device_manifest`
 
-**Note:** This SUP establishes the mechanism by which applications discover and request profiles, and how the platform resolves those requests.
+**Note:** This SUP establishes the mechanism by which applications discover and request profiles, and how the platform resolves those requests. Before reading this SUP, please go through [sup_bisect_device_manifest](https://github.com/margo/specification-enhancements/pull/76) as it is a precursor.
 
 ---
 
