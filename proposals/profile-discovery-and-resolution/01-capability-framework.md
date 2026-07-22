@@ -30,17 +30,16 @@ Applications deployed on edge devices frequently depend on platform-managed reso
 
 This proposal establishes the **Profile Discovery & Resolution Framework** — a mechanism by which:
 
-1. Application operators declare what profile attributes they need to discover
+1. Application deployment manifests contain what profile attributes they need to discover
 2. The platform resolves those declarations against runtime profile state
 3. Resolved values are injected into application configuration
 4. Resource conflicts are detected and prevented before deployment
 
-This framework solves four concrete problems:
+This framework solves three concrete problems:
 
-- Device-specific values must no longer be supplied manually by operators
+- Device-specific values must no longer be supplied manually
 - Resource conflicts between applications are now detected before deployment
 - Complex resolution logic is standardized and reusable
-- Operators can now express preferences and constraints when a device has multiple resources of the same type
 
 ---
 
@@ -50,7 +49,7 @@ The Profile Framework defined what a profile is, and how platforms publish them.
 
 ### Problem 1 — Device-specific values are unknown at authoring time
 
-A GPU device path, an available network port, or a vault secret path are only known by the platform at deployment time. Today, operators must manually discover and supply these values. If the value changes or becomes invalid, the deployment fails at runtime with unclear errors.
+A GPU device path, an available network port, or a vault secret path are only known by the platform at deployment time. Today, end-user persona must manually discover and supply these values. If the value changes or becomes invalid, the deployment fails at runtime with unclear errors.
 
 ### Problem 2 — Resource conflicts are only detected at runtime
 
@@ -59,10 +58,6 @@ Two applications deployed to the same device both request port `8080` or hostnam
 ### Problem 3 — Discovery logic is scattered and inconsistent
 
 There is no standard mechanism for applications to declare "I need a GPU with 8 GiB VRAM" or "I need an available network port" or "I need a secret from the vault." Each implementation invents its own approach. No cross-implementation conflict detection is possible.
-
-### Problem 4 — Operators cannot distinguish between resources
-
-When a device has multiple GPUs or multiple storage volumes, the operator has no way to express preferences (e.g., "use the GPU with the most VRAM") or constraints. Discovery becomes trial-and-error.
 
 ---
 
@@ -217,7 +212,7 @@ Note: Need some feedback/guidance/brainstorming on whether the resource resoluti
 
 ### ProfileDiscoveryRequest — A Materialization of the newly introduced discoverySchema
 
-A **ProfileDiscoveryRequest** is authored by an operator inside an `ApplicationDeployment`. It is a materialization of the discovery schema defined in the `ProfileDefinition`. It is a **deferred declaration** — authored before deployment, resolved by the platform at evaluation time (when the deployment is triggered).
+A **ProfileDiscoveryRequest** is authored by an end-user persona or wfm inside an `ApplicationDeployment`. It is a materialization of the discovery schema defined in the `ProfileDefinition`. It is a **deferred declaration** — authored before deployment, resolved by the platform at evaluation time (when the deployment is triggered).
 
 **New top-level key added to `ApplicationDeployment` object:**
 
@@ -304,7 +299,7 @@ ProfileDiscoveryRequest
 
 ### Evaluation Timing
 
-1. **Authoring time** — Operator declares `ProfileDiscoveryRequest` with `valueFrom` references
+1. **Authoring time** — End-user declares `ProfileDiscoveryRequest` with `valueFrom` references
 2. **Pre-flight time (WFM)** — WFM validates request against `requestSchema` and may perform advisory checks using last known `ProfileState` as reported by the Device. This is upto the implementation.
 3. **Evaluation time (Device Agent)** — Device Agent resolves device-scoped profiles against current `ProfileState`
 4. **Injection time** — Resolved values replace `valueFrom` references in parameters
@@ -367,7 +362,7 @@ discoverProfiles:
 **If no GPU matches:**
 - Returns failure code: `InsufficientVRAM` or `NoGPUAvailable` via Deployment Status API
 - Deployment is rejected before any component is installed
-- WFM surfaces structured failure to operator
+- WFM surfaces structured failure to end-user
 
 **How are device-level failures reported?**
 
