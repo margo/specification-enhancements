@@ -57,19 +57,21 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |-----|-----------|-----|----|
 |@silvanoc | Data model single source of truth with LinkML | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/data-model_linkml.md)
 |@ajcraig | Moving away from Device Roles to capabilities | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_device_roles_to_capabilities.md) |
-|@phil-abb | Supporting specification extensions | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_enable_vendor_extensions.md) |
-|@matlec | Margo Identity and Authorization Framework | P2 | [PR](https://github.com/margo/specification-enhancements/pull/38) |
-|@matlec | WFM Identity Profile | P2 | [PR](https://github.com/margo/specification-enhancements/pull/58) |
+|@matlec | Margo Identity and Authorization Framework | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/margo-identity-and-authorization-framework.md) |
+|@matlec | WFM Identity Profile | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/wfm-identity-profile.md) |
 |@javatask | Canonical OCI component publishing pattern | P2 | [PR](https://github.com/margo/specification-enhancements/pull/67) |
 |@javatask | Compose OCI registry publishing and archive structure | P2 | [PR](https://github.com/margo/specification-enhancements/pull/68) |
 |@javatask | Quadlet deployment type | P2 | [PR](https://github.com/margo/specification-enhancements/pull/69) |
+|@arne-broering | Supporting device specific runtimes | P2 | [PR](https://github.com/margo/specification-enhancements/pull/55) |
+|@phil-abb | Alternative proposal for supporting device specific runtimes | P2 | [PR](https://github.com/margo/specification-enhancements/pull/59) |
+|@vireshnavalli | RFC 9457 for common error responses | P2 | [PR](https://github.com/margo/specification-enhancements/pull/73) |
+|@matlec | Read receipts for desired state | P2 | [PR](https://github.com/margo/specification-enhancements/pull/77) |
+|@arne-broering | Device specific parameter values | P2 | [PR](https://github.com/margo/specification-enhancements/pull/54) |
+|@vireshnavalli | Updates to apiVersion usage | P2 | [PR](https://github.com/margo/specification-enhancements/pull/74) |
 |@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40) |
-|@arne-broering | Device specific parameter values | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/54) |
-|@arne-broering | Supporting device specific runtimes | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/55) |
-|@phil-abb | Alternative proposal for supporting device specific runtimes | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/59) |
+|@pperycz | Support for real-time workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/75) |
+|@singhmj-1 | DeviceCapabilities improvements | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/76) |
 |@singhmj-1 | Resource allocation and conflict resolution proposal for app workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/66) |
-|@vireshnavalli | RFC 9457 for common error responses | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/73) |
-|@vireshnavalli | Updates to apiVersion usage | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/74) |
 
 ## SUP Owner SUP Checklist
 

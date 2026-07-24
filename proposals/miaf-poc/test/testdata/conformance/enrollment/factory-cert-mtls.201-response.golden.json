@@ -1,0 +1,6 @@
+{
+  "svidProfileUri": "https://margo.org/profiles/spiffe/x509-svid/v1",
+  "svid": {
+    "certificateChainPem": ["<<LEAF PEM>>"]
+  }
+}

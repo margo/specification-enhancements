@@ -1,0 +1,5 @@
+{
+  "type": "https://margo.org/docs/errors/revocation-format",
+  "title": "Revocation List Parsing Error",
+  "status": 500
+}

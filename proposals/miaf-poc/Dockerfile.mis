@@ -1,0 +1,13 @@
+FROM golang:1.25-bookworm AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/mis ./cmd/mis
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build --chown=nonroot:nonroot /out/mis /usr/local/bin/mis
+# A zero-byte marker file ensures /var/lib/mis exists and is owned by nonroot.
+COPY --from=build --chown=nonroot:nonroot /tmp /var/lib/mis
+USER nonroot:nonroot
+ENTRYPOINT ["/usr/local/bin/mis"]

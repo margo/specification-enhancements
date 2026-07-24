@@ -1,0 +1,24 @@
+# Build artifacts
+/bin/
+/dist/
+/device-agent
+/mis
+
+# Go
+*.test
+*.out
+coverage.*
+
+# Local state
+*.sqlite3
+*.sqlite3-journal
+.env
+.env.local
+var/
+
+# Step CA secrets
+config/step-ca/password
+
+# IDE
+.vscode/
+.idea/
