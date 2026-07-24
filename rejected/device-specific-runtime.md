@@ -315,9 +315,10 @@ External documents are attractive when the device/runtime description becomes to
 The main drawback of such an approach is operational: current Margo matching is local and direct. The ApplicationDescription already contains deployment profiles and required resources, while the DeviceCapabilitiesManifest contains the device’s identity, roles, and resources used for matching. If decisive information is moved entirely into external documents, the WFM cannot make a deployment decision until it has fetched and parsed them. That adds latency, caching concerns, signature/integrity handling, failure modes, and more complex onboarding behavior.
 There is also a specification-alignment issue: Margo’s application package flow is already OCI-registry-based, and the current device onboarding/capabilities flow expects a concrete capability document at the WFM endpoint. So an external-document design is very feasible, but it would require a deliberate spec change to define how references are transported, validated, cached, and normalized.
 
-
 ## Rejection reason
 
-> If a SUP is rejected, indicate the reason why it was rejected.
-> 
-> Complete if SUP is rejected at Phase 2: Proposal Creation or Phase 4: Final Decision 
+The SUP was rejected during [voting](https://github.com/margo/specification-enhancements/issues/78). The main reason for rejecting this SUP included:
+
+* This proposal was too rigid and didn't allow enough flexibility
+* This proposal required the specification to define to much of what to match
+* The alternative proposal provided more extensibility options
