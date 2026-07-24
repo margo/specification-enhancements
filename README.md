@@ -59,11 +59,10 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@ajcraig | Moving away from Device Roles to capabilities | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_device_roles_to_capabilities.md) |
 |@matlec | Margo Identity and Authorization Framework | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/margo-identity-and-authorization-framework.md) |
 |@matlec | WFM Identity Profile | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/wfm-identity-profile.md) |
-|@javatask | Canonical OCI component publishing pattern | P2 | [PR](https://github.com/margo/specification-enhancements/pull/67) |
-|@javatask | Compose OCI registry publishing and archive structure | P2 | [PR](https://github.com/margo/specification-enhancements/pull/68) |
+|@javatask | Canonical OCI component publishing pattern | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/the-helm-way/WG-PROPOSAL-00_the-helm-way.md) |
+|@javatask | Compose OCI registry publishing and archive structure | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/compose-oci/sup-01-compose-oci.md) |
+|@phil-abb | Alternative proposal for supporting device specific runtimes | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_device_specific_runtime_affinity_matching.md) |
 |@javatask | Quadlet deployment type | P2 | [PR](https://github.com/margo/specification-enhancements/pull/69) |
-|@arne-broering | Supporting device specific runtimes | P2 | [PR](https://github.com/margo/specification-enhancements/pull/55) |
-|@phil-abb | Alternative proposal for supporting device specific runtimes | P2 | [PR](https://github.com/margo/specification-enhancements/pull/59) |
 |@vireshnavalli | RFC 9457 for common error responses | P2 | [PR](https://github.com/margo/specification-enhancements/pull/73) |
 |@matlec | Read receipts for desired state | P2 | [PR](https://github.com/margo/specification-enhancements/pull/77) |
 |@arne-broering | Device specific parameter values | P2 | [PR](https://github.com/margo/specification-enhancements/pull/54) |
