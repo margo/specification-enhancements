@@ -198,7 +198,7 @@ A set of named failure outcomes the platform may return if resolution cannot suc
 
 **Important distinction:** Discovery is inherently a declarative inquiry, not a guarantee of reservation. The framework allows an application to declare its resource requirements; the platform then evaluates this declaration against the live infrastructure state.
 
-The core specification defines only the resolution contract (inputs, outputs, and failure modes). It deliberately decouples resource resolution from lifecycle enforcement, and how the resolution is done are implementation defined, for example:
+The core specification defines only the resolution contract (inputs, outputs, and failure modes). It deliberately decouples resource resolution from lifecycle enforcement, and how the resolution is done is an implementation detail, for example.
 
 * Transient Resolution: A storage class discovery may simply return a metadata name without locking the underlying pool.
 * Implicit Reservation: A network port discovery may mark the resolved port as occupied immediately upon evaluation.
