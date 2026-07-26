@@ -207,12 +207,14 @@ Application Developers **SHOULD** execute `notation verify` (or equivalent) agai
 
 This specification mandates signing for **all** OCI artifacts defined by the Margo specification. Specifically:
 
-| Margo OCI Artifact | `artifactType` | Signing required |
+| Margo OCI Artifact | Manifest identifier | Signing required |
 |---|---|---|
-| Application Package | `application/vnd.margo.app.v1+json` | **MUST** sign |
-| Compose Archive | `application/vnd.org.margo.component.compose+json` | **MUST** sign |
-| Helm Chart (OCI) | `application/vnd.cncf.helm.chart.content.v1.tar+gzip` | **MUST** sign |
-| Container Image | `application/vnd.oci.image.manifest.v1+json` | **MUST** sign |
+| Application Package | `artifactType: application/vnd.margo.app.v1+json` | **MUST** sign |
+| Compose Archive | `artifactType: application/vnd.org.margo.component.compose+json` | **MUST** sign |
+| Helm Chart (OCI) | `config.mediaType: application/vnd.cncf.helm.config.v1+json` | **MUST** sign |
+| Container Image | `mediaType: application/vnd.oci.image.manifest.v1+json` | **MUST** sign |
+
+> **Note:** Helm charts use the legacy OCI 1.0 pattern where `config.mediaType` serves as the artifact type discriminator (no explicit `artifactType` field). Container images are identified by their manifest `mediaType`. In all cases, what is signed is the OCI manifest digest regardless of how the artifact type is identified.
 
 Any future Margo-defined OCI artifact type (e.g., Quadlet archives) **MUST** also be signed following this specification.
 
@@ -298,6 +300,8 @@ The trust bundle OCI artifact **SHOULD** use:
 WFM implementations **MAY** auto-discover trust bundles by querying the `_trust-bundle` repository in the same namespace. This is a **convenience mechanism** — operators are not required to use it and **MAY** provision trust materials through any vendor-specific channel (USB key, configuration management, manual import).
 
 > **Note:** The `_trust-bundle` convention is RECOMMENDED, not REQUIRED. Trust provisioning remains vendor-specific. This convention reduces friction for initial onboarding.
+
+> **Compatibility note:** The underscore prefix in `_trust-bundle` is intentionally chosen to minimize collision with application repository names. While most OCI registries (Harbor, ACR, Zot, GHCR) accept underscore-prefixed path components, registries strictly implementing the OCI Distribution Spec name grammar (`[a-z0-9]+([._-][a-z0-9]+)*`) may require configuration. Implementations SHOULD fall back to alternative provisioning mechanisms if the `_trust-bundle` repository cannot be created.
 
 #### 3.5 Trust bundle versioning
 
@@ -395,7 +399,7 @@ A signature envelope is a self-contained cryptographic structure stored as a sin
 **Normative requirements:**
 
 - Verifiers (WFM and edge devices) **MUST** support both COSE_Sign1 and JWS envelopes.
-- Signers **SHOULD** produce COSE_Sign1 envelopes for production artifacts.
+- Application Developers **SHOULD** produce COSE_Sign1 envelopes for production artifacts.
 - The signing scheme **MUST** be `notary.x509` (not `notary.x509.signingAuthority`).
 
 #### 5.4 RECOMMENDED implementation — CNCF Notary Project Notation
@@ -451,6 +455,8 @@ SUP-03 supports two PKI modes covering the full spectrum of industrial deploymen
 | Verification level | `permissive` or `strict` | `strict` |
 
 > **IMPORTANT:** Self-Signed mode provides NO revocation capability. Application Developers and operators **MUST NOT** rely on self-signed certificates for production OT deployments where key compromise recovery is required.
+
+> **Note:** §4 validates a third deployment scenario — Mode C (QTSP/eIDAS). At the verification layer, Mode C is technically indistinguishable from Mode B (both use third-party-issued X.509 certificates with OCSP/CRL). The distinction is organizational: Mode B uses internally-operated enterprise PKI, Mode C uses externally-operated QTSP services.
 
 
 ---
@@ -546,7 +552,7 @@ When using the CNCF Notary Project Notation as the verification implementation, 
         "override": {
           "expiry": "<enforce|log|skip>",
           "revocation": "<enforce|log|skip>",
-          "timestamp": "<enforce|log|skip>"
+          "timestampVerification": "<enforce|log|skip>"
         }
       },
       "trustStores": ["<type>:<name>", "..."],
@@ -566,10 +572,10 @@ When using the CNCF Notary Project Notation as the verification implementation, 
 | `trustPolicies[].registryScopes` | **REQUIRED** | Yes | OCI repository patterns with `*` suffix wildcard. Each repository **MUST** match at most one policy. |
 | `trustPolicies[].signatureVerification` | **REQUIRED** | Yes | Contains `level` and optional `override` |
 | `trustPolicies[].signatureVerification.level` | **REQUIRED** | Yes | `strict` &#124; `permissive` &#124; `audit` &#124; `skip` |
-| `trustPolicies[].signatureVerification.override` | **OPTIONAL** | Yes | Per-check behavior overrides |
+| `trustPolicies[].signatureVerification.override` | **OPTIONAL** | Yes | Per-check behavior overrides. Override values take precedence over the defaults implied by the selected `level`. |
 | `trustPolicies[].signatureVerification.override.expiry` | **OPTIONAL** | Yes | `enforce` (default for strict) &#124; `log` &#124; `skip` |
 | `trustPolicies[].signatureVerification.override.revocation` | **OPTIONAL** | Yes | `enforce` (default for strict) &#124; `log` &#124; `skip` |
-| `trustPolicies[].signatureVerification.override.timestamp` | **OPTIONAL** | Yes | `enforce` (default for strict) &#124; `log` &#124; `skip` |
+| `trustPolicies[].signatureVerification.override.timestampVerification` | **OPTIONAL** | Yes | `enforce` (default for strict) &#124; `log` &#124; `skip` |
 | `trustPolicies[].trustStores` | **REQUIRED** (unless level=`skip`) | Yes | Format: `<type>:<name>` where type ∈ {`ca`, `tsa`}. Maps to `{NOTATION_CONFIG}/truststore/x509/{type}/{name}/`. At least one `ca:` entry required. |
 | `trustPolicies[].trustedIdentities` | **REQUIRED** (unless level=`skip`) | Yes | X.509 Subject DN patterns. Format: `x509.subject: CN=<val>, O=<val>, C=<val>`. Wildcards per RDN: `CN=*`. Special value `"*"` trusts all identities — **SHOULD NOT** be used in production. |
 
@@ -578,7 +584,7 @@ When using the CNCF Notary Project Notation as the verification implementation, 
 1. Production deployments **MUST** use `signatureVerification.level: "strict"`.
 2. `trustedIdentities: ["*"]` **SHOULD NOT** be used in production — it disables Subject DN enforcement.
 3. At least one `ca:<name>` trust store **MUST** be configured when verification is active.
-4. A `tsa:<name>` trust store **MUST** be configured when `override.timestamp` is `"enforce"` and OT asset lifetimes exceed signing certificate validity.
+4. A `tsa:<name>` trust store **MUST** be configured when `override.timestampVerification` is `"enforce"` and OT asset lifetimes exceed signing certificate validity.
 5. Trust policy file location **MUST** be `{NOTATION_CONFIG}/trustpolicy.json` where `{NOTATION_CONFIG}` is implementation-defined (default: `~/.config/notation/` on Linux).
 
 ##### Example: enterprise production policy
@@ -598,7 +604,7 @@ When using the CNCF Notary Project Notation as the verification implementation, 
         "override": {
           "expiry": "enforce",
           "revocation": "enforce",
-          "timestamp": "enforce"
+          "timestampVerification": "enforce"
         }
       },
       "trustStores": [
@@ -709,9 +715,11 @@ When using the CNCF Notary Project Notation as the verification implementation, 
 
 #### 11.1 Air-gapped networks
 
-- If OCSP is unreachable, implementations **MUST** fall back to locally cached CRLs.
-- CRL distribution points **SHOULD** be pre-provisioned during device commissioning.
+The normative fallback requirements in §7.2 apply. Additionally:
+
 - Trust stores and CRLs **SHOULD** be updated during planned maintenance windows.
+- Operators **SHOULD** establish a maximum CRL cache staleness threshold (e.g., 30 days) appropriate to their threat model.
+- Trust bundle updates **MAY** be delivered via USB maintenance keys, local network synchronization, or WFM-mediated distribution during connectivity windows.
 
 #### 11.2 Hardware trust anchors
 
@@ -733,6 +741,8 @@ For initial Margo compliance, implementations **MUST** support at minimum:
 3. Subject identity matching (Step 7)
 
 TSA timestamp evaluation (Step 9) and revocation checks (Step 10) are **REQUIRED** only when `signatureVerification.level` is `strict`. Implementations supporting only `skip` and a reduced `strict` profile (steps 6–8) **MAY** claim partial conformance during the v1-alpha1 transition period.
+
+> **Partial conformance:** Implementations claiming partial conformance **SHOULD** document which verification steps they support in their product documentation and **SHOULD** expose their conformance level via a capability query or configuration attribute so that operators can assess the security posture of their deployment.
 
 
 ---
@@ -760,7 +770,7 @@ TSA timestamp evaluation (Step 9) and revocation checks (Step 10) are **REQUIRED
 | **MUST NOT** | Signature referrer manifests MUST NOT be garbage-collected while target artifact exists. |
 | **SHOULD** | WFM SHOULD validate signatures before catalog ingestion. |
 | **SHOULD** | Application Developers SHOULD publish trust bundles to the well-known `_trust-bundle` repository path. |
-| **SHOULD** | Signers SHOULD produce COSE_Sign1 envelopes for production artifacts. |
+| **SHOULD** | Application Developers SHOULD produce COSE_Sign1 envelopes for production artifacts. |
 | **SHOULD** | Application Developers SHOULD include RFC 3161 TSA counter-signatures. |
 | **SHOULD** | Edge devices SHOULD support `permissive` and `audit` levels for migration. |
 | **RECOMMENDED** | CNCF Notary Project Notation is the RECOMMENDED implementation. |
