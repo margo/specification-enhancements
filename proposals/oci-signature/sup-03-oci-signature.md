@@ -39,7 +39,6 @@ This SUP addresses supply-chain integrity requirements implicit in the Margo sec
 
 - LinkML schema changes — signatures are an OCI-layer operational concern (see §9 Schema Change Report)
 - Deprecation/removal of the `keyLocation` field — deferred to a separate editorial SUP
-- Attestation frameworks (SLSA, in-toto) — future SUP
 - Runtime integrity monitoring — out of Margo scope
 
 
@@ -136,7 +135,7 @@ Response: OCI Image Index listing all signature referrer manifests for the targe
 
 #### 1.4 Registry requirements
 
-Registries hosting Margo artifacts that require signature verification **MUST** support OCI Distribution Spec v1.1 Referrers API. Minimum compatible versions include Harbor 2.8+, Zot 2.0+, and Azure Container Registry.
+Registries hosting Margo artifacts that require signature verification **MUST** support OCI Distribution Spec v1.1 Referrers API.
 
 Signature referrer manifests **MUST NOT** be garbage-collected while the target artifact exists.
 
