@@ -37,7 +37,7 @@ This SUP addresses supply-chain integrity requirements implicit in the Margo sec
 
 **Out of scope:**
 
-- LinkML schema changes — signatures are an OCI-layer operational concern (see §7 Schema Change Report)
+- LinkML schema changes — signatures are an OCI-layer operational concern (see §9 Schema Change Report)
 - Deprecation/removal of the `keyLocation` field — deferred to a separate editorial SUP
 - Attestation frameworks (SLSA, in-toto) — future SUP
 - Runtime integrity monitoring — out of Margo scope
@@ -189,11 +189,175 @@ SUP-03 reuses existing CNCF Notary Project and IETF media types. No new Margo-sp
 | `application/vnd.cncf.notary.payload.v1+json` | CNCF Notary Project v1.2 | Content type of the signed payload inside the envelope |
 
 
+#### 2.4 Pre-publish signature validation
+
+Application Developers **MUST** verify their own signatures before publishing artifacts to any registry. This ensures that signing tooling, certificate chains, and trust policy configurations are correct before downstream consumers (WFM, devices) attempt verification.
+
+The pre-publish validation **MUST** include:
+
+1. Verify the signature envelope is well-formed (COSE_Sign1 or JWS parseable)
+2. Verify the `targetArtifact.digest` in the payload matches the actual manifest digest
+3. Verify the embedded X.509 certificate chain is complete (leaf → intermediate(s) → root)
+4. Verify the leaf certificate has correct EKU (`codeSigning`)
+5. Verify the signature cryptographically validates against the leaf public key
+
+Application Developers **SHOULD** execute `notation verify` (or equivalent) against their own trust policy before pushing the signed artifact to the distribution registry. A failed self-verification **MUST** block publication.
+
+#### 2.5 Signing scope — all Margo-defined OCI artifacts
+
+This specification mandates signing for **all** OCI artifacts defined by the Margo specification. Specifically:
+
+| Margo OCI Artifact | `artifactType` | Signing required |
+|---|---|---|
+| Application Package | `application/vnd.margo.app.v1+json` | **MUST** sign |
+| Compose Archive | `application/vnd.org.margo.component.compose+json` | **MUST** sign |
+| Helm Chart (OCI) | `application/vnd.cncf.helm.chart.content.v1.tar+gzip` | **MUST** sign |
+| Container Image | `application/vnd.oci.image.manifest.v1+json` | **MUST** sign |
+
+Any future Margo-defined OCI artifact type (e.g., Quadlet archives) **MUST** also be signed following this specification.
+
 ---
 
-### 3. Signature envelope format
+### 3. Vendor trust bundle
 
-#### 3.1 Generic envelope structure (technology-agnostic)
+#### 3.1 Trust bundle definition
+
+When publishing signed Margo Application Packages, the Application Developer **MUST** provide a **vendor trust bundle** — a distributable package containing the cryptographic materials and policy template needed for WFM and device operators to verify the developer's signatures.
+
+#### 3.2 Trust bundle structure
+
+The vendor trust bundle is a directory (or archive) with the following normative structure:
+
+```
+<vendor-name>-trust-bundle/
+├── certificates/
+│   ├── root-ca.crt              # REQUIRED — PEM-encoded root CA certificate (trust anchor)
+│   ├── intermediate-ca.crt      # OPTIONAL — PEM-encoded intermediate CA(s) if not embedded in signature
+│   └── tsa-root-ca.crt          # OPTIONAL — PEM-encoded TSA root CA (required if TSA used)
+├── trustpolicy-template.json    # REQUIRED — Template trustpolicy.json with placeholder scopes
+└── README.md                    # REQUIRED — Human-readable installation instructions
+```
+
+**File requirements:**
+
+| File | Required | Format | Purpose |
+|---|---|---|---|
+| `certificates/root-ca.crt` | **REQUIRED** | PEM (X.509 v3) | Trust anchor — the root CA that issued the signing certificate chain |
+| `certificates/intermediate-ca.crt` | **OPTIONAL** | PEM (X.509 v3) | Intermediate CA(s) for environments that don't extract from envelope |
+| `certificates/tsa-root-ca.crt` | **OPTIONAL** | PEM (X.509 v3) | TSA trust anchor for RFC 3161 timestamp verification |
+| `trustpolicy-template.json` | **REQUIRED** | JSON (Notation trust policy schema) | Pre-configured policy with vendor identity; `registryScopes` left as placeholder |
+| `README.md` | **REQUIRED** | Markdown | Installation guide for importing into WFM/device trust stores |
+
+#### 3.3 Trust policy template
+
+The `trustpolicy-template.json` **MUST** contain the vendor's `trustedIdentities` (Subject DN) and `trustStores` references pre-filled. The `registryScopes` field **MUST** use a placeholder value that operators replace with their actual registry paths:
+
+```json
+{
+  "version": "1.0",
+  "trustPolicies": [
+    {
+      "name": "<vendor-name>-production",
+      "registryScopes": [
+        "<REPLACE_WITH_YOUR_REGISTRY>/margo-apps/*"
+      ],
+      "signatureVerification": {
+        "level": "strict"
+      },
+      "trustStores": [
+        "ca:<vendor-name>-root-ca",
+        "tsa:<vendor-name>-tsa"
+      ],
+      "trustedIdentities": [
+        "x509.subject: CN=<Vendor Signing Identity>, O=<Vendor Organization>, C=<Country>"
+      ]
+    }
+  ]
+}
+```
+
+#### 3.4 Trust bundle discovery — well-known OCI repository
+
+To simplify automated trust bundle import, Application Developers **SHOULD** publish their trust bundle as an OCI artifact in a **well-known repository path** within the same registry namespace as their application packages:
+
+```
+<registry>/<namespace>/_trust-bundle
+```
+
+**Convention:**
+
+| Application Package location | Trust bundle location |
+|---|---|
+| `registry.vendor.com/margo-apps/my-app:v1.0.0` | `registry.vendor.com/margo-apps/_trust-bundle:latest` |
+| `harbor.enterprise.internal/acme-apps/gateway:v2.1.0` | `harbor.enterprise.internal/acme-apps/_trust-bundle:latest` |
+
+The trust bundle OCI artifact **SHOULD** use:
+- `artifactType`: `application/vnd.margo.trust-bundle.v1+tar`
+- Layer: gzip-compressed tar of the trust bundle directory structure
+
+WFM implementations **MAY** auto-discover trust bundles by querying the `_trust-bundle` repository in the same namespace. This is a **convenience mechanism** — operators are not required to use it and **MAY** provision trust materials through any vendor-specific channel (USB key, configuration management, manual import).
+
+> **Note:** The `_trust-bundle` convention is RECOMMENDED, not REQUIRED. Trust provisioning remains vendor-specific. This convention reduces friction for initial onboarding.
+
+#### 3.5 Trust bundle versioning
+
+Trust bundles **SHOULD** be tagged with semantic version tags (e.g., `:v1.0.0`, `:v2.0.0`) when the root CA rotates or trusted identities change. The `:latest` tag **SHOULD** always point to the current active trust bundle.
+
+---
+
+### 4. PKI mode validation
+
+#### 4.1 Self-signed CA (Mode A) — validated scenario
+
+Self-signed PKI is the simplest deployment model. It works correctly with this specification because:
+
+1. Developer generates a local root CA + code-signing leaf certificate
+2. Developer signs all 3 tiers using Notation with the leaf key
+3. Developer publishes trust bundle containing `root-ca.crt` + policy template
+4. Operator imports `root-ca.crt` into WFM/device trust store (`ca:<store-name>`)
+5. Operator configures `trustedIdentities` matching the leaf certificate Subject DN
+6. Verification engine builds chain: leaf cert → root CA in trust store ✓
+
+**Limitations of self-signed mode:**
+- No revocation mechanism — if the key is compromised, the only remedy is removing the root CA from all trust stores
+- No TSA — signatures expire when the leaf certificate expires
+- No third-party trust — any developer can generate a certificate claiming any Subject DN
+
+Self-signed mode **MUST NOT** be used in production OT environments (as stated in §6.3).
+
+#### 4.2 Corporate/self-hosted enterprise PKI (Mode B) — validated scenario
+
+Enterprise-operated PKI (e.g., Microsoft AD CS, EJBCA, HashiCorp Vault PKI) works correctly because:
+
+1. Enterprise CA issues code-signing certificates to authorized developers
+2. Enterprise operates an internal OCSP responder and/or CRL distribution point
+3. Enterprise MAY operate an internal RFC 3161 TSA
+4. Developer signs using HSM-backed keys (recommended) or software keys
+5. Trust bundle contains enterprise root CA + optional intermediate + optional TSA root
+6. Verification engine builds chain through enterprise CA hierarchy ✓
+7. Revocation checks query enterprise OCSP/CRL infrastructure ✓
+
+**This is the RECOMMENDED model for production OT deployments** where the organization controls both the signing and verification infrastructure.
+
+#### 4.3 EU Qualified Trust Service Provider (Mode C) — validated scenario
+
+Using QTSP-issued certificates works as a middle ground because:
+
+1. Developer obtains a code-signing certificate from a QTSP on the EU Trusted List
+2. QTSP provides the trust chain (QTSP root CA → intermediate → leaf)
+3. Developer signs using QTSP-provided key (HSM-backed for Qualified, software for Advanced)
+4. Trust bundle contains QTSP root CA certificate
+5. Verification engine builds chain through QTSP hierarchy ✓
+6. OCSP/CRL provided by QTSP infrastructure ✓
+7. RFC 3161 TSA available from QTSP or third-party TSA ✓
+
+See §10.1 (Informative Note) for detailed eIDAS guidance.
+
+---
+
+### 5. Signature envelope format
+
+#### 5.1 Generic envelope structure (technology-agnostic)
 
 A signature envelope is a self-contained cryptographic structure stored as a single OCI layer blob within the signature referrer manifest. It comprises:
 
@@ -204,7 +368,7 @@ A signature envelope is a self-contained cryptographic structure stored as a sin
 | **Signature bytes** | Cryptographic signature over (protected headers ‖ payload) |
 | **Unprotected headers** | X.509 certificate chain, RFC 3161 timestamp token, signing agent |
 
-#### 3.2 Cryptographic requirements
+#### 5.2 Cryptographic requirements
 
 | Requirement | Specification |
 |---|---|
@@ -218,7 +382,7 @@ A signature envelope is a self-contained cryptographic structure stored as a sin
 | Certificate chain | **MUST** be embedded in the signature envelope unprotected headers |
 | Timestamp | RFC 3161 TSA counter-signature **SHOULD** be included; **MUST** be included when signing certificate validity is shorter than expected artifact operational lifetime |
 
-#### 3.3 Envelope format comparison
+#### 5.3 Envelope format comparison
 
 | Property | COSE_Sign1 (`application/cose`) | JWS (`application/jose+json`) |
 |---|---|---|
@@ -234,21 +398,24 @@ A signature envelope is a self-contained cryptographic structure stored as a sin
 - Signers **SHOULD** produce COSE_Sign1 envelopes for production artifacts.
 - The signing scheme **MUST** be `notary.x509` (not `notary.x509.signingAuthority`).
 
-#### 3.4 RECOMMENDED implementation — CNCF Notary Project Notation
+#### 5.4 RECOMMENDED implementation — CNCF Notary Project Notation
 
 The CNCF Notary Project Notation CLI and `notation-go` library are the **RECOMMENDED** implementation of this specification. Implementations using alternative tooling **MUST** produce signature referrer manifests and envelope structures conforming to sections 1–3 of this proposal.
 
 
 ---
 
-### 4. Conformance obligations
+### 6. Conformance obligations
 
-#### 4.1 Actor obligations
+#### 6.1 Actor obligations
 
 | Actor | Obligation | Keyword | Rationale |
 |---|---|---|---|
 | Application Developer | Sign all three artifact tiers (Application Package, component archives, container images) | **MUST** | Supply chain integrity requires origin authentication at every tier |
+| Application Developer | Verify own signature before publishing (pre-publish validation) | **MUST** | Prevents publishing malformed signatures that downstream consumers cannot verify |
 | Application Developer | Embed complete X.509 certificate chain in signature envelope | **MUST** | Enables offline verification at edge devices |
+| Application Developer | Provide a vendor trust bundle (root CA + policy template) | **MUST** | WFM/device operators need trust materials to configure verification |
+| Application Developer | Publish trust bundle to well-known `_trust-bundle` repository | **SHOULD** | Simplifies automated trust onboarding |
 | Application Developer | Include RFC 3161 TSA counter-signature for production artifacts | **SHOULD** | Ensures verifiability beyond signing certificate expiry |
 | WFM | Validate signatures before catalog ingestion | **SHOULD** | Defense-in-depth; WFM is not the final enforcement boundary |
 | WFM | Validate signatures when trust policy `signatureVerification.level` ≠ `skip` | **MUST** | Policy-driven enforcement |
@@ -258,7 +425,7 @@ The CNCF Notary Project Notation CLI and `notation-go` library are the **RECOMME
 | Edge Device | Support `permissive` and `audit` levels | **SHOULD** | Migration scenarios |
 | Trust configuration | Operator-specific (registry scopes, trusted identities, trust stores) | Vendor-specific | Deployment-specific, not standardizable |
 
-#### 4.2 Phased adoption timeline
+#### 6.2 Phased adoption timeline
 
 To prevent a de facto breaking change (existing unsigned artifacts becoming undeployable), signature verification follows a phased rollout:
 
@@ -270,7 +437,7 @@ To prevent a de facto breaking change (existing unsigned artifacts becoming unde
 
 Implementations **MAY** adopt `strict` verification ahead of the GA timeline. The phased approach ensures ecosystem tooling maturity before mandating enforcement.
 
-#### 4.3 Dual-PKI paradigm
+#### 6.3 Dual-PKI paradigm
 
 SUP-03 supports two PKI modes covering the full spectrum of industrial deployments:
 
@@ -288,11 +455,11 @@ SUP-03 supports two PKI modes covering the full spectrum of industrial deploymen
 
 ---
 
-### 5. Verification engine
+### 7. Verification engine
 
 The verification algorithm is informed by ETSI EN 319 102-1 (Procedures for Creation and Validation of AdES Digital Signatures). This section specifies *what* implementations must verify. The step ordering is non-normative — implementations may reorder checks provided all required checks execute before a pass/fail decision.
 
-#### 5.1 Verification steps
+#### 7.1 Verification steps
 
 | Step | Check | Requirement | Failure behavior |
 |---|---|---|---|
@@ -307,7 +474,7 @@ The verification algorithm is informed by ETSI EN 319 102-1 (Procedures for Crea
 | 9 | **Timestamp evaluation** | If signing certificate is expired: verify RFC 3161 TSA token proves signature was created before `notAfter` | FAIL (strict): expired cert without valid timestamp |
 | 10 | **Revocation check** | Query OCSP for certificate status; fall back to locally cached CRLs if OCSP is unreachable | FAIL (strict): certificate revoked |
 
-#### 5.2 Offline operation (air-gapped environments)
+#### 7.2 Offline operation (air-gapped environments)
 
 Industrial OT environments frequently lack network connectivity to OCSP responders. Implementations **MUST** support the following offline fallbacks:
 
@@ -316,7 +483,7 @@ Industrial OT environments frequently lack network connectivity to OCSP responde
 - If neither OCSP nor CRL is available and `signatureVerification.override.revocation` is `"enforce"`, the verification **MUST** fail.
 - If `override.revocation` is `"log"` or `"skip"`, verification proceeds with appropriate audit logging.
 
-#### 5.3 Long-lived OT assets and timestamping
+#### 7.3 Long-lived OT assets and timestamping
 
 OT devices commonly operate for 10+ years. Signing certificates typically have 2–3 year validity periods. Without timestamping, packages become unverifiable after certificate expiry.
 
@@ -327,13 +494,13 @@ OT devices commonly operate for 10+ years. Signing certificates typically have 2
 
 ---
 
-### 6. Trust policy framework
+### 8. Trust policy framework
 
 The trust policy is a WFM/device-local configuration file. It is NOT stored in OCI registries and is NOT part of any LinkML schema. It governs how the verification engine evaluates signatures at deployment time.
 
 Trust policy configuration is **vendor-specific** — the content (registry scopes, trusted identities, trust stores) is a deployment concern of the WFM or device operator, not the application developer.
 
-#### 6.1 Verification levels
+#### 8.1 Verification levels
 
 | Level | Integrity & Authenticity | Expiry | Revocation | Timestamp | Failure behavior |
 |---|---|---|---|---|---|
@@ -350,7 +517,7 @@ Trust policy configuration is **vendor-specific** — the content (registry scop
 - Implementations **SHOULD** log a security warning when `skip` is the active policy for any scope.
 - Production Margo deployments **MUST** configure `strict`.
 
-#### 6.2 Abstract trust policy requirements (normative)
+#### 8.2 Abstract trust policy requirements (normative)
 
 Regardless of implementation tooling, a conforming trust policy mechanism **MUST** support:
 
@@ -361,7 +528,7 @@ Regardless of implementation tooling, a conforming trust policy mechanism **MUST
 5. **TSA anchor configuration** — specifying TSA certificates for timestamp verification
 6. **Identity allowlist** — specifying permitted X.509 Subject DN patterns
 
-#### 6.3 RECOMMENDED implementation — Notation `trustpolicy.json`
+#### 8.3 RECOMMENDED implementation — Notation `trustpolicy.json`
 
 When using the CNCF Notary Project Notation as the verification implementation, the trust policy is expressed as `trustpolicy.json`. The following documents all fields:
 
@@ -459,7 +626,7 @@ When using the CNCF Notary Project Notation as the verification implementation, 
 
 ---
 
-### 7. Schema change report
+### 9. Schema change report
 
 | Dimension | Assessment |
 |---|---|
@@ -483,17 +650,51 @@ When using the CNCF Notary Project Notation as the verification implementation, 
 
 ---
 
-### 8. Informative notes
+### 10. Informative notes
 
-#### 8.1 Regulatory alignment — eIDAS (INFORMATIVE)
+#### 10.1 Regulatory alignment — eIDAS Electronic Seals (INFORMATIVE)
 
-> **INFORMATIVE NOTE:** Deployments in EU jurisdictions requiring legal non-repudiation **MAY** align signing practices with eIDAS (EU Regulation 910/2014) by obtaining certificates from Qualified Trust Service Providers (QTSPs) listed in national Trusted Lists (TSL). QTSP certificates provide a cost-effective trusted middle ground between self-signed certificates (no third-party trust) and private enterprise PKI (expensive to operate). QTSPs issue publicly-audited code-signing certificates backed by Hardware Security Modules meeting FIPS 140-2 Level 3 / QSCD requirements. This alignment is entirely OPTIONAL and does not affect technical conformance with this specification.
+> **INFORMATIVE NOTE — EU eIDAS Electronic Seals for Margo OCI Artifact Signing:**
+>
+> Application Developers operating within (or selling into) EU jurisdictions **MAY** use certificates issued by Qualified Trust Service Providers (QTSPs) conforming to eIDAS (EU Regulation 910/2014, updated by EU 2024/1183 "eIDAS 2.0") as a cost-effective, highly-trusted signing solution. eIDAS Electronic Seals (eSeals) provide a compelling middle ground between self-signed certificates (no external trust, no revocation) and operating a full private enterprise PKI (expensive, complex, requires internal CA governance).
+>
+> **Two eSeal levels are relevant to Margo artifact signing:**
+>
+> | eSeal Level | eIDAS Article | HSM Required | Trust Level | Cost (indicative) | Use Case |
+> |---|---|---|---|---|---|
+> | **Advanced Electronic Seal** | Art. 36 | **NO** — software key storage permitted | High — uniquely linked to creator, capable of identifying seal creator, linked to data such that subsequent change is detectable | €50–200/year | ISVs, small vendors, CI/CD pipelines where HSM infrastructure is not available |
+> | **Qualified Electronic Seal** | Art. 38 | **YES** — QSCD (Qualified Seal Creation Device) required | Highest — legal presumption of integrity and origin under EU law | €200–800/year | Enterprise vendors, regulated industries, legal non-repudiation requirements |
+>
+> **Key advantages over private PKI:**
+> - No CA infrastructure to operate — QTSP handles certificate lifecycle, OCSP, CRL, TSA
+> - Publicly audited trust anchors — QTSP root CAs are on EU Trusted Lists (TSL), pre-trusted
+> - Built-in revocation — OCSP and CRL operated by the QTSP
+> - Built-in timestamping — most QTSPs offer RFC 3161 TSA as part of the service
+> - Legal recognition across all 27 EU member states
+>
+> **Advanced eSeals (no HSM)** are particularly relevant for Margo because they allow automated CI/CD signing pipelines to operate with software-stored keys while still providing third-party trust, revocation infrastructure, and regulatory compliance. The signing certificate is issued by a QTSP and chains to a publicly-audited root CA, but the private key MAY be stored in a software keystore, cloud KMS, or CI/CD secret manager — no physical HSM hardware is required.
+>
+> **Integration with CNCF Notation:**
+>
+> To seal a Margo OCI artifact using a QTSP-issued eSeal certificate via Notation:
+>
+> ```bash
+> # Sign with QTSP-issued Advanced eSeal certificate (software key)
+> notation sign ${REGISTRY}@${DIGEST} \
+>   --key qtsp-advanced-seal \
+>   --signature-format cose \
+>   --timestamp-url https://tsa.qtsp-provider.eu
+> ```
+>
+> The resulting signature is indistinguishable from any other X.509 Notation signature at the verification layer. WFM and device verifiers require only the QTSP root CA in their trust store — they do not need to know whether the signing key was Advanced (software) or Qualified (HSM).
+>
+> **This alignment is entirely OPTIONAL and does not affect technical conformance with this specification.** Organizations outside the EU, or those preferring private PKI, are not affected by this note.
 
-#### 8.2 ETSI EN 319 102-1 relationship (INFORMATIVE)
+#### 10.2 ETSI EN 319 102-1 relationship (INFORMATIVE)
 
-> **INFORMATIVE NOTE:** The verification engine in §5 is informed by ETSI EN 319 102-1 (Procedures for Creation and Validation of AdES Digital Signatures). The 10-step algorithm can stand on its own technical merits without mandatory ETSI compliance. Implementations seeking formal ETSI alignment should reference EN 319 102-1 V1.4.1+ directly.
+> **INFORMATIVE NOTE:** The verification engine in §7 is informed by ETSI EN 319 102-1 (Procedures for Creation and Validation of AdES Digital Signatures). The 10-step algorithm can stand on its own technical merits without mandatory ETSI compliance. Implementations seeking formal ETSI alignment should reference EN 319 102-1 V1.4.1+ directly.
 
-#### 8.3 Industrial compliance mapping (INFORMATIVE)
+#### 10.3 Industrial compliance mapping (INFORMATIVE)
 
 | Standard | Requirement | How SUP-03 satisfies |
 |---|---|---|
@@ -504,26 +705,26 @@ When using the CNCF Notary Project Notation as the verification implementation, 
 
 ---
 
-### 9. OT environment considerations
+### 11. OT environment considerations
 
-#### 9.1 Air-gapped networks
+#### 11.1 Air-gapped networks
 
 - If OCSP is unreachable, implementations **MUST** fall back to locally cached CRLs.
 - CRL distribution points **SHOULD** be pre-provisioned during device commissioning.
 - Trust stores and CRLs **SHOULD** be updated during planned maintenance windows.
 
-#### 9.2 Hardware trust anchors
+#### 11.2 Hardware trust anchors
 
 - TPM 2.0 for trust store sealing is **RECOMMENDED** but not required.
 - Edge devices without TPM **MUST** protect trust store integrity via filesystem permissions, dm-verity, or equivalent tamper-detection mechanisms.
 - Implementations **MUST NOT** require specific hardware security modules — the specification supports software-based verification on constrained devices.
 
-#### 9.3 Constrained devices
+#### 11.3 Constrained devices
 
 - The verification algorithm is specified abstractly so that C, Rust, or other native implementations are possible without a Go runtime or the full Notation CLI.
 - Edge device implementations **MUST** support COSE_Sign1 parsing (binary, compact) as the primary envelope format.
 
-#### 9.4 Minimum viable verification profile
+#### 11.4 Minimum viable verification profile
 
 For initial Margo compliance, implementations **MUST** support at minimum:
 
@@ -536,12 +737,15 @@ TSA timestamp evaluation (Step 9) and revocation checks (Step 10) are **REQUIRED
 
 ---
 
-### 10. Conformance impact
+### 12. Conformance impact
 
 | RFC 2119 Keyword | Statement |
 |---|---|
 | **MUST** | Application Developers MUST sign all three artifact tiers (Application Package, component archives, container images). |
+| **MUST** | Application Developers MUST verify their own signatures before publishing (pre-publish validation). |
+| **MUST** | Application Developers MUST provide a vendor trust bundle containing root CA certificate(s) and trust policy template. |
 | **MUST** | Application Developers MUST embed the complete X.509 certificate chain in the signature envelope. |
+| **MUST** | All Margo-defined OCI artifact types MUST be signed (Application Package, Compose Archive, Helm Chart, Container Image). |
 | **MUST** | Signatures MUST be stored as detached OCI referrer manifests with `artifactType: application/vnd.cncf.notary.signature`. |
 | **MUST** | Signature payload MUST bind to the target artifact's SHA-256 manifest digest. |
 | **MUST** | Verifiers MUST support both COSE_Sign1 and JWS envelope formats. |
@@ -555,17 +759,18 @@ TSA timestamp evaluation (Step 9) and revocation checks (Step 10) are **REQUIRED
 | **MUST NOT** | `skip` verification level MUST NOT be used in production. |
 | **MUST NOT** | Signature referrer manifests MUST NOT be garbage-collected while target artifact exists. |
 | **SHOULD** | WFM SHOULD validate signatures before catalog ingestion. |
+| **SHOULD** | Application Developers SHOULD publish trust bundles to the well-known `_trust-bundle` repository path. |
 | **SHOULD** | Signers SHOULD produce COSE_Sign1 envelopes for production artifacts. |
 | **SHOULD** | Application Developers SHOULD include RFC 3161 TSA counter-signatures. |
 | **SHOULD** | Edge devices SHOULD support `permissive` and `audit` levels for migration. |
 | **RECOMMENDED** | CNCF Notary Project Notation is the RECOMMENDED implementation. |
 | **RECOMMENDED** | TPM 2.0 for trust store sealing is RECOMMENDED. |
 | **MAY** | Multiple signatures MAY exist for a single artifact. |
-| **MAY** | EU deployments MAY use QTSP certificates for eIDAS alignment. |
+| **MAY** | EU deployments MAY use QTSP certificates (Advanced or Qualified eSeals) for eIDAS alignment. |
 
 ---
 
-### 11. Backward compatibility
+### 13. Backward compatibility
 
 This SUP is **additive-only**. No existing OCI manifests, LinkML schemas, or `margo.yaml` structures are modified.
 
@@ -578,11 +783,11 @@ This SUP is **additive-only**. No existing OCI manifests, LinkML schemas, or `ma
 | Registry requirements | OCI v1.1 Referrers API required (soft upgrade) |
 | Existing unsigned artifacts | Remain deployable unless operator configures `strict` with no fallback |
 
-Implementations that do not yet support signature verification can continue operating unchanged. The phased timeline (§4.2) ensures ecosystem readiness before enforcement becomes mandatory.
+Implementations that do not yet support signature verification can continue operating unchanged. The phased timeline (§6.2) ensures ecosystem readiness before enforcement becomes mandatory.
 
 ---
 
-### 12. References
+### 14. References
 
 - [OCI Distribution Specification v1.1.0](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md)
 - [OCI Image Specification v1.1.0](https://github.com/opencontainers/image-spec/blob/v1.1.0/manifest.md)
