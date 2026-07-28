@@ -63,7 +63,7 @@ ApplicationDescription:
     apiVersion:
       type: string
       description: >
-        version of the ApplicationDescription document.
+        version of the ApplicationDescription contract.
         This is independent of the OpenAPI specification version and API route version.
         MUST be one of the Margo defined stable value.
       enum:
@@ -84,6 +84,8 @@ The progression path for breaking changes is:
 |---|---|
 | Current | `v1` | 
 | Next breaking change | `v2` | 
+
+Below rules apply to both the "apiVersion" in the `ApplicationDescription` and the /api/<version>/ in the API routes.
 
 **Rules:**
 
