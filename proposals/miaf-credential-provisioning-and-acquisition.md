@@ -186,7 +186,7 @@ Which rows of the input tables apply depends on the acquisition modes a principa
 | :---- | :---- |
 | X.509-SVID + intermediate chain | the principal's own SVID with its chain (leaf + intermediates), per the X.509-SVID profile; installed mode (with key) or enrolled mode (the certificate chain returned by the CA) |
 | Private key (only when operator-supplied) | installed mode only<sup>1</sup> |
-| Initial trust anchors | one or more certificates; PKI-anchored bootstrap: the principal validates the MIS server chain to these anchors, with RFC 6125 name checks<sup>2</sup> |
+| Initial trust anchors | one or more certificates; PKI-anchored bootstrap: the principal validates the MIS server chain to these anchors, with [RFC 9525](https://datatracker.ietf.org/doc/html/rfc9525) name checks<sup>2</sup> |
 | Initial trust pins | a pin set; pinned bootstrap: the pin itself establishes server identity, with no DNS name required, so it also fits MIS endpoints reached by IP address<sup>2</sup> |
 | Trust Bundle, and its URL where refresh is implemented (a `trustBundleUri`, or a discovery document URL resolving to one) | static acceptance is the bundle floor and the URL forms add refresh, per the [§3](#3-acquisition-modes) rules<sup>3</sup> |
 
