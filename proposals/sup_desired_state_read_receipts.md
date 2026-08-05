@@ -108,26 +108,28 @@ to the status report.
 
 | Field | Type | Required? | Description |
 |-------|------|-----------|-------------|
-| adoptedManifestVersion | number | Y | The `manifestVersion` (see [State Manifest](https://docs.margo.org/specification/margo-management-interface/desired-state#endpoints---state-manifest)) of the most recent state manifest the WFM client has adopted for this deployment: the latest manifest whose revision of the deployment the client holds and is applying or running. Manifest versions are monotonic and never repeat across a client's manifest history, so the WFM can order this report against the versions it has published. |
+| adoptedManifestVersion | number | Y | The `manifestVersion` (see [State Manifest](https://docs.margo.org/specification/margo-management-interface/desired-state#endpoints---state-manifest)) of the most recent state manifest the WFM client has adopted for this deployment: the latest manifest whose revision of the deployment the client holds and has begun applying, whatever the outcome. Manifest versions are monotonic and never repeat across a client's manifest history, so the WFM can order this report against the versions it has published. |
 
 Semantics:
 
-- `adoptedManifestVersion = N` means the client is running the deployment as manifest N defined
+- A client has adopted a manifest's revision of a deployment when it holds that revision and has
+  begun applying it. Adoption is independent of the outcome; `status.state` carries the outcome.
+- `adoptedManifestVersion = N` means the client has taken up the deployment as manifest N defined
   it, so the version it reports MUST match the revision it actually holds. A client still on an
   older revision reports that older version, and the WFM sees it has not caught up.
 - Fetching a newer manifest does not by itself advance `adoptedManifestVersion` for a
   deployment. Until the client begins applying that deployment's newer revision, it keeps
-  reporting the version of the revision it still holds and is applying or running.
+  reporting the version of the revision it still holds.
 - The reported version need not be the one at which the deployment last changed. A client that
   has lost its local state and resynchronized reports the version it resynchronized against,
   which can be later. The WFM treats any version at or above its own target for the deployment
   as current (see WFM interpretation).
-- The field says which desired state the report is about; it does not claim the deployment
-  applied successfully. Whether application succeeded is carried by `status.state`, as it is
-  today. A `failed` status with an `adoptedManifestVersion` at or above the WFM's target means
-  the client took up the current desired state and failed applying it.
+- A `failed` status with an `adoptedManifestVersion` at or above the WFM's target means the
+  client took up the current desired state and failed applying it.
 - The field is present in every status report. A client learns of a deployment from a versioned
   state manifest, so it always has a version to report for a deployment it has taken up.
+- On a first install the client reports the version it adopted the deployment from, even if
+  applying it fails. There is no reserved value for "no previous version".
 
 ### Client requirement
 
