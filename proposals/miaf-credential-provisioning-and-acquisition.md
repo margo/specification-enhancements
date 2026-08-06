@@ -161,7 +161,7 @@ Each class of artifact has one interchange format:
 | Certificates | PEM ([RFC 7468](https://datatracker.ietf.org/doc/html/rfc7468)) |
 | Private keys | unencrypted PKCS#8 ([RFC 5958](https://datatracker.ietf.org/doc/html/rfc5958)), PEM-encoded |
 | CSRs | PKCS#10 ([RFC 2986](https://datatracker.ietf.org/doc/html/rfc2986)) |
-| Trust material | SPIFFE bundle: a JWK Set per [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517) |
+| Trust material | SPIFFE bundle: a JWK Set per [RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517), the container for the Trust Domain's X.509 trust anchors per the specification's Trust Bundle format (no JWT credentials are involved) |
 | Identifiers (`wfm-id`, `wfm-client-id`) | [RFC 3986](https://datatracker.ietf.org/doc/html/rfc3986) unreserved strings, excluding `.` and `..`, per the WFM Identity Profile |
 | Endpoints | absolute HTTPS URLs |
 | Certificate pins | SPKI SHA-256 pins, in the form fixed by MIAF's rules for initial trust bootstrap: the SPKI Fingerprint construction of [RFC 7469, Section 2.4](https://datatracker.ietf.org/doc/html/rfc7469#section-2.4), the base64-encoded SHA-256 digest of the DER-encoded SubjectPublicKeyInfo |
