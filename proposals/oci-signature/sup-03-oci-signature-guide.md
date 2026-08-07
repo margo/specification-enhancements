@@ -63,16 +63,15 @@ Key properties of this architecture:
 
 ### 2.2 Signature referrer manifest structure
 
-The signature manifest is a standard OCI image manifest with `artifactType` set to the Notary signature media type:
+The signature manifest is a standard OCI image manifest. In the `v1.1.0` shape this SUP pins, the manifest carries no top-level `artifactType`; the config descriptor's `mediaType` identifies it as a Notary signature instead:
 
 ```json
 {
   "schemaVersion": 2,
   "mediaType": "application/vnd.oci.image.manifest.v1+json",
-  "artifactType": "application/vnd.cncf.notary.signature",
   "config": {
     "mediaType": "application/vnd.cncf.notary.signature",
-    "digest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
     "size": 2
   },
   "layers": [
@@ -92,6 +91,8 @@ The signature manifest is a standard OCI image manifest with `artifactType` set 
   }
 }
 ```
+
+This is the `v1.1.0` manifest shape SUP-03 pins (§1): no top-level `artifactType`; the config descriptor's `mediaType` carries the signature type instead, and its digest is the SHA-256 of the two-byte `{}` payload. The Notary Project `main` branch has since introduced a different default shape — a top-level `artifactType` paired with `config.mediaType: application/vnd.oci.empty.v1+json` — under which the shape above is termed the legacy format that verifiers SHOULD continue to accept. SUP-03 pins `v1.1.0` because it is the current released version; adopting the newer shape is an Open WG decision pending its release (see SUP-03 §1).
 
 - The `subject` field creates the Referrers API linkage — this is how verifiers discover signatures for a given artifact.
 - The `layers[0]` entry points to the actual cryptographic envelope (COSE or JWS).
@@ -147,7 +148,7 @@ Because OCI manifests list all layer blob digests in their `layers[]` array, sig
 
 ## 3. Verification walkthrough
 
-This section provides an informative explanation of the 10-step verification algorithm. The normative definition is in SUP-03 §6. For full implementation details, see the Notary Project [signing-and-verification-workflow.md](https://github.com/notaryproject/specifications/blob/main/specs/signing-and-verification-workflow.md).
+This section provides an informative explanation of the 10-step verification algorithm. The normative definition is in SUP-03 §6. For full implementation details, see the Notary Project [signing-and-verification-workflow.md](https://github.com/notaryproject/specifications/blob/v1.1.0/specs/signing-and-verification-workflow.md).
 
 ### 3.1 The 10 verification steps
 
@@ -369,7 +370,7 @@ Enterprise configuration management (Ansible, Puppet, Chef, SCCM) distributes th
 
 #### What it is
 
-Code-signing certificates issued by a Qualified Trust Service Provider (QTSP) listed on the EU Trusted List. QTSPs are externally audited organizations authorized under the eIDAS Regulation (EU 910/2014, updated by EU 2024/1183 "eIDAS 2.0") to issue electronic certificates with legal recognition across all 27 EU member states.
+Code-signing certificates issued by a Qualified Trust Service Provider (QTSP) listed on the EU Trusted List. QTSPs are externally audited organizations authorized under the eIDAS Regulation (EU 910/2014, updated by EU 2024/1183 "eIDAS 2.0") to issue electronic certificates with legal recognition across all 27 EU member states. eIDAS 2.0 is cited here only for its continuity of QTSP supervision and the EU Trusted List mechanism — its marquee content (the EU Digital Identity Wallet, Qualified Electronic Attestations of Attributes) has no bearing on artifact signing and is out of scope for this SUP.
 
 #### Two eSeal levels
 
@@ -446,7 +447,7 @@ QTSP root CA certificates are publicly available on the EU Trusted Lists (TSL). 
 | **Cost** | Free | Infrastructure + staffing | Per-certificate annual fee (varies by provider) |
 | **CA infrastructure to operate** | None | Full (Root CA, OCSP, CRL, TSA) | None — QTSP handles everything |
 | **Production suitable** | **NO** | **YES** (recommended) | **YES** |
-| **Regulatory compliance** | None | IEC 62443, NIST (if properly operated) | eIDAS + IEC 62443 + NIST |
+| **Standards & regulatory alignment** | None | IEC 62443, NIST (if properly operated) | eIDAS + IEC 62443 + NIST |
 | **Legal non-repudiation** | No | Organizational-internal only | EU-wide (Qualified) or organizational (Advanced) |
 | **Key compromise recovery** | Impossible (no revocation) | OCSP/CRL revocation within hours | OCSP/CRL revocation within hours |
 | **10+ year verifiability** | No (no TSA) | Yes (with TSA) | Yes (with TSA) |
@@ -509,7 +510,7 @@ QTSP root CA certificates are publicly available on the EU Trusted Lists (TSL). 
 
 ## 5. Publisher signing material examples
 
-This section provides practical examples of the publisher signing material that Application Developers distribute to WFM operators and device administrators. The normative requirements for this material are in SUP-03 §3.
+This section provides practical examples of the publisher signing material that Application Developers distribute to WFM operators and device administrators. The normative requirements for this material are in SUP-03 §5.
 
 ### 5.1 Directory structure
 
@@ -606,7 +607,7 @@ WFM implementations may auto-discover signing material by querying the `_trust-b
 
 ## 6. Cryptographic considerations
 
-This section presents algorithm and format guidance. Your organization's security policy governs — these are starting points, not mandates. The normative minimum requirements are in SUP-03 §4.2.
+This section presents algorithm and format guidance. Your organization's security policy governs — these are starting points, not mandates. SUP-03 §3 presents an informative, **RECOMMENDED** baseline; it is not a normative minimum.
 
 ### 6.1 Recommended algorithms by deployment context
 
@@ -626,13 +627,13 @@ The Margo Interoperability and Alignment Framework (MIAF) references these algor
 - ECDSA P-256 and P-384
 - Ed25519
 
-SUP-03's normative minimums (RSA 2048, ECDSA P-256) are compatible with MIAF. Organizations aligning with both Margo and MIAF should use RSA 3072+ or ECDSA P-256/P-384 to satisfy both frameworks simultaneously.
+SUP-03's §3 informative RECOMMENDED baseline (RSA 3072-bit minimum, ECDSA P-256 or P-384) already matches MIAF's own minimums — there is no gap to bridge. Organizations aligning with both Margo and MIAF can use either recommendation directly to satisfy both frameworks simultaneously.
 
 **Note:** MIAF uses the term "trust bundle" for its own distribution mechanism. To avoid confusion, this guide uses "publisher signing material" for the Margo artifact signing trust materials described in §5.
 
 ### 6.3 COSE vs JWS envelope format
 
-SUP-03 requires verifiers to support both formats. For publishers choosing which to produce:
+SUP-03 requires verifiers to support both formats as the general-production default (§3). §3 also defines a constrained-device exception: a WFM Client **MAY** declare a `signatureEnvelopes: cose-only` capability, in which case the operator's trust policy restricts that device's `registryScopes` to publishers who commit to COSE-only signing. An undeclared device is still held to the full dual-format requirement — the exception applies only where explicitly declared. For publishers choosing which to produce:
 
 | Factor | COSE_Sign1 (`application/cose`) | JWS (`application/jose+json`) |
 |--------|----------------------------------|-------------------------------|
@@ -646,8 +647,8 @@ SUP-03 requires verifiers to support both formats. For publishers choosing which
 
 **Guidance:**
 
-- For constrained WFM Clients with <128MB RAM, publishers should produce COSE_Sign1 envelopes exclusively.
-- For general production, COSE_Sign1 is recommended (more compact, faster to verify).
+- For constrained WFM Clients with <128MB RAM, the device SHOULD declare the `signatureEnvelopes: cose-only` capability (SUP-03 §3), and publishers targeting that `registryScopes` path should produce COSE_Sign1 envelopes exclusively. Without the declaration, the device remains obligated to parse both formats regardless of its RAM budget.
+- For general production, COSE_Sign1 is recommended (more compact, faster to verify) even where the dual-format MUST applies.
 - JWS is acceptable when human-readability or existing JSON tooling integration is a priority.
 - Publishers may produce both formats (two signatures on the same artifact) to support mixed environments during migration.
 
@@ -750,7 +751,7 @@ WFM Clients in OT environments may have limited CPU, memory, and storage. The si
 
 - COSE_Sign1 (binary CBOR) is significantly more compact than JWS (JSON text)
 - COSE parsing requires less memory allocation — no Base64 decode step
-- For devices with <128MB RAM, COSE should be the only format used by publishers targeting those devices
+- For devices with <128MB RAM, the device SHOULD declare the `signatureEnvelopes: cose-only` capability (SUP-03 §3) rather than silently dropping JWS support; publishers targeting that device's declared `registryScopes` then produce COSE-only. Without the declaration, dropping JWS parsing support is non-conformant — SUP-03's dual-format MUST still applies.
 
 **Implementation options:**
 
@@ -874,9 +875,9 @@ To minimize the gap period:
 
 This section maps SUP-03 capabilities to common industrial cybersecurity standards. This mapping is informative — formal compliance assessments require engagement with qualified auditors.
 
-### 9.1 IEC 62443-4-2 CR 3.9 — Software Integrity
+### 9.1 IEC 62443-4-2 CR 3.4 — Software and Information Integrity
 
-**Requirement:** "The component shall provide the capability to verify the integrity of software before installation."
+**Requirement (paraphrased — the exact clause text is behind the IEC paywall and should be confirmed against a licensed copy):** the capability to verify the integrity of software before installation, and automated notification when an integrity violation is detected.
 
 **How SUP-03 satisfies this:**
 
@@ -887,18 +888,18 @@ This section maps SUP-03 capabilities to common industrial cybersecurity standar
 
 ### 9.2 NIST SP 800-218 (SSDF) — Secure Software Development Framework
 
-**Requirement:** PO.1.3 — "Verify the integrity and check the provenance of acquired software."
+**Requirement:** PO.1.3 — "Communicate requirements to all third parties who will provide commercial software components to the organization for reuse by the organization's own software," with the implementation example "Require third parties to provide provenance data and integrity verification mechanisms for all components of their software." [Triangulated from secondary sources — the NIST PDF could not be parsed directly; confirm wording against the primary document.]
 
 **How SUP-03 satisfies this:**
 
 - Notation signatures bound to manifest digests prove provenance (who signed) and integrity (what was signed)
 - Trust policy identity matching (`trustedIdentities`) restricts deployment to known, authorized publishers
 - Publisher signing material provides the provenance chain from signing identity back to a trust anchor
-- Pre-publish validation (SUP-03 §2.4) ensures developers verify their own signatures before distribution
+- Pre-publish validation (SUP-03 §2.2) ensures developers verify their own signatures before distribution
 
-### 9.3 ISO/IEC 27001 A.12.6.2 — Restrictions on Software Installation
+### 9.3 ISO/IEC 27001:2022 A.8.19 (supersedes 2013's A.12.5.1 / A.12.6.2) — Installation of Software on Operational Systems
 
-**Requirement:** "Rules governing the installation of software by users should be established and implemented."
+**Requirement (paraphrased — the exact 2022 clause text is behind the ISO paywall and should be confirmed against a licensed copy):** rules governing the installation of software on operational systems should be established and implemented.
 
 **How SUP-03 satisfies this:**
 
@@ -920,11 +921,17 @@ Consult the [EU Trusted List browser](https://eidas.ec.europa.eu/efda/tl-browser
 
 ### 9.5 ETSI EN 319 102-1 — Relationship
 
-The SUP-03 verification engine is informed by ETSI EN 319 102-1 (Procedures for Creation and Validation of AdES Digital Signatures). Organizations seeking formal ETSI compliance should reference ETSI EN 319 102-1 V1.4.1+ directly. The SUP-03 verification engine can satisfy ETSI requirements when:
+The SUP-03 verification engine is informed by ETSI EN 319 102-1 (Procedures for Creation and Validation of AdES Digital Signatures). Organizations seeking formal ETSI compliance should reference ETSI EN 319 102-1 V1.4.1+ directly.
 
-- Certificates are issued by ETSI EN 319 411-1/2 conformant CAs
-- Timestamps are produced by ETSI EN 319 422 conformant TSAs
-- Signing keys are stored in ETSI EN 419 221-5 conformant HSMs
+Certificates, timestamps, and key storage in this SUP's PKI can independently conform to ETSI EN 319 411-2, EN 319 422, and EN 419 221-5 respectively. This does not extend to EN 319 102-1 conformance for the overall verification engine.
+
+**The AdES signature-format family is not closed at CAdES/XAdES/PAdES/JAdES.** ETSI TS 119 152-1 V1.1.1 (2026-03) defines CB-AdES ("CBOR-AdES"), a fifth member, built directly on CBOR Object Signing and Encryption (COSE, RFC 9052) — the same base RFC this SUP's COSE_Sign1 envelope uses. EN 319 102-1's own scope clause (§1, V1.4.1, 2024-06) names only three formats it governs — EN 319 122-1 (CAdES), EN 319 132-1 (XAdES), EN 319 142-1 (PAdES) — and contains no reference to JAdES or CB-AdES. Both TS 119 182-1 (JAdES) and TS 119 152-1 (CB-AdES) state that validation procedures for their own format are outside their own document's scope and point toward EN 319 102-1 for "other types," but EN 319 102-1's own scope clause does not, as published, incorporate either.
+
+This SUP's envelopes are not AdES signatures of any current type — not because the family's base encodings exclude COSE or JWS (COSE now has a legitimate member in CB-AdES, and JAdES is itself JWS-based), but because neither the Notary Project COSE_Sign1 envelope nor its JWS envelope populates the qualifying header parameters an AdES format actually mandates. Concretely: CB-AdES's baseline B-B level mandates exactly one signed header parameter beyond `alg` — a CWT Claims header (RFC 9597) carrying `iat`, the claimed signing time, cardinality exactly 1 at every baseline level. The Notary Project COSE envelope instead carries `io.cncf.notary.signingTime`, a Notary-namespaced protected header with different semantics (explicitly untrusted under the `notary.x509` scheme) and a different wire structure. At the B-T level, CB-AdES additionally mandates a `sigTst` CBOR map wrapping an RFC 3161 timestamp token inside the unsigned header parameter; the Notary envelope carries an analogous RFC 3161 timestamp, but as its own unprotected header, not CB-AdES's defined container. The same populates-vs-doesn't-populate logic applies to JAdES over this SUP's JWS envelope option.
+
+A future revision of this SUP could additionally profile the CB-AdES header parameters onto its COSE_Sign1 envelope to become a genuine, ETSI-numbered AdES format — that is a distinct, additive profiling exercise this revision does not undertake. Whether the WG wants to pursue it is not addressed here.
+
+Organizations requiring formal AdES conformance today should evaluate a dedicated CAdES-, XAdES-, PAdES-, JAdES-, or CB-AdES-producing toolchain separately from this SUP's Notary Project-based mechanism.
 
 Formal ETSI compliance is not required by SUP-03.
 
@@ -983,6 +990,8 @@ This phased approach is safe because verification level changes never require re
 - [eIDAS 2.0 (EU) 2024/1183](https://eur-lex.europa.eu/eli/reg/2024/1183/oj) — Amendment establishing European Digital Identity Framework
 - [EU Trusted List Browser](https://eidas.ec.europa.eu/efda/tl-browser/) — Find QTSPs by country and service type
 - [ETSI EN 319 102-1](https://www.etsi.org/deliver/etsi_en/319100_319199/31910201/) — Procedures for Creation and Validation of AdES Digital Signatures
+- [ETSI TS 119 182-1](https://www.etsi.org/deliver/etsi_ts/119100_119199/11918201/) — JAdES Digital Signatures
+- [ETSI TS 119 152-1](https://www.etsi.org/deliver/etsi_ts/119100_119199/11915201/) — CB-AdES Digital Signatures (CBOR Object Signing and Encryption profile)
 - [IEC 62443-4-2](https://webstore.iec.ch/publication/34421) — Security for Industrial Automation and Control Systems: Technical security requirements for IACS components
 - [NIST SP 800-218](https://csrc.nist.gov/publications/detail/sp/800-218/final) — Secure Software Development Framework (SSDF)
 - [ISO/IEC 27001](https://www.iso.org/standard/27001) — Information security management systems
@@ -990,8 +999,8 @@ This phased approach is safe because verification level changes never require re
 ### Tooling and specifications
 
 - [CNCF Notary Project — Notation CLI](https://github.com/notaryproject/notation) — Reference signing/verification implementation
-- [CNCF Notary Project — Signing and Verification Workflow](https://github.com/notaryproject/specifications/blob/main/specs/signing-and-verification-workflow.md) — Normative verification algorithm
-- [CNCF Notary Project — Trust Store and Trust Policy Specification](https://github.com/notaryproject/specifications/blob/main/specs/trust-store-trust-policy.md)
+- [CNCF Notary Project — Signing and Verification Workflow](https://github.com/notaryproject/specifications/blob/v1.1.0/specs/signing-and-verification-workflow.md) — Normative verification algorithm
+- [CNCF Notary Project — Trust Store and Trust Policy Specification](https://github.com/notaryproject/specifications/blob/v1.1.0/specs/trust-store-trust-policy.md)
 - [OCI Distribution Specification v1.1.0](https://github.com/opencontainers/distribution-spec/blob/v1.1.0/spec.md)
 - [RFC 9052 — COSE (CBOR Object Signing and Encryption)](https://www.rfc-editor.org/rfc/rfc9052)
 - [RFC 7515 — JSON Web Signature (JWS)](https://www.rfc-editor.org/rfc/rfc7515)
