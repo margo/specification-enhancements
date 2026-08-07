@@ -85,7 +85,7 @@ Margo adopts these specifications in full. Where Margo narrows or extends, this 
 
 > **Open WG decision (unresolved):** the Notary Project `main` branch has, since this SUP's `v1.1.0` pin, introduced a different default signature-manifest shape (see §6 and the companion guide §2.2). Whether Margo should track that shape once it ships in a Notary Project release, or continue pinning the last released tag until a WG-scheduled review, is not decided by this revision and is left for the WG.
 
-> **Open WG decision (unresolved):** ETSI TS 119 152-1 (CB-AdES), published 2026-03, defines an AdES-conformant profile of COSE (RFC 9052) that this SUP's COSE_Sign1 envelope does not currently implement. Whether a future revision should additionally profile CB-AdES's mandatory header parameters to achieve formal AdES-family membership for the COSE path is not addressed by this revision and is left for the WG.
+> **Open WG decision (unresolved):** ETSI TS 119 152-1 (CB-AdES), published 2026-03, defines an AdES-conformant profile of COSE (RFC 9052) that this SUP's COSE_Sign1 envelope does not currently implement. Whether a future revision should additionally profile CB-AdES's mandatory header parameters (notably the CWT-Claims `iat` claimed-signing-time header and the `uHeaders` unsigned-property container) to achieve formal AdES-family membership for the COSE path is not addressed by this revision and is left for the WG.
 
 ### 2. Signing obligations
 
