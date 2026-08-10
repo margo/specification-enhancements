@@ -62,9 +62,9 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@javatask | Canonical OCI component publishing pattern | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/the-helm-way/WG-PROPOSAL-00_the-helm-way.md) |
 |@javatask | Compose OCI registry publishing and archive structure | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/compose-oci/sup-01-compose-oci.md) |
 |@phil-abb | Alternative proposal for supporting device specific runtimes | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_device_specific_runtime_affinity_matching.md) |
+|@vireshnavalli | RFC 9457 for common error responses | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_rfc9457_error_responses.md) |
+|@matlec | Read receipts for desired state | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_desired_state_read_receipts.md) |
 |@javatask | Quadlet deployment type | P2 | [PR](https://github.com/margo/specification-enhancements/pull/69) |
-|@vireshnavalli | RFC 9457 for common error responses | P2 | [PR](https://github.com/margo/specification-enhancements/pull/73) |
-|@matlec | Read receipts for desired state | P2 | [PR](https://github.com/margo/specification-enhancements/pull/77) |
 |@arne-broering | Device specific parameter values | P2 | [PR](https://github.com/margo/specification-enhancements/pull/54) |
 |@vireshnavalli | Updates to apiVersion usage | P2 | [PR](https://github.com/margo/specification-enhancements/pull/74) |
 |@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40) |
