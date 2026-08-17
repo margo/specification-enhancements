@@ -30,6 +30,10 @@
 > 
 > Complete as part of Phase 3: SUP Technical Development
 
+## Breaking Changes
+
+> List any breaking changes in the proposal. The technical details and explanation do not need to be repeated if they are covered in the **Technical Proposal** section. This section highlights proposed breaking changes to make it obvious that breaking changes are included in the proposal.  
+
 ## Alternatives considered (optional)
 
 > List any alternative solutions considered while working on the SUP and the reason for not choosing them. If the SUP owner knows that there are alternative SUPs being worked on, this section can be used to highlight potential advantages this SUP has over the alternatives.
