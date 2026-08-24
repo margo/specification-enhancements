@@ -63,7 +63,6 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@vireshnavalli | RFC 9457 for common error responses | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_rfc9457_error_responses.md) |
 |@matlec | Read receipts for desired state | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_desired_state_read_receipts.md) |
 |@arne-broering | Device specific parameter values | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/device-specific-parameter-values.md) |
-|@vireshnavalli | Updates to apiVersion usage | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_apiversion_app_description.md) |
 |@javatask | Quadlet deployment type | P2 | [PR](https://github.com/margo/specification-enhancements/pull/69) |
 |@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40) |
 |@pperycz | Support for real-time workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/75) |
