@@ -195,7 +195,7 @@ Which rows of the input tables apply depends on the acquisition modes a principa
 
 | Input | Notes |
 | :---- | :---- |
-| WFM endpoint URL | routing only; identity is by SVID, and the target `wfm-id` is read from the client's own SVID, not from the URL |
+| WFM endpoint URL | required in every acquisition mode: a WFM Client cannot reach its WFM without it. Routing only; identity is by SVID, and the target `wfm-id` is read from the client's own SVID, not from the URL |
 
 **WFM only:**
 
