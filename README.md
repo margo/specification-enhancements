@@ -58,7 +58,6 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@silvanoc | Data model single source of truth with LinkML | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/data-model_linkml.md)
 |@javatask | Canonical OCI component publishing pattern | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/the-helm-way/WG-PROPOSAL-00_the-helm-way.md) |
 |@phil-abb | Alternative proposal for supporting device specific runtimes | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_device_specific_runtime_affinity_matching.md) |
-|@vireshnavalli | RFC 9457 for common error responses | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_rfc9457_error_responses.md) |
 |@matlec | Read receipts for desired state | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/sup_desired_state_read_receipts.md) |
 |@arne-broering | Device specific parameter values | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/device-specific-parameter-values.md) |
 |@javatask | Quadlet deployment type | P2 | [PR](https://github.com/margo/specification-enhancements/pull/69) |
