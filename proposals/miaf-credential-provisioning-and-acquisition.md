@@ -67,7 +67,7 @@ This SUP applies to every MIAF principal that acquires an SVID and trust materia
 
 - **Consumption.** How the principal obtains its current SVID and Trust Bundle: the acquisition modes of [§3](#3-acquisition-modes). This SUP defines this layer.
 - **Enrollment.** What automates the enrolled mode's round-trip over the wire. This is the forthcoming enrollment profile.
-- **Bootstrap.** How the principal receives the two inputs the upper layers depend on: the initial bootstrap anchor of [§5](#5-the-initial-bootstrap-anchor) and, under the enrollment profile, its enrollment authorization. The baseline this SUP assumes is direct placement: the operator delivers the inputs through its provisioning channel, or they are pre-installed when the device or its software image is built. Protocols that produce these inputs at onboarding time from a factory identity (FDO, BRSKI, and similar) are deferred to a future device identity profile.
+- **Bootstrap.** How the principal receives the two inputs the upper layers depend on: the initial bootstrap anchor of [§5](#5-the-initial-bootstrap-anchor) and, under the enrollment profile, its enrollment authorization. The baseline this SUP assumes is direct placement: the operator delivers the inputs through its provisioning channel, or they are pre-installed when the device or its software image is built. Protocols that produce these inputs at onboarding time from a manufacturer-installed credential (FDO, BRSKI, and similar) are deferred to a future device identity profile.
 
 A deployment can pre-provision statically with neither enrollment nor automated bootstrap, add either, or combine all three layers. Only the consumption layer is normative in this release.
 
