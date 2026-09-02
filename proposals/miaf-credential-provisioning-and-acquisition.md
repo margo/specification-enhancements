@@ -115,7 +115,7 @@ All MIAF and WFM Identity Profile terminology is reused by reference. This SUP i
 - **Provisioning input**: a named item a principal must accept to participate in a Trust Domain: its SVID, its private key when the operator supplies one, its trust material, and the identifiers its identity profile defines. Enumerated in [§4](#4-provisioning-input-contract).
 - **Provisioning channel**: the operator's existing means of placing material onto a principal (device-management tooling, configuration management, or installer media, for example), as the operator provisioning playbook uses the term. The channel is deployment-specific and out of scope: this SUP standardizes what the channel carries (the provisioning inputs) and what takes them in (the provisioning interface), not the channel itself.
 - **Provisioning interface**: how a principal accepts its provisioning inputs (a file, a mounted secret, an environment variable, or a configuration API, for example). The operator's provisioning channel delivers the inputs; the provisioning interface takes them in. [§4](#4-provisioning-input-contract) requires at least one provisioning interface that is non-interactive and documented.
-- **Initial bootstrap anchor**: the trust material a principal uses to authenticate its *first* retrieval of MIAF trust material, before it holds anything MIAF-issued. It is the one provisioning input no acquisition mode can deliver ([§5](#5-the-initial-bootstrap-anchor)).
+- **Initial bootstrap anchor**: the trust material a principal uses to authenticate its *first* retrieval of MIS-hosted material, before it holds anything MIAF-issued. It is the one provisioning input no acquisition mode can deliver ([§5](#5-the-initial-bootstrap-anchor)).
 
 ### 3. Acquisition Modes
 
