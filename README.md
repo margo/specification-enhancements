@@ -66,6 +66,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@pperycz | Support for real-time workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/75) |
 |@singhmj-1 | DeviceCapabilities improvements | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/76) |
 |@singhmj-1 | Resource allocation and conflict resolution proposal for app workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/66) |
+|@ajcraig |deviceId to targetName change | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/93)|
 
 
 ## SUP Owner SUP Checklist
