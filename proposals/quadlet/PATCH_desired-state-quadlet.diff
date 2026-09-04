@@ -1,0 +1,54 @@
+--- a/src/specification/margo-management-interface/desired-state.linkml.yaml
++++ b/src/specification/margo-management-interface/desired-state.linkml.yaml
+@@ classes:
+   ComposeDeploymentProfile:
+     is_a: DeploymentProfile
+     rank: 40
+     slot_usage:
+       type:
+         equals_string: "compose"
+         rank: 10
+       components:
+         range: ComposeComponent
+         rank: 20
+
++  QuadletDeploymentProfile:
++    is_a: DeploymentProfile
++    description: >-
++      Deployment profile for Quadlet-based workloads targeting devices capable
++      of processing Quadlet unit files via systemd integration.
++    rank: 45
++    slot_usage:
++      type:
++        equals_string: "quadlet"
++        rank: 10
++      components:
++        range: QuadletComponent
++        rank: 20
++
+   Component:
+     ...
+
+   ComposeComponent:
+     is_a: Component
+     rank: 50
+
++  QuadletComponent:
++    is_a: Component
++    rank: 55
++    description: >-
++      A component packaged as a Quadlet Archive for deployment on devices
++      capable of processing Quadlet unit files via systemd integration.
++
+
+   type:
+-    description: The type of deployment profile (e.g., helm, compose).
++    description: >-
++      The type of deployment profile. Allowed values are: helm (Kubernetes/Helm
++      chart deployment), compose (Compose file deployment), and quadlet
++      (Quadlet unit file deployment via systemd integration). The
++      value MUST match the type field in the corresponding ApplicationDescription
++      deploymentProfile element.
+     range: string
+     required: true
+     rank: 10
