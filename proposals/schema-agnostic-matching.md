@@ -6,7 +6,7 @@
 
 ## Summary
 
-As part of the desire to separate the core specification from independent deployment specifications, the PM group has indicated there is a desire to move to a schema-agnostic approach for matching applications to supported devices. This SUP proposes replacing the fixed device capability model with a schema-agnostic device profile model. A device reports an array of named characteristics, each containing an opaque property bag. Application deployment profiles refer to those characteristics by globally unique keys and use a small, standard matching language to express eligibility requirements.
+As part of the desire to separate the core specification from independent deployment specifications, the PM group has indicated there is a desire to move to a schema-agnostic approach for matching applications to supported devices. This SUP proposes replacing the [fixed device capability](https://docs.margo.org/specification/margo-management-interface/device-capabilities) model with a schema-agnostic device profile model. A device reports an array of named characteristics, each containing an opaque property bag. Application deployment profiles refer to those characteristics by globally unique keys and use a small, standard matching language to express eligibility requirements.
 
 The proposal also recommends an approach to use dynamic mapping for specific cases where the workload fleet manager must understand the meaning behind specific properties.
 
@@ -37,7 +37,7 @@ This proposal supports the existing Margo goals and surfaces for:
 * [Device Requirements](https://docs.margo.org/specification/margo-devices/device-requirements), which requires workload-hosting devices to expose supported deployment and runtime capabilities.
 * [Software Composition](https://docs.margo.org/personas-and-definitions/software-composition), which distinguishes application packaging from deployment and permits multiple deployment types.
 
-It does not introduce a new workload runtime, package format, registry, scheduling policy, or observability protocol. It does not define the common characteristics, but it gives examples of how such characteristics are named, transported, matched, and evolved. It does not define any deployment specifications but gives examples  of how deployment characteristics can be described. The deployment specifications remain responsible for defining the meaning and schema of their own characteristics.
+It does not introduce a new workload runtime, package format, registry, scheduling policy, or observability protocol. It does not define the common characteristics, but it gives examples of how such characteristics may be named, transported, matched, and evolved. It does not define any deployment specifications but gives examples of how deployment characteristics can be described. The deployment specifications remain responsible for defining the meaning and schema of their own characteristics.
 
 This proposal defines the direction and approach for moving to a schema-agnostic, passthrough-by-default approach. If this SUP is approved, then deployment specifications for Helm and Compose can be started based on this approach. If this SUP is approved, the common device characteristics can start to be defined as part of the common deployment specification guidelines.
 
@@ -88,7 +88,7 @@ PUT    /api/v1/profile/{targetName}
 DELETE /api/v1/profile/{targetName}
 ```
 
-`targetName` uses the existing hierarchical device identifier rules for gateways. `POST` creates a profile, `PUT` updates an existing profile's characteristics, and `DELETE` removes profile characteristics. The POST and PUT request body MUST be the `deviceCharacteristics` object shown below. DELETE has no request body to remove all characteristics for the target, or a payload with just the keys for individual characteristics to remove. A gateway MUST submit the parent profile before a child profile, preserving the current see-through gateway ordering rule.
+`targetName` uses the existing hierarchical device identifier rules for gateways. `POST` creates a profile, `PUT` updates an existing profile's characteristics, and `DELETE` removes profile characteristics. The POST and PUT request body MUST be the `deviceCharacteristics` object shown below. DELETE has no request body to remove all characteristics for the target, or a payload with an array of keys for individual characteristics to remove. A gateway MUST submit the parent profile before a child profile, preserving the current see-through gateway ordering rule.
 
 The endpoints inherit the Management Interface requirements for mTLS, authorization, HTTP/1.1, port 443, status codes, and [RFC 9457 Problem Details](https://docs.margo.org/specification/margo-management-interface/api-requirements-and-security#error-responses). A malformed envelope is a `400 Bad Request`; a semantically invalid characteristic payload is a `422 Unprocessable Content`.
 
@@ -179,7 +179,7 @@ The following rules apply:
 
 ### 3. Characteristic definitions and evolution
 
-The supplier that owns a characteristic key MUST publish a human-readable definition for that key and MAY publish a JSON Schema. The characteristic definition SHOULD be published, or referenced, as part of the applicable deployment specification. Margo's common deployment specification guidelines documentation MAY define a set of common characteristics deployment specifications MAY reference. The schema is informative to a workload fleet manager operating in passthrough mode, but is normative for device suppliers claiming conformance to the characteristic.
+The supplier that owns a characteristic key MUST publish a human-readable definition for that key and MAY publish a JSON Schema. The characteristic definition SHOULD be published, or referenced, as part of the applicable deployment specification. Margo's common deployment specification guidelines documentation MAY define a set of common characteristics deployment specifications MAY reference. The schema is informative to a workload fleet manager operating in passthrough mode, but is normative for device suppliers claiming conformance to the characteristic if a schema is provided.
 
 Characteristics are not versioned by adding a version field to each instance. An owner MAY make only these compatible changes under the same key:
 
