@@ -16,7 +16,7 @@ Margo's current device capability contract hardcodes resources, peripherals, int
 
 This conflicts with the new direction for defaulting to a schema-agnostic, passthrough by default, approach for matching applications to devices. This is a new direction the PM group has agreed to, to decouple device characteristic matching from the core specification so new/updated characteristics can be added without requiring the workload fleet manager to implement new code to support it. The driving factor for this change in direction was a proposal to separate deployment types from the core specification but the same reasoning applies to all device characteristics, not just what deployments devices support.
 
-The proposal is associated with [Issue TBD]() and draws from ideas originally proposed in the [Device Manifest Bisection SUP](https://github.com/margo/specification-enhancements/blob/sup/bisect-device-manifest/proposals/sup_bisect_device_manifest.md). The Bisection SUP introduces some good ideas but they are tied heavily to having schemas defined that the workload fleet manager and device MUST use and understand which conflicts with this new direction. This proposal keeps the useful profile concept but removes the requirement that the workload fleet manger register, validate, or interpret every profile schema. It also simplifies how each device characteristic is represented as a opaque property bag. The ideas proposed here allow the workload fleet manger to evaluate compatibility using only the generic matching operators refined in this SUP that were originally introduced with the [Custom Runtime SUP](https://github.com/margo/specification-enhancements/blob/main/completed/sup_device_specific_runtime_affinity_matching.md#2-device-constraints-model).
+The proposal is associated with [product-management issue #97](https://github.com/margo/product_management/issues/97) and draws from ideas originally proposed in the [Device Manifest Bisection SUP](https://github.com/margo/specification-enhancements/blob/sup/bisect-device-manifest/proposals/sup_bisect_device_manifest.md). The Bisection SUP introduces some good ideas but they are tied heavily to having schemas defined that the workload fleet manager and device MUST use and understand which conflicts with this new direction. This proposal keeps the useful profile concept but removes the requirement that the workload fleet manger register, validate, or interpret every profile schema. It also simplifies how each device characteristic is represented as a opaque property bag. The ideas proposed here allow the workload fleet manger to evaluate compatibility using only the generic matching operators refined in this SUP that were originally introduced with the [Custom Runtime SUP](https://github.com/margo/specification-enhancements/blob/main/completed/sup_device_specific_runtime_affinity_matching.md#2-device-constraints-model).
 
 This change improves the specification by:
 
@@ -27,7 +27,7 @@ This change improves the specification by:
 
 ## Requirements alignment acknowledgement
 
-This proposal is related to [Issue TBD]().
+This proposal is related to  [product-management issue #97](https://github.com/margo/product_management/issues/97).
 
 This proposal supports the existing Margo goals and surfaces for:
 
@@ -415,6 +415,8 @@ The following are examples for some common characteristics the Margo community M
 #### Deployment characteristic
 
 Each deployment characteristic describes what is required for an application to target a device with the required profile. Each deployment characteristic can define what properties make sense for that specific deployment. There is no intention of trying to keep deployment characteristics common between deployment specifications.
+
+Currently with Margo we have targeted Helm (Kubernetes) and Compose (Podman/Docker). You can see from this [TWG Feature](https://github.com/margo/specification/issues/213) there are several Kubernetes specific problems needing to be addressed. This approach allows for solving those Kubernetes problems as part of the helm deployment specification characteristics instead of needing wholistic solutions that don't match what other deployment specification require.
 
 > **NOTE:** The following deployment characteristic examples are entirely made up. Defining these deployment characteristics is not within the scope of this SUP and only serves as an example to demonstrate how this could be defined in the deployment specification.
 
