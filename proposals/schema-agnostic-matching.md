@@ -6,24 +6,24 @@
 
 ## Summary
 
-As part of the desired to separate the core specification from independent deployment specifications, the PM group has indicated there is a desire to move to a schema-agnostic approach for matching applications to supported devices. This SUP proposes replacing the fixed device capability model with a schema-agnostic device profile model. A device reports an array of named characteristics, each containing an opaque property bag. Application deployment profiles refer to those characteristics by globally unique keys and use a small, standard matching language to express eligibility requirements.
+As part of the desire to separate the core specification from independent deployment specifications, the PM group has indicated there is a desire to move to a schema-agnostic approach for matching applications to supported devices. This SUP proposes replacing the fixed device capability model with a schema-agnostic device profile model. A device reports an array of named characteristics, each containing an opaque property bag. Application deployment profiles refer to those characteristics by globally unique keys and use a small, standard matching language to express eligibility requirements.
 
-The proposal also recommends an approach to use dynamic mapping for specific cases where the workload fleet manger must understand the meaning behind specific properties.
+The proposal also recommends an approach to use dynamic mapping for specific cases where the workload fleet manager must understand the meaning behind specific properties.
 
 ## Reason for proposal
 
 Margo's current device capability contract hardcodes resources, peripherals, interfaces, runtimes, and deployment type information into a defined schema. The current [Device Capabilities](https://docs.margo.org/specification/margo-management-interface/device-capabilities) page and the [Application Description](https://docs.margo.org/specification/applications/application-description#deploymentprofile-attributes) page consequently require the workload fleet manager implementations to understand this schema in order to perform compatibility matching.
 
-This conflicts with the new direction for defaulting to a schema-agnostic, passthrough by default, approach for matching applications to devices. This is a new direction the PM group has agreed to, to decouple device characteristic matching from the core specification so new/updated characteristics can be added without requiring the workload fleet manager to implement new code to support it. The driving factor for this change in direction was a proposal to separate deployment types from the core specification but the same reasoning applies to all device characteristics, not just what deployments devices support.
+This conflicts with the new direction for defaulting to a schema-agnostic, passthrough-by-default approach for matching applications to devices. This is a new direction the PM group has agreed to, to decouple device characteristic matching from the core specification so new/updated characteristics can be added without requiring the workload fleet manager to implement new code to support it. The driving factor for this change in direction was a proposal to separate deployment types from the core specification, but the same reasoning applies to all device characteristics, not just what deployments devices support.
 
-The proposal is associated with [product-management issue #97](https://github.com/margo/product_management/issues/97) and draws from ideas originally proposed in the [Device Manifest Bisection SUP](https://github.com/margo/specification-enhancements/blob/sup/bisect-device-manifest/proposals/sup_bisect_device_manifest.md). The Bisection SUP introduces some good ideas but they are tied heavily to having schemas defined that the workload fleet manager and device MUST use and understand which conflicts with this new direction. This proposal keeps the useful profile concept but removes the requirement that the workload fleet manger register, validate, or interpret every profile schema. It also simplifies how each device characteristic is represented as a opaque property bag. The ideas proposed here allow the workload fleet manger to evaluate compatibility using only the generic matching operators refined in this SUP that were originally introduced with the [Custom Runtime SUP](https://github.com/margo/specification-enhancements/blob/main/completed/sup_device_specific_runtime_affinity_matching.md#2-device-constraints-model).
+The proposal is associated with [product-management issue #97](https://github.com/margo/product_management/issues/97) and draws from ideas originally proposed in the [Device Manifest Bisection SUP](https://github.com/margo/specification-enhancements/blob/sup/bisect-device-manifest/proposals/sup_bisect_device_manifest.md). The Bisection SUP introduces some good ideas but they are tied heavily to having schemas defined that the workload fleet manager and device MUST use and understand which conflicts with this new direction. This proposal keeps the useful profile concept but removes the requirement that the workload fleet manager register, validate, or interpret every profile schema. It also simplifies how each device characteristic is represented as an opaque property bag. The ideas proposed here allow the workload fleet manager to evaluate compatibility using only the generic matching operators refined in this SUP that were originally introduced with the [Custom Runtime SUP](https://github.com/margo/specification-enhancements/blob/main/completed/sup_device_specific_runtime_affinity_matching.md#2-device-constraints-model).
 
 This change improves the specification by:
 
 1. Helps move in the direction of separating the stable core contracts from device-specific contracts so the core specification and deployment specifications can evolve independently from each other.
 2. Allows independent deployment specifications to add characteristics without requiring workload fleet managers to change code.
-3. Makes matching schema-agnostic, deterministic and compliance-testable through JSON Pointer and explicitly defined operators.
-4. Suggests a dynamic discovery mechanism for properties workload fleet manager can understand if required; though recommends keeping this to an absolute minimum.
+3. Makes matching schema-agnostic, deterministic, and compliance-testable through JSON Pointer and explicitly defined operators.
+4. Suggests a dynamic discovery mechanism for properties the workload fleet manager can understand if required; though recommends keeping this to an absolute minimum.
 
 ## Requirements alignment acknowledgement
 
@@ -37,9 +37,9 @@ This proposal supports the existing Margo goals and surfaces for:
 * [Device Requirements](https://docs.margo.org/specification/margo-devices/device-requirements), which requires workload-hosting devices to expose supported deployment and runtime capabilities.
 * [Software Composition](https://docs.margo.org/personas-and-definitions/software-composition), which distinguishes application packaging from deployment and permits multiple deployment types.
 
-It does not introduce a new workload runtime, package format, registry, scheduling policy, or observability protocol. It does not define the common characteristics but it gives examples for how such characteristics are named, transported, matched, and evolved. It does not define any deployment specifications but gives examples how for how deployment characteristics can be described. The deployment specifications remain responsible for defining the meaning and schema of its own characteristics.
+It does not introduce a new workload runtime, package format, registry, scheduling policy, or observability protocol. It does not define the common characteristics, but it gives examples of how such characteristics are named, transported, matched, and evolved. It does not define any deployment specifications but gives examples  of how deployment characteristics can be described. The deployment specifications remain responsible for defining the meaning and schema of their own characteristics.
 
-This proposal defines the direction and approach for moving to a schema-agnostic, passthrough by default, approach. If this SUP is approved than deployment specifications for Helm and Compose can be started based on this approach. If this SUP is approved the common device characteristics can start to be defined as part of the common deployment specification guidelines.
+This proposal defines the direction and approach for moving to a schema-agnostic, passthrough-by-default approach. If this SUP is approved, then deployment specifications for Helm and Compose can be started based on this approach. If this SUP is approved, the common device characteristics can start to be defined as part of the common deployment specification guidelines.
 
 ## Technical proposal
 
@@ -72,7 +72,7 @@ An independently versioned deployment specification MAY define:
 * compatibility guidance for its runtime; and
 * conformance tests for those characteristic definitions.
 
-The core specification MUST NOT require a workload fleet manager to deserialize or semantically interpret a characteristic property bag merely to evaluate compatibility matching. The core specification MUST NOT explicitly prohibit a workload fleet manager from doing so if they choose with the understanding the workload fleet manager takes responsibility for the impact of their decision to tightly couple their implementation.
+The core specification MUST NOT require a workload fleet manager to deserialize or semantically interpret a characteristic property bag merely to evaluate compatibility matching. The core specification MUST NOT explicitly prohibit a workload fleet manager from doing so if they choose, with the understanding that the workload fleet manager takes responsibility for the impact of their decision to tightly couple their implementation.
 
 ### 2. Device profile model
 
@@ -88,7 +88,7 @@ PUT    /api/v1/profile/{targetName}
 DELETE /api/v1/profile/{targetName}
 ```
 
-`targetName` uses the existing hierarchical device identifier rules for gateways. `POST` creates a profile, `PUT` updates an existing profile characteristics, and `DELETE` removes profile characteristics. The POST and PUT request body MUST be the `deviceCharacteristics` object shown below. DELETE has no request body to removes all characteristics for the target, or a payload with the just the keys for individuals characteristics to remove. A gateway MUST submit the parent profile before a child profile, preserving the current see-through gateway ordering rule.
+`targetName` uses the existing hierarchical device identifier rules for gateways. `POST` creates a profile, `PUT` updates an existing profile's characteristics, and `DELETE` removes profile characteristics. The POST and PUT request body MUST be the `deviceCharacteristics` object shown below. DELETE has no request body to remove all characteristics for the target, or a payload with just the keys for individual characteristics to remove. A gateway MUST submit the parent profile before a child profile, preserving the current see-through gateway ordering rule.
 
 The endpoints inherit the Management Interface requirements for mTLS, authorization, HTTP/1.1, port 443, status codes, and [RFC 9457 Problem Details](https://docs.margo.org/specification/margo-management-interface/api-requirements-and-security#error-responses). A malformed envelope is a `400 Bad Request`; a semantically invalid characteristic payload is a `422 Unprocessable Content`.
 
@@ -170,16 +170,16 @@ The following rules apply:
 
 * `deviceCharacteristics` MUST be an array. Each key MUST occur at most once in a payload.
 * A characteristic key MUST be globally unique within the Margo ecosystem. Reverse-domain names such as `margo.org/resource/cpu` or `example.com/interface/canbus` are RECOMMENDED.
-* `properties` MUST be a JSON object. Its contents are opaque to the core specification and MAY contain nested objects and arrays.
+* `properties` MUST be a JSON object. Its contents are opaque to the core specification, and MAY contain nested objects and arrays.
 * A device MAY omit a characteristic when it is unavailable. Omission is different from an empty property bag.
 * A device MUST send all known characteristics to create the initial device profile using POST.
 * A device MAY add or update one or more individual characteristics once the device profile has been created using PUT.
-* A device MAY remove one or more individual characteristic once the device profile has been created using DELETE.
-* profile describes only resources and characteristics exposed to Margo workloads, as required by the current device capability guidance.
+* A device MAY remove one or more individual characteristics once the device profile has been created using DELETE.
+* The profile describes only resources and characteristics exposed to Margo workloads, as required by the current device capability guidance.
 
 ### 3. Characteristic definitions and evolution
 
-The supplier that owns a characteristic key MUST publish and human-readable definition for that key and MAY publish a JSON Schema. The characteristic definition SHOULD be published, or referenced, as part of the applicable deployment specification. Margo's common deployment specification guidelines documentation MAY define a set of common characteristics deployment specifications MAY references. The schema is informative to a workload fleet manger operating in passthrough mode, but is normative for a device suppliers claiming conformance to the characteristic.
+The supplier that owns a characteristic key MUST publish a human-readable definition for that key and MAY publish a JSON Schema. The characteristic definition SHOULD be published, or referenced, as part of the applicable deployment specification. Margo's common deployment specification guidelines documentation MAY define a set of common characteristics deployment specifications MAY reference. The schema is informative to a workload fleet manager operating in passthrough mode, but is normative for device suppliers claiming conformance to the characteristic.
 
 Characteristics are not versioned by adding a version field to each instance. An owner MAY make only these compatible changes under the same key:
 
@@ -189,19 +189,19 @@ Characteristics are not versioned by adding a version field to each instance. An
 
 The owner MUST assign a new key for any other change, including removing or renaming a property, changing a property data type, removing an enum option, or making an optional property required. The new key MAY use a new path or another collision-resistant identifier.
 
-In order to reduce compatibility concerns, modifying a characteristic is such as way as to required a new unique key is NOT RECOMMENDED and should only be done when there are no other options available.
+In order to reduce compatibility concerns, modifying a characteristic in such a way as to require a new unique key is NOT RECOMMENDED and should only be done when there are no other options available.
 
 Characteristics SHOULD strive to keep the required properties to an absolute minimum to prevent application suppliers from having to define a lot of matching expressions that are unnecessary for all conditions.
 
 #### Common Device Characteristic
 
-The Margo community MAY want to define a set of common device characteristics a deployment specification can reference for common things like memory, CPU, storage, and certain peripherals or interfaces. These common characteristics should be documented as part of the common device specification guidelines documentation.
+The Margo community MAY want to define a set of common device characteristics that a deployment specification can reference for common things like memory, CPU, storage, and certain peripherals or interfaces. These common characteristics should be documented as part of the common device specification guidelines documentation.
 
 A deployment specification MAY choose to reference these common device characteristics, or define their own more applicable characteristics based on the unique qualities of each deployment specification.
 
-Where units are important to the property, each characteristics MUST define a single unit the value is expected to be in so no unit conversion logic is required.
+Where units are important to the property, each characteristic MUST define a single unit the value is expected to be in so no unit conversion logic is required.
 
-The following are examples for some common characteristics the Margo community MAY want to define.
+The following are examples of some common characteristics the Margo community MAY want to define.
 
 1. **Nameplate characteristic**
 
@@ -416,7 +416,7 @@ The following are examples for some common characteristics the Margo community M
 
 Each deployment characteristic describes what is required for an application to target a device with the required profile. Each deployment characteristic can define what properties make sense for that specific deployment. There is no intention of trying to keep deployment characteristics common between deployment specifications.
 
-Currently with Margo we have targeted Helm (Kubernetes) and Compose (Podman/Docker). You can see from this [TWG Feature](https://github.com/margo/specification/issues/213) there are several Kubernetes specific problems needing to be addressed. This approach allows for solving those Kubernetes problems as part of the helm deployment specification characteristics instead of needing wholistic solutions that don't match what other deployment specification require.
+Currently, with Margo, we have targeted Helm (Kubernetes) and Compose (Podman/Docker). You can see from this [TWG Feature](https://github.com/margo/specification/issues/213) that there are several Kubernetes-specific problems needing to be addressed. This approach allows for solving those Kubernetes problems as part of the Helm deployment specification characteristics instead of needing holistic solutions that don't match what other deployment specifications require.
 
 > **NOTE:** The following deployment characteristic examples are entirely made up. Defining these deployment characteristics is not within the scope of this SUP and only serves as an example to demonstrate how this could be defined in the deployment specification.
 
@@ -519,7 +519,7 @@ In each `deploymentProfiles[]` entry, replace `type` and `deviceConstraints` wit
 * Introduce a `GtEq` and `LtEq` operator for "greater than or equal to", and "less than or equal to".
 * Introduce a `property` field to indicate the name of the property to match on.
 
-Each deployment specification defines which characteristics can be matched on. The workload fleet manager continue passing along the full deploymentProfile object to the device though the desired state.
+Each deployment specification defines which characteristics can be matched on. The workload fleet manager continues passing along the full deploymentProfile object to the device through the desired state.
 
 The following is an example application description requiring multiple characteristics:
 
@@ -563,7 +563,7 @@ deploymentProfiles:
         operator: Exists
 ```
 
-At a minimum there MUST be one `deviceCharacteristics` indicating the deployment characteristic to match.
+At a minimum, there MUST be one `deviceCharacteristics` indicating the deployment characteristic to match.
 
 ### 5. Matching grammar
 
@@ -587,7 +587,7 @@ The `property` must be set for the following operators
 
 The following operators are added:
 
-* `GtEq` and `LtEq`: true when a selected numeric value is respectively greater than, equal to, or less than the single numeric value
+* `GtEq` and `LtEq`: true when a selected numeric value is respectively "greater than", "equal to", or "less than" the single numeric value
 
 ### 6. Application Deployment changes
 
@@ -597,9 +597,9 @@ This preserves the existing Desired State rule that an ApplicationDeployment is 
 
 ### 7. Custom Runtime changes
 
-The [Custom Runtime SUP](https://github.com/margo/specification-enhancements/blob/main/completed/sup_device_specific_runtime_affinity_matching.md) introduced several concepts for handling custom runtimes. The changes described in this SUP replaces how custom runtimes are supported. With this SUP custom runtimes are supported using the new characteristics model instead of the device capability labels added as part of that SUP.
+The [Custom Runtime SUP](https://github.com/margo/specification-enhancements/blob/main/completed/sup_device_specific_runtime_affinity_matching.md) introduced several concepts for handling custom runtimes. The changes described in this SUP replace how custom runtimes are supported. With this SUP, custom runtimes are supported using the new characteristics model instead of the device capability labels added as part of that SUP.
 
-Device vendors whishing to support custom runtimes would define their own deployment characteristics and share these characteristics with any application supplier needing to target their runtime. Device vendors may choose to create their own deployment specification for their custom runtime if they choose, but this would not be an official deployment specification in the Margo registry.
+Device vendors wishing to support custom runtimes would define their own deployment characteristics and share these characteristics with any application supplier needing to target their runtime. Device vendors may choose to create their own deployment specification for their custom runtime if they choose, but this would not be an official deployment specification in the Margo registry.
 
 This SUP continues to make use of several concepts introduced with the custom runtime SUP to enable the schema-agnostic matching.
 
@@ -607,23 +607,23 @@ This SUP continues to make use of several concepts introduced with the custom ru
 
 With the changes to device capabilities, the former [vendor extension](https://docs.margo.org/specification/margo-management-interface/device-capabilities#specification-extensions) mechanism for device capabilities is changed to use the new characteristics model.
 
-If there is a need for collaborations between a device and workload fleet manager supplier the suppliers can define their own set of device characteristics that are sent to the workload fleet manger.
+If there is a need for collaboration between a device and a workload fleet manager supplier, the suppliers can define their own set of device characteristics that are sent to the workload fleet manager.
 
 The vendor extension mechanism defined for the [Application Description](https://docs.margo.org/specification/applications/application-description#specification-extensions) and [Desired State](https://docs.margo.org/specification/margo-management-interface/desired-state#specification-extensions) remain unchanged.
 
 ### 10. Dynamic WFM mappings
 
-Under certain use cases it may be necessary for the workload fleet manager to understand what a characteristic property means.
+Under certain use cases, it may be necessary for the workload fleet manager to understand what a characteristic property means.
 
 The core specification MUST only define the vocabulary needed for the workload fleet manager behavior. For each vocabulary item, a device reports a mapping with the characteristic key and JSONPath expression that supplies the value.
 
-Defining what this required vocabulary is, is not part of the SUP. The SUP only defines how to handle this in a dynamic way.
+Defining what this required vocabulary is is not part of the SUP. The SUP only defines how to handle this in a dynamic way.
 
 > **Note:** My opinion on this is it should be kept to an absolute minimum and only added with agreement from the PM group based on an actual real-world use case and not supposition.
 
-The mapping is an open object. The workload fleet manager MUST treat it as a dynamic set and MUST NOT assume that a particular entry exists. A mapping value MUST contain a characteristic `key` and a `property` JSONPath expression as defined by [RFC 9535](https://www.rfc-editor.org/rfc/rfc9535). The JSONPath expression MUST be evaluated relative to the characteristic's `properties` object and MUST resolve to the value used for the mapped vocabulary. The WFM MAY use a mapping entry only when it knows the corresponding vocabulary and the resolved value has the neccesary information (e.g, type,  unit, etc.).
+The mapping is an open object. The workload fleet manager MUST treat it as a dynamic set and MUST NOT assume that a particular entry exists. A mapping value MUST contain a characteristic `key` and a `property` JSONPath expression as defined by [RFC 9535](https://www.rfc-editor.org/rfc/rfc9535). The JSONPath expression MUST be evaluated relative to the characteristic's `properties` object and MUST resolve to the value used for the mapped vocabulary. The WFM MAY use a mapping entry only when it knows the corresponding vocabulary and the resolved value has the necessary information (e.g, type,  unit, etc.).
 
-For example, assume Margo has agreed the workload fleet manager must be able to determine the memory and storage totals and CPU cores. The mapping would be defined as follows:
+For example, assume Margo has agreed that the workload fleet manager must be able to determine the memory and storage totals and CPU cores. The mapping would be defined as follows:
 
 ```json
 {
@@ -667,7 +667,7 @@ This SUP introduces several breaking changes:
 * `deviceConstraints` is renamed and its child structure changes for the Application Description and Desired State manifests.
 * Capacity, property-selector, and label-selector semantics are replaced by characteristic matching.
 * Custom runtime support changes to the new model.
-* Vendor extensions for reported device capabilities changes to the new model.
+* Vendor extensions for reported device capabilities change to the new model.
 
 No new breaking change is introduced to OCI application or component distribution, Desired State artifact retrieval, deployment status reporting, mTLS, or OpenTelemetry requirements.
 
@@ -683,7 +683,7 @@ The current `labels` and label-selector mechanism is useful for small scalar met
 
 ### Register every profile schema with the workload fleet manager
 
-The earlier Device Manifest Bisection SUP used registered `ProfileDefinition` documents. Registration provides stronger validation, but it couples profile publication to workload fleet manager lifecycle and prevents a true passthrough-by-default implementation. This proposal leaves schema validation to the characteristic owner and device supplier, while retaining stable published schemas for tooling and conformance.
+The earlier Device Manifest Bisection SUP used registered `ProfileDefinition` documents. Registration provides stronger validation, but it couples profile publication to the workload fleet manager lifecycle and prevents a true passthrough-by-default implementation. This proposal leaves schema validation to the characteristic owner and device supplier, while retaining stable published schemas for tooling and conformance.
 
 ### Encode all requirements as specification extensions
 
