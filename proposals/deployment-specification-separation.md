@@ -2,7 +2,7 @@
 
 ## Owner
 
-@phil-abb
+[@phil-abb](https://github.com/phil-abb)
 
 ## Summary
 
