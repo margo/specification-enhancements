@@ -60,6 +60,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@arne-broering | Device specific parameter values | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/device-specific-parameter-values.md) |
 |@matlec | MIAF credential provisioning and aquisition | P2 | [PR](https://github.com/margo/specification-enhancements/pull/84) |
 |@javatask | Quadlet deployment type | P2 | [PR](https://github.com/margo/specification-enhancements/pull/69) |
+|@jjaswanson4 | Proposal - Overhaul Kubernetes Clusters as Managed Endpoints | P2 | [PR](https://github.com/margo/specification-enhancements/pull/97) |
 |@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/40) |
 |@pperycz | Support for real-time workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/75) |
 |@singhmj-1 | DeviceCapabilities improvements | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/76) |
