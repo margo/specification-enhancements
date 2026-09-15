@@ -6,7 +6,7 @@
 
 ## Summary
 
-As part of the desire to separate the core specification from independent deployment specifications, the PM group has indicated there is a desire to move to a schema-agnostic approach for matching applications to supported devices. This SUP proposes replacing the [fixed device capability](https://docs.margo.org/specification/margo-management-interface/device-capabilities) model with a schema-agnostic device profile model. A device reports an array of named characteristics, each containing an opaque property bag. Application deployment profiles refer to those characteristics by globally unique keys and use a small, standard matching language to express eligibility requirements.
+As part of the desire to separate the core specification from independent deployment specifications, the [PM group has indicated](https://github.com/margo/product_management/issues/97) there is a desire to move to a schema-agnostic approach for matching applications to supported devices. This SUP proposes replacing the [fixed device capability](https://docs.margo.org/specification/margo-management-interface/device-capabilities) model with a schema-agnostic device profile model. A device reports an array of named characteristics, each containing an opaque property bag. Application deployment profiles refer to those characteristics by globally unique keys and use a small, standard matching language to express eligibility requirements.
 
 The proposal also recommends an approach to use dynamic mapping for specific cases where the workload fleet manager must understand the meaning behind specific properties.
 
