@@ -115,7 +115,8 @@ The common guidelines MUST define:
 - governance, publication, versioning, lifecycle, deprecation, and retirement
   expectations for deployment specifications;
 - the conformance test expectations for deployment specifications; and
-- deployment specification repository naming and ownership conventions.
+- deployment specification repository naming, ownership conventions
+  and branch strategy guidelines.
 
 ### 3. Helm and Compose deployment specifications
 
@@ -146,7 +147,7 @@ The Helm deployment specification MUST contain the current Helm-specific materia
   require provider-specific Kubernetes API behavior;
 - Kubernetes orchestration and Helm deployment-provider requirements;
 - Helm value parameter target syntax and resolution behavior;
-- Schema-agnostic Helm-specific device definition based on approved approach; and
+- Schema-agnostic Helm-specific device definition based on approved approach;
 - Kubernetes and Helm-related conformance tests; and
 - Kubernetes-specific observability reporting.
 
@@ -213,6 +214,8 @@ Separating each deployment specification into its own git repository has the fol
 - Each deployment specification can move at its own pace and be versioned independently of anything else
 - We can define a structure and expected metadata files so a deployment specification registry can be created more dynamically based on a known structure
 - We can control when a new repository is created and how the initial owners are established.
+
+The new repositories continue using the `pre-draft` -> `draft` -> `release` branching strategy used with the `specification` repository.
 
 ### 6. Migration and compatibility
 
