@@ -1,4 +1,4 @@
-# Specification Update Proposal: Schema-agnostic device characteristic matching
+# Specification Update Proposal: Replace device capabilities with schema-agnostic device profile and characteristics
 
 ## Owner
 
@@ -12,7 +12,7 @@ The proposal also recommends an approach to use dynamic mapping for specific cas
 
 ## Reason for proposal
 
-Margo's current device capability contract hardcodes resources, peripherals, interfaces, runtimes, and deployment type information into a defined schema. The current [Device Capabilities](https://docs.margo.org/specification/margo-management-interface/device-capabilities) page and the [Application Description](https://docs.margo.org/specification/applications/application-description#deploymentprofile-attributes) page consequently require the workload fleet manager implementations to understand this schema in order to perform compatibility matching.
+Margo's current device capability contract hardcodes resources, peripherals, interfaces, runtimes, and deployment type information into a defined schema. The current [Device Capabilities](https://docs.margo.org/specification/margo-management-interface/device-capabilities) schema and the [Application Description](https://docs.margo.org/specification/applications/application-description#deploymentprofile-attributes) schema consequently require the workload fleet manager implementations to understand this schemas in order to perform compatibility matching.
 
 This conflicts with the new direction for defaulting to a schema-agnostic, passthrough-by-default approach for matching applications to devices. This is a new direction the PM group has agreed to, to decouple device characteristic matching from the core specification so new/updated characteristics can be added without requiring the workload fleet manager to implement new code to support it. The driving factor for this change in direction was a proposal to separate deployment types from the core specification, but the same reasoning applies to all device characteristics, not just what deployments devices support.
 
@@ -62,7 +62,7 @@ The common deployment specification guidelines SHOULD contain only:
 * characteristic evolution guidelines;
 * deployment specification governance model;
 
-An independently versioned deployment specification MAY define:
+An independently versioned deployment specification SHOULD define:
 
 * characteristic keys and their JSON Schemas;
 * the semantics and units of characteristic properties;
@@ -137,8 +137,20 @@ Device Profile Example:
 					}
 				]
 			}
-		}
-	]
+		},
+		{
+        "key": "margo.org/deployment/helm-for-chart-api-2",
+        "properties": {
+            "apis": [
+                "storage.k8s.io/v1",
+                "apiextensions.k8s.io/v1"
+				...
+            ],
+            "ingressController": "HAProxy",
+            "distribution": "OpenShift"
+        }
+    }
+  ]
 }
 ```
 
@@ -199,7 +211,7 @@ The Margo community MAY want to define a set of common device characteristics th
 
 A deployment specification MAY choose to reference these common device characteristics, or define their own more applicable characteristics based on the unique qualities of each deployment specification.
 
-Where units are important to the property, each characteristic MUST define a single unit the value is expected to be in so no unit conversion logic is required.
+The workload fleet manager MUST NOT be required to do any conversations between what is in the Application Description and Device Profile. For example, where units are important to the property, each characteristic MUST define a single unit the value is expected to be in so no unit conversion logic is required.
 
 The following are examples of some common characteristics the Margo community MAY want to define.
 
@@ -452,7 +464,7 @@ Currently, with Margo, we have targeted Helm (Kubernetes) and Compose (Podman/Do
 
     ```json
     {
-        "key": "margo.org/deployment/helm-with-chart-api-2",
+        "key": "margo.org/deployment/helm-for-chart-api-2",
         "properties": {
             "apis": [
                 "v1",
