@@ -12,7 +12,7 @@ The proposal also recommends an approach to use dynamic mapping for specific cas
 
 ## Reason for proposal
 
-Margo's current device capability contract hardcodes resources, peripherals, interfaces, runtimes, and deployment type information into a defined schema. The current [Device Capabilities](https://docs.margo.org/specification/margo-management-interface/device-capabilities) schema and the [Application Description](https://docs.margo.org/specification/applications/application-description#deploymentprofile-attributes) schema consequently require the workload fleet manager implementations to understand this schemas in order to perform compatibility matching.
+Margo's current device capability contract hardcodes resources, peripherals, interfaces, runtimes, and deployment type information into a defined schema. The current [Device Capabilities](https://docs.margo.org/specification/margo-management-interface/device-capabilities) schema and the [Application Description](https://docs.margo.org/specification/applications/application-description#deploymentprofile-attributes) schema consequently require the workload fleet manager implementations to understand these schemas in order to perform compatibility matching.
 
 This conflicts with the new direction for defaulting to a schema-agnostic, passthrough-by-default approach for matching applications to devices. This is a new direction the PM group has agreed to, to decouple device characteristic matching from the core specification so new/updated characteristics can be added without requiring the workload fleet manager to implement new code to support it. The driving factor for this change in direction was a proposal to separate deployment types from the core specification, but the same reasoning applies to all device characteristics, not just what deployments devices support.
 
@@ -59,7 +59,7 @@ The common deployment specification guidelines SHOULD contain only:
 * requirements each deployment specification must meet;
 * recommended common characteristics definitions;
 * characteristic key naming guidelines;
-* characteristic evolution guidelines;
+* characteristic evolution guidelines; and
 * deployment specification governance model;
 
 An independently versioned deployment specification SHOULD define:
