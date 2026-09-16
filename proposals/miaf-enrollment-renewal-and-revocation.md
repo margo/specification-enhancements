@@ -230,7 +230,7 @@ Two lists follow. The first applies to the MIS of a Trust Domain that advertises
 **Publishing the CRLs.**
 
 - The MIS **MUST** list a CRL for every CA that issues SVIDs in the Trust Domain, or has issued SVIDs that have not yet expired. It **MUST** keep publishing CRLs for such a CA even after that CA stops issuing SVIDs. A verifier that finds a presented issuer missing from the list it holds cannot tell a stale or misconfigured list from a stripped one, so the missing entry is a logged signal; [§9](#9-security-considerations) records an attacker stripping an entry.
-- The MIS **MUST** publish complete CRLs; delta CRLs are not used.
+- The MIS **MUST** publish complete CRLs conforming to the CRL profile in [RFC 5280 §5](https://datatracker.ietf.org/doc/html/rfc5280#section-5). This includes version 2, the `nextUpdate` field, and the Authority Key Identifier and CRL Number extensions. Delta CRLs are not used.
 - The MIS **MUST** publish an updated CRL within 24 hours of a revocation. It **MUST NOT** set a CRL's validity period longer than 7 days.
 - The MIS **SHOULD** support `ETag`/`Last-Modified` caching on the CRL endpoint it serves.
 
