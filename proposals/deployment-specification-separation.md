@@ -89,7 +89,7 @@ Margo shall publish the following independently versioned parts:
    container-engine deployment contract. A new `deployment-spec-compose` repository will be created for this
    content.
 
-Margo Core MUST contain only the technology-neutral portions of the following model:
+Margo Core MUST contain only the technology-neutral portions of the following models:
 
 - device identity, hierarchy, and gateway relationships;
 - the profile and mapping endpoints and their transport/security requirements;
@@ -99,6 +99,8 @@ Margo Core MUST contain only the technology-neutral portions of the following mo
   an opaque deployment profile and common parameters;
 - desired-state synchronization, deployment status, and lifecycle semantics;
 - common application/package identity and registry references; and
+
+All requirements pertaining to what a Workload Fleet Manager must implement MUST be contained within the Core specification.
 
 ### 2. Common Deployment Specification Guidelines
 
@@ -117,6 +119,8 @@ The common guidelines MUST define:
 - the conformance test expectations for deployment specifications; and
 - deployment specification repository naming, ownership conventions
   and branch strategy guidelines.
+
+Deployment specifications must not contain any requirements requiring changes to the Workload Fleet Manager.
 
 ### 3. Helm and Compose deployment specifications
 
@@ -215,7 +219,9 @@ Separating each deployment specification into its own git repository has the fol
 - We can define a structure and expected metadata files so a deployment specification registry can be created more dynamically based on a known structure
 - We can control when a new repository is created and how the initial owners are established.
 
-The new repositories continue using the `pre-draft` -> `draft` -> `release` branching strategy used with the `specification` repository.
+The new deployment specification repositories continue using the `pre-draft` -> `draft` -> `release` branching strategy used with the `specification` repository.
+
+Each deployment specification is independently versioned but must follow the [version management strategy](https://docs.margo.org/specification/specification-version-management) outlined for the core specification for sematic versioning. Each deployment specification's version only changes based on semantic versioning rules for the content in the deployment specification, not because the core specification's version changes.
 
 ### 6. Migration and compatibility
 
