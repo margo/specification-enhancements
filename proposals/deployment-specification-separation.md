@@ -56,7 +56,7 @@ This separation improves the specification by:
 
 ## Requirements alignment acknowledgement
 
-This SUP addresses [product-management issue #97](https://github.com/margo/product_management/issues/97) for separating core and deployment specifications.
+This SUP addresses [TWG feature #220](https://github.com/margo/specification/issues/220) for separating core and deployment specifications.
 
 This SUP does not introduce any changes to the specification content
 apart from reorganizing the existing content into three separate specifications:
