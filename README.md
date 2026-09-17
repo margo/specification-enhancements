@@ -66,6 +66,8 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@singhmj-1 | DeviceCapabilities improvements | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/76) |
 |@singhmj-1 | Resource allocation and conflict resolution proposal for app workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/66) |
 |@matlec | MIAF Enrollment, Renewal, and Revocation | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/95) |
+|@phil-abb | Replace device capabilities with schema-agnostic device profile and characteristics | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/98) |
+|@phil-abb | Separate Margo Core from deployment specifications | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/99) |
 
 
 ## SUP Owner SUP Checklist
