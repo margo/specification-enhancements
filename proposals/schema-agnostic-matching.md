@@ -88,7 +88,7 @@ PUT    /api/v1/profile/{targetName}
 DELETE /api/v1/profile/{targetName}
 ```
 
-`targetName` uses the existing hierarchical device identifier rules for gateways. `POST` creates a profile, `PUT` updates an existing profile's characteristics, and `DELETE` removes profile characteristics. The POST and PUT request body MUST be the `deviceCharacteristics` object shown below. DELETE has no request body to remove all characteristics for the target, or a payload with an array of keys for individual characteristics to remove. A gateway MUST submit the parent profile before a child profile, preserving the current see-through gateway ordering rule.
+`targetName` uses the existing hierarchical device identifier rules for gateways. `POST` creates a profile, `PUT` updates an existing profile's characteristics, and `DELETE` removes profile characteristics. The POST and PUT request body MUST be the `characteristics` object shown below. DELETE has no request body to remove all characteristics for the target, or a payload with an array of keys for individual characteristics to remove. A gateway MUST submit the parent profile before a child profile, preserving the current see-through gateway ordering rule.
 
 The endpoints inherit the Management Interface requirements for mTLS, authorization, HTTP/1.1, port 443, status codes, and [RFC 9457 Problem Details](https://docs.margo.org/specification/margo-management-interface/api-requirements-and-security#error-responses). A malformed envelope is a `400 Bad Request`; a semantically invalid characteristic payload is a `422 Unprocessable Content`.
 
@@ -96,7 +96,7 @@ The device profile payload is an array of device characteristics.
 
 ```json
 {
-    "deviceCharacteristics": 
+    "characteristics": 
     [
 	    {
 			"key": "string",
@@ -112,7 +112,7 @@ Device Profile Example:
 
 ```json
 {
-	"deviceCharacteristics": [
+	"characteristics": [
 		{
 			"key": "margo.org/resource/cpu",
 			"properties": {
@@ -160,7 +160,7 @@ Each device characteristic is represented by a key and an object-valued property
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
 	"$id": "https://margo.org/schemas/device-characteristic.schema.json",
-	"title": "DeviceCharacteristic",
+	"title": "Characteristic",
 	"type": "object",
 	"additionalProperties": false,
 	"required": ["key", "properties"],
@@ -180,7 +180,7 @@ Each device characteristic is represented by a key and an object-valued property
 
 The following rules apply:
 
-* `deviceCharacteristics` MUST be an array. Each key MUST occur at most once in a payload.
+* `characteristics` MUST be an array. Each key MUST occur at most once in a payload.
 * A characteristic key MUST be globally unique within the Margo ecosystem. Reverse-domain names such as `margo.org/resource/cpu` or `example.com/interface/canbus` are RECOMMENDED.
 * `properties` MUST be a JSON object. Its contents are opaque to the core specification, and MAY contain nested objects and arrays.
 * A device MAY omit a characteristic when it is unavailable. Omission is different from an empty property bag.
@@ -522,10 +522,10 @@ Currently, with Margo, we have targeted Helm (Kubernetes) and Compose (Podman/Do
 
 The `deploymentProfiles` object was recently updated as part of the changes to support [Custom Runtimes](https://github.com/margo/specification-enhancements/blob/main/completed/sup_device_specific_runtime_affinity_matching.md). The proposal recommends the following changes to what was added to the specification for that SUP.
 
-In each `deploymentProfiles[]` entry, replace `type` and `deviceConstraints` with `deviceCharacteristics`:
+In each `deploymentProfiles[]` entry, replace `type` and `deviceConstraints` with `characteristics`:
 
 * Remove the required `type` property from the core deployment profile.
-* Rename `deviceConstraints` to `deviceCharacteristics`.
+* Rename `deviceConstraints` to `characteristics`.
 * Remove `labelSelector` and `propertySelector`; both are replaced by one generic `matchExpressions` list.
 * Remove `capacityRequirements`. Capacity requirements are expressed through characteristics expression matching.
 * Introduce a `GtEq` and `LtEq` operator for "greater than or equal to", and "less than or equal to".
@@ -545,7 +545,7 @@ deploymentProfiles:
         repository: oci://northstarida.azurecr.io/charts/digitron-orchestrator
         revision: 1.0.9
         wait: true
-    deviceCharacteristics:
+    characteristics:
     - matchExpressions:
       - key: margo.org/deployment/helm-with-chart-api-2
         operator: Exists
@@ -575,7 +575,7 @@ deploymentProfiles:
         operator: Exists
 ```
 
-At a minimum, there MUST be one `deviceCharacteristics` indicating the deployment characteristic to match.
+At a minimum, there MUST be one `characteristics` indicating the deployment characteristic to match.
 
 ### 5. Matching grammar
 
@@ -603,7 +603,7 @@ The following operators are added:
 
 ### 6. Application Deployment changes
 
-The selected `deviceCharacteristics` block MUST be copied unchanged from the Application Description into the corresponding `spec.deploymentProfile` in the `ApplicationDeployment`. The device MUST evaluate it before applying the deployment. The workload fleet manager MUST NOT rewrite property pointers, characteristic keys, operators, or values while creating Desired State.
+The selected `characteristics` block MUST be copied unchanged from the Application Description into the corresponding `spec.deploymentProfile` in the `ApplicationDeployment`. The device MUST evaluate it before applying the deployment. The workload fleet manager MUST NOT rewrite property pointers, characteristic keys, operators, or values while creating Desired State.
 
 This preserves the existing Desired State rule that an ApplicationDeployment is the self-contained deployment instruction retrieved by the client, while allowing clients to remain ignorant of deployment-specific property schemas. Unknown characteristic keys and unknown properties MUST be retained and MUST NOT cause failure solely because the client does not understand them.
 
