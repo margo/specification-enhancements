@@ -554,10 +554,10 @@ deploymentProfiles:
         operator: ContainsAll
         itemSelector:
           matchExpressions:
-          - key: /cores
+          - property: /cores
             operator: GtEq
             values: [1.5]
-          - key: /architecture
+          - property: /architecture
             operator: In
             values: [amd64]
       - key: margo.org/peripherals/gpu
@@ -565,10 +565,10 @@ deploymentProfiles:
         operator: ContainsAll
         itemSelector:
           matchExpressions:
-          - key: /manufacturer
+          - property: /manufacturer
             operator: In
             values: [NVIDIA]
-          - key: /allocatable
+          - property: /allocatable
             operator: In
             values: [true]
       - key: margo.org/interface/canbus
