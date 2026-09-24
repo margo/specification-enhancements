@@ -7,7 +7,7 @@
 | Status | Draft |
 | Category | Cat 2 — Enhancement |
 | Created | 2025-03-15 |
-| Revised | 2026-08-21 |
+| Revised | 2026-09-24 |
 | Depends on | SUP-00 "The Helm Way" (PR #67, MERGED), SUP-01 "Compose OCI" (PR #68, MERGED) |
 | Anchor feature | margo/specification issue #138 |
 
@@ -50,6 +50,8 @@ This SUP addresses the following features from the TWG Feature Backlog:
 
 Margo adopts the following CNCF Notary Project specifications (v1.1.0) in full. Where Margo narrows or extends, this SUP states the delta explicitly.
 
+**Release tracking.** The Notary Project versions by release, so this SUP pins to the tag **v1.1.0** — the latest released tag at the time of writing. All Notary references in this SUP and its companion guide resolve against `v1.1.0`, not `main`. Unreleased `main` drift (for example the renaming of `trustpolicy.json` to `trustpolicy.oci.json`) is out of scope until it appears in a tagged release; a future revision of this SUP moves the pin deliberately after reviewing the release notes. Margo does not track Notary `main`.
+
 | Specification | Reference |
 |---|---|
 | Signature Specification | [signature-specification.md](https://github.com/notaryproject/specifications/blob/v1.1.0/specs/signature-specification.md) |
@@ -83,22 +85,30 @@ Additional normative references:
 
 Application Developers **MUST** verify their own signatures before publishing a signed artifact to a registry.
 
-### 3. Cryptographic recommendations
+### 3. Cryptographic profile
 
-Margo does not mandate a specific cryptographic profile. Operator security policy governs algorithm and key-size selection.
+This section defines a normative mandatory-to-implement (MTI) algorithm set so that any two conformant Margo implementations can verify each other's signatures. The set is a **deliberate narrowing** to match the MIAF cryptographic baseline ([MIAF §3 "Cryptographic requirements"](../../completed/margo-identity-and-authorization-framework.md)): a Margo device that already implements MIAF for identity should not carry a second, lower cryptographic floor for the supply chain. This is an alignment of algorithms only — it does **NOT** claim that MIAF governs artifact-signing keys, which are issued by the publisher's code-signing PKI, not by a MIAF Trust Domain.
 
-The following baseline is RECOMMENDED (informative):
+Mandatory-to-implement algorithms:
+
+| Algorithm | Requirement |
+|---|---|
+| **ES256** (ECDSA P-256 + SHA-256) | Verifiers **MUST** implement. |
+| **PS256** (RSA-PSS, modulus ≥ 3072 bits, + SHA-256) | Verifiers **MUST** implement. |
+
+- Verifiers **MUST** implement both ES256 and PS256, because a verifier cannot know in advance which algorithm a publisher will use.
+- Signers **MUST** use at least one of ES256 or PS256.
+- **RS256** (RSA PKCS#1 v1.5) **MUST NOT** be used for Margo artifact signatures.
+- Verifiers **MUST** support both the COSE and JWS signature envelopes.
+
+Broader parameters are RECOMMENDED (informative), not mandated:
 
 | Parameter | Recommendation |
 |---|---|
-| RSA key size | 3072 bits minimum |
-| ECDSA curve | P-256 or P-384 |
-| Hash algorithm | SHA-256 minimum |
-| Signature envelope | COSE_Sign1 or JWS |
+| ECDSA curve | P-256 (MTI) or P-384 |
+| RSA key size | Larger than the 3072-bit floor where operator policy requires it |
 | Signing scheme | notary.x509 |
-| Timestamping | Include RFC 3161 TSA response when certificate validity period is shorter than expected artifact lifetime |
-
-Normative requirement: Verifiers **MUST** support both COSE and JWS signature envelopes.
+| Timestamping | Include an RFC 3161 TSA response when the certificate validity period is shorter than the expected artifact lifetime |
 
 ### 4. Verification
 
@@ -111,7 +121,7 @@ Verification requirements:
 1. Verification **MUST** be performed against the target artifact's OCI manifest digest.
 2. Verifiers **MUST** discover signatures via the OCI Referrers API, filtered on `artifactType=application/vnd.cncf.notary.signature`.
 3. Certificate path validation **MUST** conform to RFC 5280.
-4. The leaf certificate **MUST** carry the Key Usage `digitalSignature` and the Extended Key Usage `id-kp-codeSigning`.
+4. The leaf certificate **MUST** carry the Key Usage `digitalSignature`. The Extended Key Usage `id-kp-codeSigning` is OPTIONAL: the leaf certificate **MAY** carry it, and where an EKU extension is present it **MUST NOT** contain `anyExtendedKeyUsage`, `id-kp-serverAuth`, `id-kp-clientAuth`, `id-kp-emailProtection`, or `id-kp-timeStamping`. This matches the Notary Project v1.1.0 [signature-specification.md](https://github.com/notaryproject/specifications/blob/v1.1.0/specs/signature-specification.md) leaf-certificate requirements, which mandate `digitalSignature` but do not require `id-kp-codeSigning`. Margo does not add a delta here; operators who wish to require `id-kp-codeSigning` express that through trust-policy configuration, not through this normative baseline.
 5. Signature validity binds to the manifest digest, not the registry path. A signature remains valid after the artifact is mirrored to a different registry.
 6. An expired signing certificate **MUST** be accepted only if an embedded RFC 3161 timestamp proves the signature was created before the certificate's `notAfter` time.
 7. Per-level verification semantics (`strict`, `permissive`, `audit`, `skip`) are adopted by reference from the Notary Project [trust-store-trust-policy.md](https://github.com/notaryproject/specifications/blob/v1.1.0/specs/trust-store-trust-policy.md).
@@ -132,7 +142,7 @@ Distribution of publisher signing material to WFM and WFM Client instances is th
 
 ### 6. Conformance actors and obligations
 
-| Actor | Obligation | Current (Phase 3 Approved) | GA specification release |
+| Actor | Obligation | v1-alpha1 (transition) | GA specification release |
 |---|---|---|---|
 | Application Developer | Sign artifacts per §2 | **SHOULD** | **MUST** |
 | WFM | Verify signatures when trust policy level ≠ `skip` | **SHOULD** | **MUST** |
@@ -156,6 +166,8 @@ When no trust policy is configured for a given registry scope, verification is n
 | `system-design/specification/security/signing-profile.md` (NEW) | Normative Margo signing profile |
 
 No LinkML schema changes are required.
+
+The removal of the legacy PGP signing prose and the `keyLocation` field is **owned by SUP-01** ("Compose OCI", PR #68), which replaces `ComponentProperties` with `repository`/`revision`/`wait`/`timeout`. SUP-03 does not re-claim those edits and assumes they land with SUP-01's integration. If SUP-03 is integrated before SUP-01's edits reach the specification, confirm the PGP/`keyLocation` state with the docs owners rather than editing those passages here.
 
 ## Alternatives considered
 
@@ -188,4 +200,4 @@ No LinkML schema changes are required.
 
 ---
 
-*Prepared by Andrii Melashchenko (Belden Inc.), 2026-08-21.*
+*Prepared by Andrii Melashchenko (Belden Inc.), 2026-09-24.*

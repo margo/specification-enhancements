@@ -4,7 +4,7 @@
 |---|---|
 | Status | Informative (non-normative companion to SUP-03) |
 | Author | Andrii Melashchenko, Belden Inc. |
-| Date | 2026-08-21 |
+| Date | 2026-09-24 |
 
 ## 1. Purpose
 
@@ -98,7 +98,9 @@ The response is an OCI Image Index listing all signature manifests attached to t
 
 ### 2.4 What the signature protects
 
-The signature binds to the target artifact's manifest digest. Since the OCI manifest references all layers (blobs) by their content-addressable digests, verifying the manifest signature transitively guarantees integrity of every layer the manifest references. Any modification to any layer changes its digest, which changes the manifest content, which invalidates the signature.
+The signature binds to the target artifact's manifest digest. Since the OCI manifest references all layers (blobs) by their content-addressable digests, verifying the manifest signature guarantees the integrity of every layer *that this manifest references*. Any modification to any referenced layer changes its digest, which changes the manifest content, which invalidates the signature.
+
+**Scope: a single manifest.** This guarantee is digest-bound to one manifest only. It does **not** extend across artifact tiers. References between the Application Package, Component, and Container Image tiers use mutable OCI tags (`revision`), not digests, so a valid Application Package signature gives no cryptographic assurance about the specific container images ultimately resolved. That cross-tier mutable-tag gap is recorded as a known limitation in SUP-03 §7 (limitation 1) and is deferred to a future SUP that carries pinned digests with the deployment. Do not read "digest-bound" as covering the whole tier graph.
 
 ## 3. Verification walkthrough
 
@@ -115,7 +117,17 @@ The signature binds to the target artifact's manifest digest. Since the OCI mani
 | 7. Subject identity matching | Verify the signing certificate's subject matches `trustedIdentities` in the trust policy | Fail — identity not trusted |
 | 8. Digest binding verification | Confirm the signed payload's target digest matches the artifact digest being verified | Fail — digest mismatch |
 | 9. Timestamp evaluation | If the signing cert is expired, check for a valid RFC 3161 countersignature proving the signature was created before `notAfter` | Fail if no valid timestamp and cert is expired |
-| 10. Revocation check | Check CRL or OCSP for certificate revocation status (if configured) | Fail — certificate revoked |
+| 10. Revocation check | If the operator's trust policy enables revocation, check the vendor code-signing PKI's CRL or OCSP endpoint for the leaf certificate's status | Fail — certificate revoked |
+
+**Revocation is a vendor-PKI and operator-policy behaviour, not a MIAF requirement.** Revocation here is a property of the *publisher's code-signing PKI* (the CA that issued the signing leaf certificate) and of the *operator's trust policy*, which decides whether to consult CRL/OCSP and how to fail when a status is unavailable. SUP-03 §4 does not mandate CRL or OCSP. This is deliberately independent of — and does not contradict — MIAF's SVID revocation stance: MIAF (see the [Margo Identity and Authorization Framework](../../completed/margo-identity-and-authorization-framework.md), §3 cryptographic requirements and §5 certificate validation) uses **no CRL or OCSP** for SVIDs and forbids AIA fetching. The two answer different questions: MIAF revokes *transport identities* through short SVID lifetimes and operator playbooks, whereas an artifact signature is validated against a *code-signing PKI* that may legitimately publish a CRL or run an OCSP responder.
+
+**Air-gapped handling.** Online CRL/OCSP endpoints are frequently unreachable in air-gapped OT environments. When online revocation cannot be reached, operators SHOULD rely on the mechanisms that do not require connectivity:
+
+- **Short certificate lifetimes** on the signing leaf, so a compromised key ages out quickly without a revocation lookup.
+- **Trust-anchor rotation** — retiring and replacing the publisher root/intermediate the operator has installed, which invalidates every certificate beneath it.
+- **Operator trust-policy choice** — configuring the policy to treat an unreachable revocation endpoint as either soft-fail (accept with log) or hard-fail per site risk tolerance, rather than assuming an online check is always possible.
+
+These are operator and vendor-PKI concerns; none of them is derived from MIAF.
 
 ### 3.2 Behavior by verification level
 
@@ -126,7 +138,7 @@ The signature binds to the target artifact's manifest digest. Since the OCI mani
 | `audit` | Log and accept | Log and accept | Log and accept | Log and accept |
 | `skip` | Not evaluated | Not evaluated | Not evaluated | Not evaluated |
 
-These semantics are defined in the Notary Project [trust-store-trust-policy.md](https://github.com/notaryproject/specifications/blob/v1.1.0/specs/trust-store-trust-policy.md) and adopted by SUP-03 by reference.
+These semantics are defined in the Notary Project [trust-store-trust-policy.md](https://github.com/notaryproject/specifications/blob/v1.1.0/specs/trust-store-trust-policy.md) and adopted by SUP-03 by reference. The "Revoked cert" column applies only when the operator's trust policy enables revocation against the vendor code-signing PKI (see step 10); it is not a MIAF-derived requirement, and in an air-gapped deployment where CRL/OCSP is unreachable the operator's policy determines whether an unavailable status is treated as accept-with-log or reject.
 
 ## 4. PKI deployment models
 
@@ -333,4 +345,4 @@ acme-corp-signing-material/
 
 *This document is informative. All normative requirements are in [SUP-03](sup-03-oci-signature.md).*
 
-*Prepared by Andrii Melashchenko (Belden Inc.), 2026-08-21.*
+*Prepared by Andrii Melashchenko (Belden Inc.), 2026-09-24.*
