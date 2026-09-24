@@ -522,14 +522,24 @@ Currently, with Margo, we have targeted Helm (Kubernetes) and Compose (Podman/Do
 
 The `deploymentProfiles` object was recently updated as part of the changes to support [Custom Runtimes](https://github.com/margo/specification-enhancements/blob/main/completed/sup_device_specific_runtime_affinity_matching.md). The proposal recommends the following changes to what was added to the specification for that SUP.
 
-In each `deploymentProfiles[]` entry, replace `type` and `deviceConstraints` with `characteristics`:
-
-* Remove the required `type` property from the core deployment profile.
+* Rename the required `type` property in the core `deploymentProfile` to `key`.
 * Rename `deviceConstraints` to `characteristics`.
 * Remove `labelSelector` and `propertySelector`; both are replaced by one generic `matchExpressions` list.
 * Remove `capacityRequirements`. Capacity requirements are expressed through characteristics expression matching.
 * Introduce a `GtEq` and `LtEq` operator for "greater than or equal to", and "less than or equal to".
 * Introduce a `property` field to indicate the name of the property to match on.
+* Rename the `itemSelector` match expression's `key` to `property`
+
+The `deploymentProfile.key` is used to determine which deployment technology the profile is targeting. This is the only required matching the workload fleet manager MUST do and equates to a single match expression rule of:
+
+```yaml
+  - key: {deploymentProfile.key}
+    operator: Exists
+```
+
+> **Note:** characteristics matching remains optional for workload fleet managers to implement as [defined in the specification](https://docs.margo.org/specification/applications/application-description#deviceconstraints-attributes) already.
+
+The `deploymentProfile.key` is the only key used to determine what deployment technology the profile instance is associated with. If the deployment profile instance's match expressions contain keys for a deployment characteristic, they are treated as regular matching expressions and not an indication of what deployment technology the profile instance is for.
 
 Each deployment specification defines which characteristics can be matched on. The workload fleet manager continues passing along the full deploymentProfile object to the device through the desired state.
 
@@ -537,7 +547,8 @@ The following is an example application description requiring multiple character
 
 ```yaml
 deploymentProfiles:
-  - id: com-northstarida-digitron-orchestrator-helm-a
+  - key: margo.org/deployment/helm-with-chart-api-2
+    id: com-northstarida-digitron-orchestrator-helm-a
     description: Helm deployment requiring a GPU and CAN Bus interface.
     components:
     - name: digitron-orchestrator
@@ -547,8 +558,6 @@ deploymentProfiles:
         wait: true
     characteristics:
     - matchExpressions:
-      - key: margo.org/deployment/helm-with-chart-api-2
-        operator: Exists
       - key: margo.org/resource/cpu
         property: /cpus
         operator: ContainsAll
@@ -574,8 +583,6 @@ deploymentProfiles:
       - key: margo.org/interface/canbus
         operator: Exists
 ```
-
-At a minimum, there MUST be one `characteristics` indicating the deployment characteristic to match.
 
 ### 5. Matching grammar
 
