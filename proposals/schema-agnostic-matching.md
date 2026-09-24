@@ -682,7 +682,7 @@ This SUP introduces several breaking changes:
 
 * The device capability document shape changes from fixed fields to an array of characteristics.
 * The device capability endpoint and HTTP contract are replaced by profile endpoints.
-* `type` is removed from deployment profiles.
+* `type` is renamed from deployment profiles.
 * `deviceConstraints` is renamed and its child structure changes for the Application Description and Desired State manifests.
 * Capacity, property-selector, and label-selector semantics are replaced by characteristic matching.
 * Custom runtime support changes to the new model.
