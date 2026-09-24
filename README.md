@@ -68,6 +68,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@matlec | MIAF Enrollment, Renewal, and Revocation | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/95) |
 |@phil-abb | Replace device capabilities with schema-agnostic device profile and characteristics | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/98) |
 |@phil-abb | Separate Margo Core from deployment specifications | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/99) |
+|@javatask | OCI Artifact Signing for Margo | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/100) |
 
 
 ## SUP Owner SUP Checklist
