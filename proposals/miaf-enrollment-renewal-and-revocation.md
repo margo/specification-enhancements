@@ -210,6 +210,10 @@ The operator prevents a lapse by sizing the SVID lifetime to the principal's rea
 
 - A connected principal **SHOULD** use an SVID lifetime of 7 days or less.
 - An intermittently connected principal **SHOULD** use at least 2.5 times its realistic offline window, and otherwise as short as possible. With the 40% to 60% draw window above, the latest draw then leaves one full offline window (0.4 * 2.5 = 1).
+- The MIS **MUST** apply an operator-configured maximum lifetime to every SVID it issues in the Trust Domain, and **MUST NOT** issue an SVID with a longer lifetime. The MIS **MAY** apply stricter maximums, for example for each issuing profile or for each principal class. A stock CA product meets the first rule with its maximum validity setting, so the rule needs no policy front end.
+- Where an SVID lifetime exceeds the connected value above, the deployment **SHOULD** use at least one of these two controls: revocation status offered by the Trust Domain ([§5](#5-revocation)), or an accepted-client policy that lists each accepted WFM Client individually.
+
+This profile sets no fixed upper value for the lifetime. A realistic offline window depends on the deployment, so one value is either too short for some deployments or too long to limit anything. The operator-configured maximum makes the chosen value a documented decision that a conformance test can check on the issued SVIDs.
 
 If a principal's drawn renewal time passed while it was offline, the guidance above assumes that the principal attempts renewal immediately on reconnection. The two values compose for one offline window: an offline period longer than the window the operator sized for still expires the SVID, and the principal lapses. The lifetime choice is also a revocation choice: once further issuance to an attacker has stopped, short lifetimes limit how long its issued SVIDs remain valid. Expiry does not limit an attacker who can keep renewing. Requiring a new key does not by itself change that: the attacker can use the stolen key to authenticate a rekey. The revocation status of [§5](#5-revocation) matters mainly at the longer lifetimes intermittent principals need.
 
