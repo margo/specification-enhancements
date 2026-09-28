@@ -69,6 +69,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@phil-abb | Replace device capabilities with schema-agnostic device profile and characteristics | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/98) |
 |@phil-abb | Separate Margo Core from deployment specifications | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/99) |
 |@javatask | OCI Artifact Signing for Margo | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/100) |
+|@oomichi-melco | Report device hostname with capabilities during onboarding | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/101) |
 
 
 ## SUP Owner SUP Checklist
