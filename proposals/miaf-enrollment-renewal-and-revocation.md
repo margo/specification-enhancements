@@ -79,11 +79,12 @@ These rules leave the acquisition SUP's mode rules otherwise intact. A product *
 
 **Conformant configurations.** A conformant principal takes one of two forms. A principal that can generate a key safely implements the enrolled mode and the [§8](#8-protocol-binding-est) binding, and can consume a CRL list ([§5](#5-revocation)); it enrolls with the Enrollment Token, and may additionally support the certificate-form enrollment authorization and offer enrollment protocols beyond EST. A principal that cannot generate a key safely uses the installed mode, and may consume a CRL list. The conformance documentation that the acquisition SUP requires (the mode a product implements) also records these optional capabilities.
 
-**Changes to the specification.** This profile changes three sections of MIAF's operator playbooks, and automates the lifecycle phases that the WFM Identity Profile describes as operator-driven:
+**Changes to the specification.** This profile changes three sections of MIAF's operator playbooks and the statements on revocation elsewhere in MIAF, and automates the lifecycle phases that the WFM Identity Profile describes as operator-driven:
 
 - The provisioning playbook now has three roles: the path for principals in the installed mode, the documented fallback for the automated path, and the procedure for delivering the enrollment authorization (usually the Enrollment Token).
 - The revocation playbook now has a fourth mechanism, the CRL, beside accepted-client policy removal, Trust Bundle rotation, and expiry ([§5](#5-revocation)).
 - The lifetime guidance is replaced by the values in [§4](#4-renewal).
+- The certificate validation rules state that MIAF uses no CRL or OCSP, and the WFM Identity Profile and its threat rows name Trust Bundle rotation as the only cryptographic revocation of a WFM. These statements change to include the CRL of [§5](#5-revocation).
 - The WFM Identity Profile describes the Enrollment, Renewal, and Revocation phases as operator-driven. For a principal in the enrolled mode, this profile automates all three.
 
 ### Part A - The Core (protocol-independent)
