@@ -191,7 +191,7 @@ The following rules apply:
 
 ### 3. Characteristic definitions and evolution
 
-The supplier that owns a characteristic key MUST publish a human-readable definition for that key and MAY publish a JSON Schema. The characteristic definition SHOULD be published, or referenced, as part of the applicable deployment specification. Margo's common deployment specification guidelines documentation MAY define a set of common characteristics deployment specifications MAY reference. The schema is informative to a workload fleet manager operating in passthrough mode, but is normative for device suppliers claiming conformance to the characteristic if a schema is provided.
+The supplier that owns a characteristic key MUST publish a human-readable definition for that key and MAY publish a JSON Schema. The characteristic definition SHOULD be published, or referenced, as part of the applicable deployment specification. The schema is informative to a workload fleet manager operating in passthrough mode, but is normative for device suppliers claiming conformance to the characteristic if a schema is provided.
 
 Characteristics are not versioned by adding a version field to each instance. An owner MAY make only these compatible changes under the same key:
 
@@ -207,13 +207,13 @@ Characteristics SHOULD strive to keep the required properties to an absolute min
 
 #### Common Device Characteristic
 
-The Margo community MAY want to define a set of common device characteristics that a deployment specification can reference for common things like memory, CPU, storage, and certain peripherals or interfaces. These common characteristics should be documented as part of the common device specification guidelines documentation.
+It is my opinion that the Margo community should define a set of common device characteristics that a deployment specification can reference for common things like memory, CPU, storage, and certain peripherals or interfaces. If the community agrees to do this, these common characteristics should be documented as part of the common device specification guidelines documentation.
 
-A deployment specification MAY choose to reference these common device characteristics, or define their own more applicable characteristics based on the unique qualities of each deployment specification.
+If they are defined, a deployment specification MAY choose to reference these common device characteristics, or define their own more applicable characteristics based on the unique qualities of each deployment specification.
 
 The workload fleet manager MUST NOT be required to do any conversations between what is in the Application Description and Device Profile. For example, where units are important to the property, each characteristic MUST define a single unit the value is expected to be in so no unit conversion logic is required.
 
-The following are examples of some common characteristics the Margo community MAY want to define.
+The following are examples of some common characteristics the Margo community could consider defining.
 
 1. **Nameplate characteristic**
 
