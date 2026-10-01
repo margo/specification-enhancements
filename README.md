@@ -63,11 +63,11 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@jjaswanson4 | Proposal - Overhaul Kubernetes Clusters as Managed Endpoints | P2 | [PR](https://github.com/margo/specification-enhancements/pull/97) |
 |@phil-abb | Replace device capabilities with schema-agnostic device profile and characteristics | P2 | [PR](https://github.com/margo/specification-enhancements/pull/98) |
 |@phil-abb | Separate Margo Core from deployment specifications | P2 | [PR](https://github.com/margo/specification-enhancements/pull/99) |
+|@matlec | MIAF Enrollment, Renewal, and Revocation | P2 | [PR](https://github.com/margo/specification-enhancements/pull/95) |
 |@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [PR](https://github.com/margo/specification-enhancements/pull/40) |
 |@pperycz | Support for real-time workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/75) |
 |@singhmj-1 | DeviceCapabilities improvements | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/76) |
 |@singhmj-1 | Resource allocation and conflict resolution proposal for app workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/66) |
-|@matlec | MIAF Enrollment, Renewal, and Revocation | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/95) |
 |@javatask | OCI Artifact Signing for Margo | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/100) |
 |@oomichi-melco | Report device hostname with capabilities during onboarding | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/101) |
 
