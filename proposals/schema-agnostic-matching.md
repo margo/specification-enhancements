@@ -6,7 +6,7 @@
 
 ## Summary
 
-As part of the desire to separate the core specification from independent deployment specifications, the [PM group has indicated](https://github.com/margo/product_management/issues/97) there is a desire to move to a schema-agnostic approach for matching applications to supported devices. This SUP proposes replacing the [fixed device capability](https://docs.margo.org/specification/margo-management-interface/device-capabilities) model with a schema-agnostic device profile model. A device reports an array of named characteristics, each containing an opaque property bag. Application deployment profiles refer to those characteristics by globally unique keys and use a small, standard matching language to express eligibility requirements.
+As part of the desire to separate the core specification from independent deployment technology specifications, the [PM group has indicated](https://github.com/margo/product_management/issues/97) there is a desire to move to a schema-agnostic approach for matching applications to supported devices. This SUP proposes replacing the [fixed device capability](https://docs.margo.org/specification/margo-management-interface/device-capabilities) model with a schema-agnostic device profile model. A device reports an array of named characteristics, each containing an opaque property bag. Application deployment profiles refer to those characteristics by globally unique keys and use a small, standard matching language to express eligibility requirements.
 
 The proposal also recommends an approach to use dynamic mapping for specific cases where the workload fleet manager must understand the meaning behind specific properties.
 
@@ -20,8 +20,8 @@ The proposal is associated with [TWG feature #219](https://github.com/margo/spec
 
 This change improves the specification by:
 
-1. Helps move in the direction of separating the stable core contracts from device-specific contracts so the core specification and deployment specifications can evolve independently from each other.
-2. Allows independent deployment specifications to add characteristics without requiring workload fleet managers to change code.
+1. Helps move in the direction of separating the stable core contracts from device-specific contracts so the core specification and deployment technology specifications can evolve independently from each other.
+2. Allows independent deployment technology specifications to add characteristics without requiring workload fleet managers to change code.
 3. Makes matching schema-agnostic, deterministic, and compliance-testable through JSON Pointer and explicitly defined operators.
 4. Suggests a dynamic discovery mechanism for properties the workload fleet manager can understand if required; though recommends keeping this to an absolute minimum.
 
@@ -37,13 +37,13 @@ This proposal supports the existing Margo goals and surfaces for:
 * [Device Requirements](https://docs.margo.org/specification/margo-devices/device-requirements), which requires workload-hosting devices to expose supported deployment and runtime capabilities.
 * [Software Composition](https://docs.margo.org/personas-and-definitions/software-composition), which distinguishes application packaging from deployment and permits multiple deployment technologies.
 
-It does not introduce a new workload runtime, package format, registry, scheduling policy, or observability protocol. It does not define the common characteristics, but it gives examples of how such characteristics may be named, transported, matched, and evolved. It does not define any deployment specifications but gives examples of how deployment characteristics can be described. The deployment specifications remain responsible for defining the meaning and schema of their own characteristics.
+It does not introduce a new workload runtime, package format, registry, scheduling policy, or observability protocol. It does not define the common characteristics, but it gives examples of how such characteristics may be named, transported, matched, and evolved. It does not define any deployment technology specifications but gives examples of how deployment characteristics can be described. The deployment technology specifications remain responsible for defining the meaning and schema of their own characteristics.
 
-This proposal defines the direction and approach for moving to a schema-agnostic, passthrough-by-default approach. If this SUP is approved, then deployment specifications for Helm and Compose can be started based on this approach. If this SUP is approved, the common device characteristics can start to be defined as part of the common deployment specification guidelines.
+This proposal defines the direction and approach for moving to a schema-agnostic, passthrough-by-default approach. If this SUP is approved, then deployment technology specifications for Helm and Compose can be started based on this approach. If this SUP is approved, the common device characteristics can start to be defined as part of the common deployment technology specification guidelines.
 
 ## Technical proposal
 
-### 1. Core and deployment specification boundary
+### 1. Core and deployment technology specification boundary
 
 The Margo core specification SHOULD contain only:
 
@@ -54,15 +54,15 @@ The Margo core specification SHOULD contain only:
 * the matching grammar and evaluation semantics; and
 * the vocabulary required by the workload fleet manager to perform its own management functions, if use cases agreed to.
 
-The common deployment specification guidelines SHOULD contain only:
+The common deployment technology specification guidelines SHOULD contain only:
 
-* requirements each deployment specification must meet;
+* requirements each deployment technology specification must meet;
 * recommended common characteristics definitions;
 * characteristic key naming guidelines;
 * characteristic evolution guidelines; and
-* deployment specification governance model;
+* deployment technology specification governance model;
 
-An independently versioned deployment specification SHOULD define:
+An independently versioned deployment technology specification SHOULD define:
 
 * characteristic keys and their JSON Schemas;
 * the semantics and units of characteristic properties;
@@ -193,7 +193,7 @@ The following rules apply:
 
 ### 3. Characteristic definitions and evolution
 
-The supplier that owns a characteristic key MUST publish a human-readable definition for that key and MAY publish a JSON Schema. The characteristic definition SHOULD be published, or referenced, as part of the applicable deployment specification. The schema is informative to a workload fleet manager operating in passthrough mode, but is normative for device suppliers claiming conformance to the characteristic if a schema is provided.
+The supplier that owns a characteristic key MUST publish a human-readable definition for that key and MAY publish a JSON Schema. The characteristic definition SHOULD be published, or referenced, as part of the applicable deployment technology specification. The schema is informative to a workload fleet manager operating in passthrough mode, but is normative for device suppliers claiming conformance to the characteristic if a schema is provided.
 
 Characteristics are not versioned by adding a version field to each instance. An owner MAY make only these compatible changes under the same key:
 
@@ -209,9 +209,9 @@ Characteristics SHOULD strive to keep the required properties to an absolute min
 
 #### Common Device Characteristic
 
-It is my opinion that the Margo community should define a set of common device characteristics that a deployment specification can reference for common things like memory, CPU, storage, and certain peripherals or interfaces. If the community agrees to do this, these common characteristics should be documented as part of the common device specification guidelines documentation.
+It is my opinion that the Margo community should define a set of common device characteristics that a deployment technology specification can reference for common things like memory, CPU, storage, and certain peripherals or interfaces. If the community agrees to do this, these common characteristics should be documented as part of the common device specification guidelines documentation.
 
-If they are defined, a deployment specification MAY choose to reference these common device characteristics, or define their own more applicable characteristics based on the unique qualities of each deployment specification.
+If they are defined, a deployment technology specification MAY choose to reference these common device characteristics, or define their own more applicable characteristics based on the unique qualities of each deployment technology specification.
 
 The workload fleet manager MUST NOT be required to do any conversations between what is in the Application Description and Device Profile. For example, where units are important to the property, each characteristic MUST define a single unit the value is expected to be in so no unit conversion logic is required.
 
@@ -428,11 +428,11 @@ The following are examples of some common characteristics the Margo community co
 
 #### Deployment characteristic
 
-Each deployment characteristic describes what is required for an application to target a device with the required profile. Each deployment characteristic can define what properties make sense for that specific deployment. There is no intention of trying to keep deployment characteristics common between deployment specifications.
+Each deployment characteristic describes what is required for an application to target a device with the required profile. Each deployment characteristic can define what properties make sense for that specific deployment. There is no intention of trying to keep deployment characteristics common between deployment technology specifications.
 
-Currently, with Margo, we have targeted Helm (Kubernetes) and Compose (Podman/Docker). You can see from this [TWG Feature](https://github.com/margo/specification/issues/213) that there are several Kubernetes-specific problems needing to be addressed. This approach allows for solving those Kubernetes problems as part of the Helm deployment specification characteristics instead of needing holistic solutions that don't match what other deployment specifications require.
+Currently, with Margo, we have targeted Helm (Kubernetes) and Compose (Podman/Docker). You can see from this [TWG Feature](https://github.com/margo/specification/issues/213) that there are several Kubernetes-specific problems needing to be addressed. This approach allows for solving those Kubernetes problems as part of the Helm deployment technology specification characteristics instead of needing holistic solutions that don't match what other deployment technology specifications require.
 
-> **NOTE:** The following deployment characteristic examples are entirely made up. Defining these deployment characteristics is not within the scope of this SUP and only serves as an example to demonstrate how this could be defined in the deployment specification.
+> **NOTE:** The following deployment characteristic examples are entirely made up. Defining these deployment characteristics is not within the scope of this SUP and only serves as an example to demonstrate how this could be defined in the deployment technology specification.
 
 1. **Helm/Kuberentes deployment characteristic**
 
@@ -543,7 +543,7 @@ The `deploymentProfile.key` is used to determine which deployment technology the
 
 The `deploymentProfile.key` is the only key used to determine what deployment technology the profile instance is associated with. If the deployment profile instance's match expressions contain keys for a deployment characteristic, they are treated as regular matching expressions and not an indication of what deployment technology the profile instance is for.
 
-Each deployment specification defines which characteristics can be matched on. The workload fleet manager continues passing along the full deploymentProfile object to the device through the desired state.
+Each deployment technology specification defines which characteristics can be matched on. The workload fleet manager continues passing along the full deploymentProfile object to the device through the desired state.
 
 The following is an example application description requiring multiple characteristics:
 
@@ -620,7 +620,7 @@ This preserves the existing Desired State rule that an ApplicationDeployment is 
 
 The [Custom Runtime SUP](https://github.com/margo/specification-enhancements/blob/main/completed/sup_device_specific_runtime_affinity_matching.md) introduced several concepts for handling custom runtimes. The changes described in this SUP replace how custom runtimes are supported. With this SUP, custom runtimes are supported using the new characteristics model instead of the device capability labels added as part of that SUP.
 
-Device vendors wishing to support custom runtimes would define their own deployment characteristics and share these characteristics with any application supplier needing to target their runtime. Device vendors may choose to create their own deployment specification for their custom runtime if they choose, but this would not be an official deployment specification in the Margo registry.
+Device vendors wishing to support custom runtimes would define their own deployment characteristics and share these characteristics with any application supplier needing to target their runtime. Device vendors may choose to create their own deployment technology specification for their custom runtime if they choose, but this would not be an official deployment technology specification in the Margo registry.
 
 This SUP continues to make use of several concepts introduced with the custom runtime SUP to enable the schema-agnostic matching.
 
@@ -678,6 +678,16 @@ DELETE /api/v1/profile/mapping/{targetName}
 
 POST creates, PUT replaces, and DELETE removes the complete mapping for the target. Mapping updates MUST be atomic. The profile and mapping endpoints inherit the same authentication, authorization, gateway hierarchy, and error handling requirements.
 
+### 11. Device-specific Parameter Changes
+
+The approved [device-specific parameter SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/device-specific-parameter-values.md) indicates the device-specific parameters are [included in the device capabilities](https://github.com/margo/specification-enhancements/blob/main/proposals/device-specific-parameter-values.md).
+
+>**Note:** The specification has not been updated with the contents for this approved SUP.
+
+With this proposal, the device-specific parameter information would not be sent to the workload fleet manager as part of the core specification's requirements. The reasons is because there is no need for the workload fleet manager to know anything about these device-specific parameters since the device can supply them when the application is requested to be deployed on the device.
+
+Deployment technology specifications can choose to publish information about their applicable device-specific parameters as optional information for the workload fleet manager to make use of if the workload fleet manager chooses to tightly couple itself to a deployment technology specification.
+
 ## Breaking changes
 
 This SUP introduces several breaking changes:
@@ -689,6 +699,7 @@ This SUP introduces several breaking changes:
 * Capacity, property-selector, and label-selector semantics are replaced by characteristic matching.
 * Custom runtime support changes to the new model.
 * Vendor extensions for reported device capabilities change to the new model.
+* Device-specific parameter information would not be sent to the workload fleet manager as part of the core specification.
 
 No new breaking change is introduced to OCI application or component distribution, Desired State artifact retrieval, deployment status reporting, mTLS, or OpenTelemetry requirements.
 
