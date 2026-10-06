@@ -14,7 +14,7 @@ The proposal also recommends an approach to use dynamic mapping for specific cas
 
 Margo's current device capability contract hardcodes resources, peripherals, interfaces, runtimes, and deployment type information into a defined schema. The current [Device Capabilities](https://docs.margo.org/specification/margo-management-interface/device-capabilities) schema and the [Application Description](https://docs.margo.org/specification/applications/application-description#deploymentprofile-attributes) schema consequently require the workload fleet manager implementations to understand these schemas in order to perform compatibility matching.
 
-This conflicts with the new direction for defaulting to a schema-agnostic, passthrough-by-default approach for matching applications to devices. This is a new direction the PM group has agreed to, to decouple device characteristic matching from the core specification so new/updated characteristics can be added without requiring the workload fleet manager to implement new code to support it. The driving factor for this change in direction was a proposal to separate deployment types from the core specification, but the same reasoning applies to all device characteristics, not just what deployments devices support.
+This conflicts with the new direction for defaulting to a schema-agnostic, passthrough-by-default approach for matching applications to devices. This is a new direction the PM group has agreed to, to decouple device characteristic matching from the core specification so new/updated characteristics can be added without requiring the workload fleet manager to implement new code to support it. The driving factor for this change in direction was a proposal to separate deployment technologies from the core specification, but the same reasoning applies to all device characteristics, not just what deployments devices support.
 
 The proposal is associated with [TWG feature #219](https://github.com/margo/specification/issues/219) and draws from ideas originally proposed in the [Device Manifest Bisection SUP](https://github.com/margo/specification-enhancements/blob/sup/bisect-device-manifest/proposals/sup_bisect_device_manifest.md). The Bisection SUP introduces some good ideas but they are tied heavily to having schemas defined that the workload fleet manager and device MUST use and understand which conflicts with this new direction. This proposal keeps the useful profile concept but removes the requirement that the workload fleet manager register, validate, or interpret every profile schema. It also simplifies how each device characteristic is represented as an opaque property bag. The ideas proposed here allow the workload fleet manager to evaluate compatibility using only the generic matching operators refined in this SUP that were originally introduced with the [Custom Runtime SUP](https://github.com/margo/specification-enhancements/blob/main/completed/sup_device_specific_runtime_affinity_matching.md#2-device-constraints-model).
 
@@ -35,7 +35,7 @@ This proposal supports the existing Margo goals and surfaces for:
 * [Desired State](https://docs.margo.org/specification/margo-management-interface/desired-state), which carries the selected deployment profile to the device.
 * [Device Capabilities](https://docs.margo.org/specification/margo-management-interface/device-capabilities), which is the current device-to-WFM capability exchange.
 * [Device Requirements](https://docs.margo.org/specification/margo-devices/device-requirements), which requires workload-hosting devices to expose supported deployment and runtime capabilities.
-* [Software Composition](https://docs.margo.org/personas-and-definitions/software-composition), which distinguishes application packaging from deployment and permits multiple deployment types.
+* [Software Composition](https://docs.margo.org/personas-and-definitions/software-composition), which distinguishes application packaging from deployment and permits multiple deployment technologies.
 
 It does not introduce a new workload runtime, package format, registry, scheduling policy, or observability protocol. It does not define the common characteristics, but it gives examples of how such characteristics may be named, transported, matched, and evolved. It does not define any deployment specifications but gives examples of how deployment characteristics can be described. The deployment specifications remain responsible for defining the meaning and schema of their own characteristics.
 
@@ -81,6 +81,8 @@ The current [Device Capabilities](https://docs.margo.org/specification/margo-man
 #### Profile endpoints
 
 The current `/api/v1/capabilities/{deviceId}` contract is replaced by:
+
+>**Note:** This will be updated to include the changes in the [PRs to replace deviceId](https://github.com/margo/specification/pull/225) when it is merged since the PRs are making changes to the capabilities URL to replace the use of `deviceId`.
 
 ```text
 POST   /api/v1/profile/{targetName}
