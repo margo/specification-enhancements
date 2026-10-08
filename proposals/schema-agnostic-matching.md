@@ -185,22 +185,24 @@ The following rules apply:
 * A characteristic key MUST be globally unique within the Margo ecosystem. Reverse-domain names such as `margo.org/resource/cpu` or `example.com/interface/canbus` are RECOMMENDED.
 * `properties` MUST be a JSON object. Its contents are opaque to the core specification, and MAY contain nested objects and arrays.
 * A device MAY omit a characteristic when it is unavailable. Omission is different from an empty property bag.
-* A device MUST send all known characteristics to create the initial device profile using POST.
-* A device MAY add or update one or more individual characteristics once the device profile has been created using PUT.
-* A device MAY remove one or more individual characteristics once the device profile has been created using DELETE.
+* A device MUST send all known characteristics to create the initial device profile using PUT.
+* A device MAY update all characteristics once the device profile has been created using PUT. Updating a profile using PUT replaces the previous profile with the new profile's characteristics.
+* A device MAY remove the device profile once the device profile has been created using DELETE.
 * The profile describes only resources and characteristics exposed to Margo workloads, as required by the current device capability guidance.
 
 ### 3. Characteristic definitions and evolution
 
 The supplier that owns a characteristic key MUST publish a human-readable definition for that key and MAY publish a JSON Schema. The characteristic definition SHOULD be published, or referenced, as part of the applicable deployment technology specification. The schema is informative to a workload fleet manager operating in passthrough mode, but is normative for device suppliers claiming conformance to the characteristic if a schema is provided.
 
-Characteristics are not versioned by adding a version field to each instance. An owner MAY make only these compatible changes under the same key:
+Characteristics are not versioned by adding a version field to each instance. An owner MAY make additive changes only under the same key:
 
-* add an optional property;
+* add new properties; or
 * add an enum option; or
-* change a required property to optional.
+* making an optional property required
 
-The owner MUST assign a new key for any other change, including removing or renaming a property, changing a property data type, removing an enum option, or making an optional property required. The new key MAY use a new path or another collision-resistant identifier.
+These additive changes allow existing application definition match expressions to continue working because what was being matched has not change.
+
+The owner MUST assign a new key for any destructive type change, including removing or renaming a property, changing a property data type, removing an enum option, or make a required property optional. The new key MAY use a new path or another collision-resistant identifier. These types of changes could potentially break existing application definition match expressions which is why a new key is created so the existing application definitions are not affected.
 
 In order to reduce compatibility concerns, modifying a characteristic in such a way as to require a new unique key is NOT RECOMMENDED and should only be done when there are no other options available.
 
