@@ -85,12 +85,11 @@ The current `/api/v1/capabilities/{deviceId}` contract is replaced by:
 >**Note:** This will be updated to include the changes in the [PRs to replace deviceId](https://github.com/margo/specification/pull/225) when it is merged, since the PRs are making changes to the capabilities URL to replace the use of `deviceId`.
 
 ```text
-POST   /api/v1/profile/{targetName}
 PUT    /api/v1/profile/{targetName}
 DELETE /api/v1/profile/{targetName}
 ```
 
-`targetName` uses the existing hierarchical device identifier rules for gateways. `POST` creates a profile, `PUT` updates an existing profile's characteristics, and `DELETE` removes profile characteristics. The POST and PUT request body MUST be the `characteristics` object shown below. DELETE has no request body to remove all characteristics for the target, or a payload with an array of keys for individual characteristics to remove. A gateway MUST submit the parent profile before a child profile, preserving the current see-through gateway ordering rule.
+`targetName` uses the existing hierarchical device identifier rules for gateways. `PUT` creates a new profile or replaces the existing profile. `DELETE` removes the profile. The POST request body MUST be the `characteristics` object shown below. DELETE has no request body and removes all characteristics for the target. A gateway MUST submit the parent profile before a child profile, preserving the current see-through gateway ordering rule.
 
 The endpoints inherit the Management Interface requirements for mTLS, authorization, HTTP/1.1, port 443, status codes, and [RFC 9457 Problem Details](https://docs.margo.org/specification/margo-management-interface/api-requirements-and-security#error-responses). A malformed envelope is a `400 Bad Request`; a semantically invalid characteristic payload is a `422 Unprocessable Content`.
 
