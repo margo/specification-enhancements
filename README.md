@@ -58,7 +58,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@silvanoc | Data model single source of truth with LinkML | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/data-model_linkml.md)
 |@javatask | Canonical OCI component publishing pattern | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/the-helm-way/WG-PROPOSAL-00_the-helm-way.md) |
 |@arne-broering | Device specific parameter values | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/device-specific-parameter-values.md) |
-|@matlec | MIAF credential provisioning and aquisition | P2 | [PR](https://github.com/margo/specification-enhancements/pull/84) |
+|@matlec | MIAF credential provisioning and aquisition | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/miaf-credential-provisioning-and-acquisition.md) |
 |@javatask | Quadlet deployment type | P2 | [PR](https://github.com/margo/specification-enhancements/pull/69) |
 |@jjaswanson4 | Proposal - Overhaul Kubernetes Clusters as Managed Endpoints | P2 | [PR](https://github.com/margo/specification-enhancements/pull/97) |
 |@phil-abb | Replace device capabilities with schema-agnostic device profile and characteristics | P2 | [PR](https://github.com/margo/specification-enhancements/pull/98) |
