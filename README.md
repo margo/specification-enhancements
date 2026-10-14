@@ -70,6 +70,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@singhmj-1 | Resource allocation and conflict resolution proposal for app workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/66) |
 |@javatask | OCI Artifact Signing for Margo | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/100) |
 |@oomichi-melco | Report device hostname with capabilities during onboarding | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/101) |
+|@MayTakeUpTo8Hours | Compose deployment profile as a single Compose project | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/103) |
 
 
 ## SUP Owner SUP Checklist
