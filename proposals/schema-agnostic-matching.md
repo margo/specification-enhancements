@@ -706,6 +706,8 @@ The common characteristics defined as part of the core specification MUST remain
 
 Defining what these required common characteristics are is not part of the SUP. The SUP only defines how to handle this.
 
+With this approach, the Margo community can choose to define a set of suggested common device characteristics documented as part of the common device specification guidelines documentation that are not required. If they are defined, a deployment technology specification would be able to either reference these suggested common device characteristics or define its own more applicable characteristics based on the unique qualities of each deployment technology specification.
+
 ##### Pro
 
 * The core specification defines these common characteristics so workload fleet managers know how to interpret them without relying on any other descriptive means while using the existing profile API.
