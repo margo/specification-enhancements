@@ -197,11 +197,11 @@ Characteristics are not versioned by adding a version field to each instance. An
 
 * add new properties; or
 * add an enum option; or
-* making an optional property required
+* make an optional property required
 
-These additive changes allow existing application definition match expressions to continue working because what was being matched has not change.
+These additive changes allow existing application definition match expressions to continue working because what was being matched has not changed.
 
-The owner MUST assign a new key for any destructive type change, including removing or renaming a property, changing a property data type, removing an enum option, or make a required property optional. The new key MAY use a new path or another collision-resistant identifier. These types of changes could potentially break existing application definition match expressions which is why a new key is created so the existing application definitions are not affected.
+The owner MUST assign a new key for any destructive type change, including removing or renaming a property, changing a property data type, removing an enum option, or making a required property optional. The new key MAY use a new path or another collision-resistant identifier. These types of changes could potentially break existing application definition match expressions, which is why a new key is created so the existing application definitions are not affected.
 
 In order to reduce compatibility concerns, modifying a characteristic in such a way as to require a new unique key is NOT RECOMMENDED and should only be done when there are no other options available.
 
@@ -628,19 +628,19 @@ With the changes to device capabilities, the former [vendor extension](https://d
 
 If there is a need for collaboration between a device and a workload fleet manager supplier, the suppliers can define their own set of device characteristics that are sent to the workload fleet manager.
 
-The vendor extension mechanism defined for the [Application Description](https://docs.margo.org/specification/applications/application-description#specification-extensions) and [Desired State](https://docs.margo.org/specification/margo-management-interface/desired-state#specification-extensions) remain unchanged.
+The vendor extension mechanism defined for the [Application Description](https://docs.margo.org/specification/applications/application-description#specification-extensions) and [Desired State](https://docs.margo.org/specification/margo-management-interface/desired-state#specification-extensions) remains unchanged.
 
 ### 10. Handling well-known characteristics
 
 Under certain use cases, it may be necessary for the workload fleet manager to understand what a characteristic property means.
 
-This SUP proposes two different options for defining how workload fleet management implementations can handle well-know characteristics.
+This SUP proposes two different options for defining how workload fleet management implementations can handle well-known characteristics.
 
-> **Note:** My opinion on this is it should be kept to an absolute minimum and only added with agreement from the PM group based on an actual real-world use case and not supposition.
+> **Note:** My opinion on this is that it should be kept to an absolute minimum and only added with agreement from the PM group based on an actual real-world use case and not supposition.
 
-When voting on this SUP, you will vote for one of the following options for how a workload fleet manger can interpret well-known characteristics:
+When voting on this SUP, you will vote for one of the following options for how a workload fleet manager can interpret well-known characteristics:
 
-* Dynamics WFM mapping
+* Dynamic WFM mapping
 * Required characteristics
 
 #### Option 1: Dynamic WFM mappings
@@ -684,7 +684,7 @@ DELETE /api/v1/profile/mapping/{targetName}
 
 PUT creates or replaces, and DELETE removes the complete mapping for the target. Mapping updates MUST be atomic. The profile and mapping endpoints inherit the same authentication, authorization, gateway hierarchy, and error handling requirements.
 
-With this approach, the Margo community can chose to define a set of common device characteristics documented as part of the common device specification guidelines documentation. If they are defined, a deployment technology specification would be able to either reference these common device characteristics, or define their own more applicable characteristics based on the unique qualities of each deployment technology specification.
+With this approach, the Margo community can choose to define a set of common device characteristics documented as part of the common device specification guidelines documentation. If they are defined, a deployment technology specification would be able to either reference these common device characteristics or define its own more applicable characteristics based on the unique qualities of each deployment technology specification.
 
 ##### Pros
 
@@ -700,20 +700,20 @@ This approach adds complexity because:
 
 #### Option 2: Define required characteristics
 
-The core specification MUST define a set of common characteristics, with schema, devices MUST use when reporting these common characteristics. A device MUST report any applicable common characteristic defined in the core specification.
+The core specification MUST define a set of common characteristics, with schema, that devices MUST use when reporting these common characteristics. A device MUST report any applicable common characteristic defined in the core specification.
 
 The common characteristics defined as part of the core specification MUST remain deployment technology neutral.
 
-Defining what these required common characteristics are is is not part of the SUP. The SUP only defines how to handle this.
+Defining what these required common characteristics are is not part of the SUP. The SUP only defines how to handle this.
 
 ##### Pro
 
-* The core specification defines these common characteristics so workload fleet manager's know how to interpret them without relying on any other descriptive means while using the existing profile API.
+* The core specification defines these common characteristics so workload fleet managers know how to interpret them without relying on any other descriptive means while using the existing profile API.
 
 ##### Con
 
-* If we require certain common characteristics to be used (where applicable), it puts the deployment technology specification in a situation where they may need to report duplicate information: one way to meet the required common characteristics and another way that is more appropriate for how those characteristics are represented for that deployment technology.
-* A big reason for separating the core specification from the deployment technology specifications is to allow them to evolve independent of each other. While these common characteristics should not deployment technology specific, by requiring certain common ones to be used it creates a tighter coupling between the core and deployment technology specifications.
+* If we require certain common characteristics to be used (where applicable), it puts the deployment technology specification in a situation where it may need to report duplicate information: one way to meet the required common characteristics and another way that is more appropriate for how those characteristics are represented for that deployment technology.
+* A big reason for separating the core specification from the deployment technology specifications is to allow them to evolve independently of each other. While these common characteristics should not be deployment-technology-specific, requiring certain common ones to be used creates a tighter coupling between the core and deployment technology specifications.
 
 ### 11. Device-specific Parameter Changes
 
