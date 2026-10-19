@@ -658,19 +658,19 @@ For example, assume Margo has agreed that the workload fleet manager must be abl
 	"memory": {
 		"key": "margo.org/resource/memory",
 		"property": "$.total",
-        "type": "decimal",
-        "unit": "Mi"
+		"type": "decimal",
+		"unit": "Mi"
 	},
 	"storage": {
 		"key": "margo.org/resource/storage",
 		"property": "$.total",
-        "type": "decimal",
-        "unit": "Gi"
+		"type": "decimal",
+		"unit": "Gi"
 	},
 	"cpuCores": {
 		"key": "margo.org/resource/cpu",
 		"property": "$.cpus[*].cores",
-        "type": "integer"
+		"type": "integer"
 	}
 }
 ```
