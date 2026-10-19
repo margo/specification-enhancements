@@ -52,7 +52,6 @@ The Margo core specification SHOULD contain only:
 * non-deployment-specific device parameters
 * the profile and mapping endpoints;
 * the matching grammar and evaluation semantics; and
-* the vocabulary required by the workload fleet manager to perform its own management functions, if use cases agreed to.
 
 The common deployment technology specification guidelines SHOULD contain only:
 
@@ -208,13 +207,11 @@ In order to reduce compatibility concerns, modifying a characteristic in such a 
 
 Characteristics SHOULD strive to keep the required properties to an absolute minimum to prevent application suppliers from having to define a lot of matching expressions that are unnecessary for all conditions.
 
+The workload fleet manager MUST NOT be required to do any conversions between what is in the Application Description and Device Profile. For example, where units are important to the property, each characteristic MUST define a single unit the value is expected to be in, so no unit conversion logic is required.
+
 #### Common Device Characteristic
 
-It is my opinion that the Margo community should define a set of common device characteristics that a deployment technology specification can reference for common things like memory, CPU, storage, and certain peripherals or interfaces. If the community agrees to do this, these common characteristics should be documented as part of the common device specification guidelines documentation.
-
-If they are defined, a deployment technology specification MAY choose to reference these common device characteristics, or define their own more applicable characteristics based on the unique qualities of each deployment technology specification.
-
-The workload fleet manager MUST NOT be required to do any conversions between what is in the Application Description and Device Profile. For example, where units are important to the property, each characteristic MUST define a single unit the value is expected to be in, so no unit conversion logic is required.
+It is my opinion that the Margo community should define a set of common device characteristics that a deployment technology specification can reference for common things like memory, CPU, storage, and certain peripherals or interfaces.
 
 The following are examples of some common characteristics the Margo community could consider defining.
 
@@ -633,15 +630,24 @@ If there is a need for collaboration between a device and a workload fleet manag
 
 The vendor extension mechanism defined for the [Application Description](https://docs.margo.org/specification/applications/application-description#specification-extensions) and [Desired State](https://docs.margo.org/specification/margo-management-interface/desired-state#specification-extensions) remain unchanged.
 
-### 10. Dynamic WFM mappings
+### 10. Handling well-known characteristics
 
 Under certain use cases, it may be necessary for the workload fleet manager to understand what a characteristic property means.
 
-The core specification MUST only define the vocabulary needed for the workload fleet manager behavior. For each vocabulary item, a device reports a mapping with the characteristic key and JSONPath expression that supplies the value.
-
-Defining what this required vocabulary is is not part of the SUP. The SUP only defines how to handle this in a dynamic way.
+This SUP proposes two different options for defining how workload fleet management implementations can handle well-know characteristics.
 
 > **Note:** My opinion on this is it should be kept to an absolute minimum and only added with agreement from the PM group based on an actual real-world use case and not supposition.
+
+When voting on this SUP, you will vote for one of the following options for how a workload fleet manger can interpret well-known characteristics:
+
+* Dynamics WFM mapping
+* Required characteristics
+
+#### Option 1: Dynamic WFM mappings
+
+The core specification MUST define the vocabulary needed for the workload fleet manager behavior. For each vocabulary item, a device reports a mapping with the characteristic key and JSONPath expression that supplies the value.
+
+Defining what this required vocabulary is is not part of the SUP. The SUP only defines how to handle this in a dynamic way.
 
 The mapping is an open object. The workload fleet manager MUST treat it as a dynamic set and MUST NOT assume that a particular entry exists. A mapping value MUST contain a characteristic `key` and a `property` JSONPath expression as defined by [RFC 9535](https://www.rfc-editor.org/rfc/rfc9535). The JSONPath expression MUST be evaluated relative to the characteristic's `properties` object and MUST resolve to the value used for the mapped vocabulary. The WFM MAY use a mapping entry only when it knows the corresponding vocabulary and the resolved value has the necessary information (e.g., type,  unit, etc.).
 
@@ -672,12 +678,42 @@ For example, assume Margo has agreed that the workload fleet manager must be abl
 The mapping endpoints are:
 
 ```text
-POST   /api/v1/profile/mapping/{targetName}
 PUT    /api/v1/profile/mapping/{targetName}
 DELETE /api/v1/profile/mapping/{targetName}
 ```
 
-POST creates, PUT replaces, and DELETE removes the complete mapping for the target. Mapping updates MUST be atomic. The profile and mapping endpoints inherit the same authentication, authorization, gateway hierarchy, and error handling requirements.
+PUT creates or replaces, and DELETE removes the complete mapping for the target. Mapping updates MUST be atomic. The profile and mapping endpoints inherit the same authentication, authorization, gateway hierarchy, and error handling requirements.
+
+With this approach, the Margo community can chose to define a set of common device characteristics documented as part of the common device specification guidelines documentation. If they are defined, a deployment technology specification would be able to either reference these common device characteristics, or define their own more applicable characteristics based on the unique qualities of each deployment technology specification.
+
+##### Pros
+
+* This approach provides flexibility for deployment technology specifications to express their characteristics in a way that's more appropriate for that deployment technology. For example, this [SUP](https://github.com/RedHatEdge/specification-enhancements/blob/main/proposals/sup_kubernetes_cluster_as_managed_endpoint.md#resource-example) is proposing updates to the current set of device capabilities that are more appropriate for Kubernetes clusters. These concepts apply well for Helm/kubernetes deployment technology spec, but not to other deployment technologies.
+
+##### Cons
+
+This approach adds complexity because:
+
+* It introduces a new endpoint Margo must maintain
+* It introduces another set of definitions, a type system and a separate path language
+* It introduces complexities associated with the dynamic mapping implementation
+
+#### Option 2: Define required characteristics
+
+The core specification MUST define a set of common characteristics, with schema, devices MUST use when reporting these common characteristics. A device MUST report any applicable common characteristic defined in the core specification.
+
+The common characteristics defined as part of the core specification MUST remain deployment technology neutral.
+
+Defining what these required common characteristics are is is not part of the SUP. The SUP only defines how to handle this.
+
+##### Pro
+
+* The core specification defines these common characteristics so workload fleet manager's know how to interpret them without relying on any other descriptive means while using the existing profile API.
+
+##### Con
+
+* If we require certain common characteristics to be used (where applicable), it puts the deployment technology specification in a situation where they may need to report duplicate information: one way to meet the required common characteristics and another way that is more appropriate for how those characteristics are represented for that deployment technology.
+* A big reason for separating the core specification from the deployment technology specifications is to allow them to evolve independent of each other. While these common characteristics should not deployment technology specific, by requiring certain common ones to be used it creates a tighter coupling between the core and deployment technology specifications.
 
 ### 11. Device-specific Parameter Changes
 
