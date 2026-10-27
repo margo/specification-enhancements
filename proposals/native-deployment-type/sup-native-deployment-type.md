@@ -9,9 +9,9 @@
 
 Today a Margo fleet manager can deploy containerized workloads to a device, but it cannot update the device's operating system. Operators patch devices by logging in to each one or with tools outside Margo.
 
-This SUP adds a third deployment profile type, working name `native`, next to `helm` and `compose`. A `native` deployment profile lists operating system packages or OS images, each with a source URL and a version. The device vendor or operator publishes it as a versioned Application Description, and the fleet manager distributes it exactly like a workload. Native and workload deployments share the same deployment list in the desired state. The device's WFM client applies the listed components, for example with apt on Debian or an A/B image update on Yocto, and reports the result through the existing deployment status.
+This SUP proposes a new deployment specification, working name `native`, next to the `helm` and `compose` deployment technologies. It is submitted as a Draft deployment specification. A `native` deployment profile lists operating system packages or OS images, each with a source URL and a version. The device vendor or operator publishes it as a versioned Application Description, and the fleet manager distributes it exactly like a workload. Native and workload deployments share the same deployment list in the desired state. The device's WFM client applies the listed components, for example with apt on Debian or an A/B image update on Yocto, and reports the result through the existing deployment status.
 
-The proposal reuses the existing Application Description, desired state and deployment status structures. Apart from the new type, the only schema change is a component properties class that accepts non-OCI sources and non-SemVer versions.
+The only change to the core specification is the new value `native` for `SupportedDeploymentType`. Everything else lives in the deployment specification. It reuses the existing Application Description, desired state and deployment status structures and adds a component properties class that accepts non-OCI sources and non-SemVer versions.
 
 ## Reason for proposal
 
@@ -44,7 +44,7 @@ Out of scope for this SUP, and left to later SUPs:
 - post-update health validation and rollback ([#105](https://github.com/margo/product_management/issues/105))
 - dependency resolution and package management by Margo itself
 
-**Relation to the deployment specification decision.** If the governance model for deployment specifications ([product_management#97](https://github.com/margo/product_management/issues/97), [#118](https://github.com/margo/product_management/issues/118), [#119](https://github.com/margo/product_management/issues/119)) is in place before this SUP is voted on, the SUP group will submit the technical proposal below as a Draft deployment specification with the identifier `native`. The technical content stays the same.
+**Relation to the deployment specification decision.** The Steering Committee has approved splitting deployment technologies into separate deployment specifications ([product_management#97](https://github.com/margo/product_management/issues/97)). Following that decision, this SUP proposes `native` as a Draft deployment specification with the identifier `native`, not as a change to the core specification. The core change is limited to adding `native` to `SupportedDeploymentType`. If the [schema-agnostic device profile SUP](https://github.com/margo/specification-enhancements/pull/98) is approved, a characteristic replaces that value. Lifecycle and governance of the deployment specification follow [#118](https://github.com/margo/product_management/issues/118) and [#119](https://github.com/margo/product_management/issues/119).
 
 ## Technical proposal
 
@@ -63,16 +63,22 @@ native deployment profile         capabilities, adds it to       reports deploym
 
 The fleet manager handles a `native` deployment like any other deployment and does not interpret its components. The WFM client applies them.
 
-### Affected specification files
+### Changes to the core specification
 
 | File | Change |
 |------|--------|
-| `src/specification/applications/application-description.linkml.yaml` | Add `native` to the `type` slot. Add `NativeDeploymentProfile`, `NativeComponent` and `NativeComponentProperties`. |
-| `src/specification/margo-management-interface/desired-state.linkml.yaml` | Same additions as in the Application Description schema, which keeps its own copy of the deployment profile classes. |
-| `src/specification/margo-management-interface/resources/examples/valid/` | Add a valid desired state example with a `native` deployment profile. |
-| `system-design/specification/margo-management-interface/device-capabilities.md` | Add `native` to `SupportedDeploymentType`. |
-| `system-design/specification/margo-devices/device-requirements.md` | Add a section "Native-enabled device requirements". |
-| `system-design/specification/margo-management-interface/deployment-status.md` | Add the meaning of `installed` and `failed` for native components. |
+| `system-design/specification/margo-management-interface/device-capabilities.md` | Add `native` to `SupportedDeploymentType`, or define a characteristic instead if #98 is approved. |
+
+### Content of the `native` deployment specification
+
+The Draft deployment specification defines:
+
+- the `native` value of the deployment profile `type` and the classes `NativeDeploymentProfile`, `NativeComponent` and `NativeComponentProperties`, for both the Application Description and the desired state
+- a valid desired state example with a `native` deployment profile
+- the meaning of `installed` and `failed` for native components
+- the requirements for devices that support native deployments
+
+Where these definitions live in the repository and how they are referenced from the core schemas follows the structure for deployment specifications set up under #97.
 
 ### Schema changes
 
@@ -154,7 +160,7 @@ How the WFM client applies native components, resolves dependencies or handles e
 
 ### Native-enabled device requirements
 
-Text to add to the device requirements page:
+Text for the device requirements of the deployment specification:
 
 > Devices supporting the native deployment type MUST apply the components of the native deployments they receive and report their deployment status as defined for native components.
 
