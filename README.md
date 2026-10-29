@@ -71,6 +71,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@javatask | OCI Artifact Signing for Margo | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/100) |
 |@oomichi-melco | Report device hostname with capabilities during onboarding | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/101) |
 |@MayTakeUpTo8Hours | Compose deployment profile as a single Compose project | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/103) |
+|@samuel-greising | Native deployment type for OS package and image updates | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/109) |
 
 
 ## SUP Owner SUP Checklist
