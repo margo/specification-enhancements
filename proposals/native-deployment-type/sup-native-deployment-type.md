@@ -240,14 +240,7 @@ Here the WFM client passes the bundle to RAUC, which writes the image to the ina
 
 ### Use cases
 
-To be added by the SUP group before the SUP is ready for review. Planned use cases:
-
-1. A full OS update from the device vendor, applied to a device group
-2. A single security patch rolled out to the affected devices only
-3. An image-based device updated with an A/B partition scheme
-4. A failed update because of an unresolvable dependency, and how the operator sees it
-
-Each use case describes the Application Description, the expected fleet manager behaviour and the expected WFM client behaviour.
+Find all [use cases](./use-cases.md)
 
 ### Conformance
 
