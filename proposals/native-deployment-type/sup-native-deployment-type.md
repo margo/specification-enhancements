@@ -240,7 +240,13 @@ Here the WFM client passes the bundle to RAUC, which writes the image to the ina
 
 ### Use cases
 
-Find all [use cases](./use-cases.md)
+Today, edge devices are typically provisioned by installing the operating system and required runtime components. Ongoing maintenance, such as security patches, system updates and runtime updates, still require direct access to individual devices.
+
+The proposed fleet management approach separates initial provisioning from ongoing maintenance. Initial device setup remains outside the scope. Once a device is onboarded, supported native workload lifecycle operations can be managed centrally through the fleet manager.
+
+Instead of maintaining each device individually, operators define the desired native workloads and versions for selected devices. The device applies the requested changes and reports the resulting status and version back to the fleet manager.
+
+The following [use cases](./use-cases.md) describe the required lifecycle operations.
 
 ### Conformance
 
