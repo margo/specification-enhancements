@@ -640,7 +640,7 @@ This SUP proposes two different options for defining how workload fleet manageme
 
 When voting on this SUP, you will vote for one of the following options for how a workload fleet manager can interpret well-known characteristics:
 
-* Dynamic WFM mapping
+* Dynamic WFM mapping - this option was [approved via voting](https://github.com/margo/specification-enhancements/issues/107)
 * Required characteristics
 
 #### Option 1: Dynamic WFM mappings
