@@ -24,7 +24,7 @@ The value remains application configuration: the proposal does not change how an
 
 This proposal applies the existing device-specific parameter mechanism to workload observability configuration. It is aligned with the approved [device-specific parameter values proposal](https://github.com/margo/specification-enhancements/blob/main/proposals/device-specific-parameter-values.md) and the existing [Margo guidance for connecting workloads to the OpenTelemetry Collector](https://docs.margo.org/specification/observability/collecting-workload-observability-data#connecting-to-the-opentelemetry-collector).
 
-Since the Observability information has been in the specification from the very beginning there was never child epics created around the observability functionality. This proposal is not introducing any new functionality, only changing the existing implementation details.
+Since the Observability information has been in the specification from the very beginning, there were never child epics created around the observability functionality. This proposal is not introducing any new functionality, only changing the existing implementation details.
 
 The scope of this proposal is limited to supplying the device-specific collector configuration information to application components that request it. It does not make any other specification changes for Observability.
 
@@ -44,7 +44,7 @@ The following parameters would be used to replace the environment variables:
 
 | Old Environment Variable | New Parameters | Required in App Description | Required by Device | Description |
 |----|----|----|----|----|
-| HTTP_OTEL_EXPORTER_OTLP_ENDPOINT | margo.otel.endpoint.http | Y | Y | The URL for the workload to use to connect to the OpenTelemetry collector HTTP + protobuf. Application must use this parameter to get the endpoint and use it as a fallback endpoint if they wish to request the gRPC endpoint. |
+| HTTP_OTEL_EXPORTER_OTLP_ENDPOINT | margo.otel.endpoint.http | Y | Y | The URL for the workload to use to connect to the OpenTelemetry collector HTTP + protobuf. The application must use this parameter to get the endpoint and use it as a fallback endpoint if they wish to request the gRPC endpoint. |
 | GRPC_OTEL_EXPORTER_OTLP_ENDPOINT | margo.otel.endpoint.grpc | N | N | The URL for the workload to use to connect to the OpenTelemetry collector using gRPC. Should be empty if the device does not support gRPC. |
 | OTEL_EXPORTER_OTLP_CERTIFICATE | margo.otel.certificate | Y | N | The client certificate string, in PEM format, to use for secure connections to the OpenTelemetry Collector. The workload must connect using the certificate if it is provided.|
 | OTEL_EXPORTER_OTLP_PROTOCOL | margo.otel.protocol | Y | Y | "grpc" if the preferred protocol is gRPC, "http/protobuf" if the preferred protocol is HTTP + protobuf. The default is "http/protobuf" if nothing is provided for this environment variable. If the preferred protocol is "grpc" but no gRPC endpoint is provided, or if the workload client cannot connect via gRPC, the workload client connects using "http/protobuf". |
@@ -52,7 +52,7 @@ The following parameters would be used to replace the environment variables:
 
 ## Breaking Changes
 
-* Any device implementation currently injecting the environment variables would be affected by this changes since it needs to change how the OTEL configuration is provided.
+* Any device implementation currently injecting the environment variables would be affected by this change since it needs to change how the OTEL configuration is provided.
 * Any workload assuming these environment variables would be provided needs to have its Application Description updated to request the parameters directly instead.
 
 ## Alternatives considered (optional)
