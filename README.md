@@ -64,6 +64,7 @@ The SUP has been approved and the SUP group is working on updating the specifica
 |@matlec | MIAF Enrollment, Renewal, and Revocation | P3 | [SUP](https://github.com/margo/specification-enhancements/blob/main/proposals/miaf-enrollment-renewal-and-revocation.md) |
 |@javatask | Quadlet deployment type | P2 | [PR](https://github.com/margo/specification-enhancements/pull/69) |
 |@jjaswanson4 | Proposal - Overhaul Kubernetes Clusters as Managed Endpoints | P2 | [PR](https://github.com/margo/specification-enhancements/pull/97) |
+|@phil-abb | Use Device-Specific Parameters for OTEL configuration instead of environment variables | P2 | [PR](https://github.com/margo/specification-enhancements/pull/110) |
 |@jjaswanson4 | Move Application Deployment Templating to the WFM | P1 | [PR](https://github.com/margo/specification-enhancements/pull/40) |
 |@pperycz | Support for real-time workloads | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/75) |
 |@singhmj-1 | DeviceCapabilities improvements | P1 | [Draft PR](https://github.com/margo/specification-enhancements/pull/76) |
