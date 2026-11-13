@@ -36,7 +36,7 @@ An application that needs the device's OpenTelemetry Collector configuration dec
 
 ### Resolution and delivery
 
-Before invoking the deployment provider, the Workload Fleet Management Client MUST resolve each declared device-sourced OTEL configuration parameter according to the device-specific parameter resolution rules. It MUST deliver the resolved value only to the parameter target(s) named by the application. If a required value cannot be resolved and no applicable fallback is defined by the device-specific parameter rules, installation or update MUST fail with a clear resolution error.
+Before invoking the deployment, the Workload Fleet Management Client MUST resolve each declared device-sourced OTEL configuration parameter according to the device-specific parameter resolution rules. It MUST deliver the resolved value only to the parameter target(s) named by the application. If a required value cannot be resolved and no applicable fallback is defined by the device-specific parameter rules, installation or update MUST fail with a clear resolution error.
 
 ### Parameters
 
